@@ -1,8 +1,3 @@
-
----
-
-### 📁 **docs/mermaid/sequence_bitcoin.md**
-
 ```markdown
 # Sekvenssi: Bitcoin-kortti
 
