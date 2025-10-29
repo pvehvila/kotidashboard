@@ -9,6 +9,7 @@ Koodin päivittäminen:
 - Hae tuorein versio GitHub:ista ja käynnistä palveu uudelleen:
  "update-dash"
 
+```mermaid
 graph TD
   %% --- Kerrokset ---
   subgraph UI[UI-kerros]
@@ -101,4 +102,4 @@ sequenceDiagram
   C4 --> N
   C5 --> S
   C6 --> S
-
+```
