@@ -9,37 +9,20 @@ Koodin päivittäminen:
 - Hae tuorein versio GitHub:ista ja käynnistä palveu uudelleen:
  "update-dash"
 
-## Arkkitehtuuri
 
-```mermaid
-graph TD
-  UI[ui.py] --> API[api.py]
-  UI --> UTIL[utils.py]
-  API --> FORECA[Foreca API]
-  API --> BTC[CoinGecko]
-```
+---
 
-## Sekvenssi: Sääkortti
+### 📘 README.md-linkit
 
-```mermaid
-sequenceDiagram
-  participant UI as ui_card_weather
-  participant API as api_fetch_weather
-  participant CFG as config
-  participant F as foreca_api
-  participant U as utils_cache
+```markdown
+## Lisäkaaviot
 
-  UI->>API: get weather (window=3h)
-  API->>CFG: read keys & location
-  API->>U: cache get "weather:3h"
-  alt cache hit
-    U-->>API: cached payload
-  else cache miss
-    API->>F: GET /forecast?loc=...&key=...
-    F-->>API: 200 OK (JSON)
-    API->>U: cache set "weather:3h" (ttl 5m)
-  end
-  API-->>UI: normalized data
-  UI->>UI: render chart
-```
+- [Arkkitehtuuri](docs/mermaid/architecture.md)
+- [Sääkortti](docs/mermaid/sequence_weather.md)
+- [Sähkön hinta](docs/mermaid/sequence_electricity.md)
+- [Bitcoin](docs/mermaid/sequence_bitcoin.md)
+- [System-kortti](docs/mermaid/sequence_system.md)
+- [Cache-tila](docs/mermaid/state_cache.md)
+- [Deployment (Raspberry Pi 5)](docs/mermaid/deployment.md)
+
 
