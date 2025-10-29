@@ -11,72 +11,70 @@ Koodin päivittäminen:
 
 ```mermaid
 graph TD
-  %% --- Kerrokset ---
-  subgraph UI[UI-kerros]
-    UI_Main[main.py<br/>- käynnistys, reititys]
-    UI_UI[ui.py<br/>- kortit & layout]
-    UI_Style[style.css / icons]
+  subgraph UI
+    UI_Main[main.py]
+    UI_UI[ui.py]
+    UI_Assets[styles & icons]
   end
 
-  subgraph Domain[Logiikka & apurit]
-    D_API[api.py<br/>- datan haku & muunnokset]
-    D_Utils[utils.py<br/>- välineet: cache, logitus, virheilmoitukset]
-    D_Config[config.py<br/>- asetukset & avaimet]
+  subgraph DOMAIN[Logic & Helpers]
+    D_API[api.py]
+    D_UTILS[utils.py]
+    D_CFG[config.py]
   end
 
-  subgraph Sources[Ulkoiset datalähteet]
-    S_Foreca[Foreca API<br/>sääennusteet]
-    S_Coin[CoinGecko/Bitcoin]
-    S_Elec[Pörssisähkö API]
-    S_Nameday[Nimipäivät / Pyhät JSON]
+  subgraph SOURCES[External Sources]
+    S_Foreca[Foreca API]
+    S_Coin[CoinGecko / BTC]
+    S_Elec[Electricity API]
+    S_Nameday[Namedays / Holidays]
   end
 
-  subgraph System[Järjestelmä]
-    Sys_FS[Paikalliset tiedostot<br/>/*.json, *.png]
-    Sys_Scheduler[Streamlit runtime<br/>/ välimuisti]
+  subgraph SYSTEM[System]
+    Sys_FS[Local files]
+    Sys_Runtime[Streamlit runtime / cache]
   end
 
-  %% --- Virrat ---
   UI_Main --> UI_UI
   UI_UI --> D_API
-  UI_UI --> D_Utils
-  UI_UI --> D_Config
+  UI_UI --> D_UTILS
+  UI_UI --> D_CFG
 
   D_API --> S_Foreca
   D_API --> S_Coin
   D_API --> S_Elec
   D_API --> S_Nameday
-
   D_API --> Sys_FS
-  D_Utils --> Sys_FS
-  D_Utils --> Sys_Scheduler
+  D_UTILS --> Sys_FS
+  D_UTILS --> Sys_Runtime
 
-  %% --- Paluusuunta ---
   S_Foreca --> D_API
   S_Coin --> D_API
   S_Elec --> D_API
   S_Nameday --> D_API
   D_API --> UI_UI
 
-sequenceDiagram
-  participant UI as ui.card_weather()
-  participant API as api.fetch_weather()
-  participant CFG as config
-  participant F as Foreca API
-  participant U as utils (cache/log)
 
-  UI->>API: get weather(window=3h)
-  API->>CFG: read FORECA_KEY, location
-  API->>U: check cache("weather:3h")
+sequenceDiagram
+  participant UI as ui_card_weather
+  participant API as api_fetch_weather
+  participant CFG as config
+  participant F as foreca_api
+  participant U as utils_cache
+
+  UI->>API: get weather (window=3h)
+  API->>CFG: read keys & location
+  API->>U: cache get "weather:3h"
   alt cache hit
     U-->>API: cached payload
   else cache miss
     API->>F: GET /forecast?loc=...&key=...
-    F-->>API: 200 OK, JSON
-    API->>U: cache set("weather:3h", ttl=5min)
+    F-->>API: 200 OK (JSON)
+    API->>U: cache set "weather:3h" (ttl 5m)
   end
-  API-->>UI: normalized dict (temps, icons, times)
-  UI->>UI: render Plotly chart + icons
+  API-->>UI: normalized data (temps, icons, times)
+  UI->>UI: render chart & icons
+
 
   graph LR
   subgraph UI[ui.py]
