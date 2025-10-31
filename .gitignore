@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.venv/
+venv/
+
+# Tests & tooling
+.mypy_cache/
+.pytest_cache/
+
+# OS / Misc
+.DS_Store
+
+# Local backups
+conflict-backup_*.tar.gz
