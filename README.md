@@ -1,3 +1,22 @@
+# 🏠 Kotidashboard
+
+> **Kotidashboard** on Streamlit-pohjainen kojelauta, joka näyttää keskeiset arjen tiedot yhdellä näytöllä.  
+> Sovellus kerää reaaliaikaisia tietoja muun muassa säästä, sähkön hinnasta, Bitcoin-kurssista, nimipäivistä ja järjestelmän tilasta.  
+> Toteutus toimii Raspberry Pi 5:llä ja päivittyy suoraan GitHubista yhdellä komennolla.
+
+---
+
+## ⚙️ Keskeiset teknologiat
+
+| Osa | Teknologia |
+|:----|:------------|
+| Käyttöliittymä | [Streamlit](https://streamlit.io) |
+| Datalähteet | Open-Meteo, Nord Pool, CoinGecko, Yle API |
+| Kieli / ympäristö | Python 3.13, venv |
+| Palvelin | Raspberry Pi 5 (8 GB) |
+| Visualisointi | Plotly, Mermaid-kaaviot |
+| Versionhallinta | Git / GitHub |
+
 ---
 
 ## 🧭 Koodin päivittäminen (Raspberry Pi 5)
@@ -13,6 +32,11 @@
 
 3. Hae tuorein versio GitHub:ista ja käynnistä palveu uudelleen:
  "update-dash"
+
+📘 README.md-linkit
+
+Tämä osio kokoaa kaikki Kotidashboardin tekniset kaaviot ja dokumentaatiolinkit.
+Jokainen linkki avaa vastaavan Mermaid-kaavion tiedoston docs/mermaid/-hakemistossa.
 
 🧩 Lisäkaaviot
 
