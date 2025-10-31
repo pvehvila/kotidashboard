@@ -14,6 +14,7 @@
 3. Hae tuorein versio GitHub:ista ja käynnistä palveu uudelleen:
  "update-dash"
 
+🧩 Lisäkaaviot
 
 | Osa-alue                                                  | Kuvaus                                                        |
 | :-------------------------------------------------------- | :------------------------------------------------------------ |
