@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* =========================================================
    Base theme (dark) + layout
    ========================================================= */
@@ -131,3 +132,138 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
   html, body, [data-testid="stAppViewContainer"]{ overflow:auto; }
   .weather-row{ grid-template-columns:repeat(2, minmax(120px,1fr)); }
 }
+=======
+/* =========================================================
+   Base theme (dark) + layout
+   ========================================================= */
+:root{
+  --bg:#0b0f14;
+  --fg:#e7eaee;
+  --panel:rgba(255,255,255,0.04);
+  --panel-border:rgba(255,255,255,0.07);
+  --panel-2:rgba(255,255,255,0.06);
+  --grid:rgba(255,255,255,0.08);
+}
+
+/* Piilota Streamlitin header/toolbar/koristeet kioskia varten */
+header,
+div[data-testid="stDecoration"],
+div[data-testid="stToolbar"] { display:none !important; }
+
+/* Pienennä koodilohkojen melu dashboardissa */
+pre, code, kbd, samp { display:none !important; }
+
+/* Perus-HTML ja app-säiliö */
+html, body, [data-testid="stAppViewContainer"]{
+  margin:0 !important;
+  padding:0 !important;
+  width:100vw !important;
+  height:100dvh !important;
+  background:var(--bg);
+  color:var(--fg);
+  overflow:hidden;
+}
+
+/* Pääsisällön lohko */
+[data-testid="stMainBlockContainer"]{
+  width:95% !important;
+  margin:0 auto !important;
+  padding:8px !important;
+}
+
+/* Pystylayoutin korttivälit */
+[data-testid="stVerticalBlock"]{ gap:4px !important; }
+
+/* =========================================================
+   Cards
+   ========================================================= */
+.card{
+  background:var(--panel);
+  border:1px solid var(--panel-border);
+  border-radius:16px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.18);
+  padding:10px 12px !important;
+  margin:0 !important;
+  display:flex; flex-direction:column; gap:8px;
+  overflow:hidden !important;
+}
+.card-title{
+  margin:13px 0 6px 0 !important;
+  padding:0 !important;
+  font-weight:700;
+  font-size:.9rem !important;
+  color:#f2f4f7;
+}
+.card-body{
+  flex:1;
+  font-size:.96rem;
+  line-height:1.35;
+  color:#dfe3e8;
+}
+.card-body p{ margin:0 !important; padding:0 !important; font-size:.9rem !important; }
+small,.hint{ opacity:.75; }
+
+/* =========================================================
+   Plotly (korttimäiseksi)
+   ========================================================= */
+div[data-testid="stPlotlyChart"]{
+  background:var(--panel);
+  border:1px solid var(--panel-border);
+  border-radius:16px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.18);
+  padding:10px 12px;
+}
+div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
+
+/* =========================================================
+   Weather
+   ========================================================= */
+.weather-card{ padding:.75rem; }
+.weather-row{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(88px,1fr));
+  gap:10px; align-items:stretch;
+}
+.weather-cell{
+  display:grid;
+  grid-template-rows:auto auto 1fr auto auto;
+  align-items:center; justify-items:center;
+  background:var(--panel-2);
+  border-radius:14px;
+  padding:4px; min-height:100px;
+}
+.weather-cell .label{ font-size:.85rem; opacity:.8; margin-bottom:.25rem; }
+.weather-cell .sub{ font-size:.8rem; opacity:.75; margin:0 0 4px; }
+.weather-cell .temp{ font-size:1.1rem; margin-top:.35rem; }
+.weather-cell .pop{ font-size:.85rem; opacity:.85; margin-top:2px; }
+.weather-cell .icon{ width:48px; height:48px; color:var(--fg); }
+.weather-cell .icon svg{ width:48px; height:48px; display:block; }  /* inline-SVG */
+
+/* =========================================================
+   Mini bars / chips (jos käytät)
+   ========================================================= */
+.bar{ margin:6px 0 2px; }
+.bar-head{ display:flex; justify-content:space-between; font-size:.92rem; opacity:.9; margin-bottom:4px; }
+.bar-rail{
+  width:100%; height:8px; border-radius:999px; overflow:hidden;
+  background:linear-gradient(90deg,#1b2330,#121822);
+  border:1px solid rgba(255,255,255,0.1);
+}
+.bar-fill{ height:100%; background:linear-gradient(90deg,#34d399,#fbbf24,#f97316,#ef4444); }
+
+.chip{ padding:3px 8px; border-radius:999px; font-weight:700; font-size:.92rem; }
+.chip.green{  background:#103225; color:#8ff5c0; border:1px solid #1f7a59; }
+.chip.yellow{ background:#332b10; color:#ffe08a; border:1px solid #8a6d1f; }
+.chip.orange{ background:#331d10; color:#ffc19a; border:1px solid #8a3f1f; }
+.chip.red{    background:#331012; color:#ff9aa7; border:1px solid #8a1f2b; }
+
+.rowgap{ height:.5dvh; }
+
+/* =========================================================
+   Responsiivisuus
+   ========================================================= */
+@media (max-width: 780px){
+  html, body, [data-testid="stAppViewContainer"]{ overflow:auto; }
+  .weather-row{ grid-template-columns:repeat(2, minmax(120px,1fr)); }
+}
+>>>>>>> 33f0ff7f (Initial commit from home PC)
