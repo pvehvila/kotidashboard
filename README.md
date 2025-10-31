@@ -1,3 +1,5 @@
+![Kotidashboard banneri](docs/images/banner_kotidashboard.png)
+
 # 🏠 Kotidashboard
 
 > **Kotidashboard** on Streamlit-pohjainen kojelauta, joka näyttää keskeiset arjen tiedot yhdellä näytöllä.  
