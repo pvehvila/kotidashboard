@@ -12,20 +12,49 @@ import streamlit as st
 from streamlit.components.v1 import html as st_html
 
 from api import (
-    fetch_btc_ath_eur, fetch_btc_eur, fetch_btc_last_7d_eur, fetch_daily_quote,
-    fetch_nameday_today, fetch_nameday_today, fetch_holiday_today,
-    fetch_weather_points, get_map_trace, wmo_to_icon_key, try_fetch_prices
+    fetch_btc_ath_eur,
+    fetch_btc_eur,
+    fetch_btc_last_7d_eur,
+    fetch_daily_quote,
+    fetch_nameday_today,
+    fetch_nameday_today,
+    fetch_holiday_today,
+    fetch_weather_points,
+    get_map_trace,
+    wmo_to_icon_key,
+    try_fetch_prices,
 )
 from config import (
-    BTC_Y_PAD_EUR, BTC_Y_PAD_PCT, BTC_Y_STEP_EUR, BTC_Y_USE_PCT_PAD,
-    COLOR_GRAY, COLOR_GREEN, COLOR_RED, COLOR_TEXT_GRAY, HERE, LAT, LON,
-    NAMEDAY_PATHS, HOLIDAY_PATHS, PLOTLY_CONFIG, PRICE_Y_MIN_SNT, 
-    PRICE_Y_STEP_SNT, TZ
+    BTC_Y_PAD_EUR,
+    BTC_Y_PAD_PCT,
+    BTC_Y_STEP_EUR,
+    BTC_Y_USE_PCT_PAD,
+    COLOR_GRAY,
+    COLOR_GREEN,
+    COLOR_RED,
+    COLOR_TEXT_GRAY,
+    HERE,
+    LAT,
+    LON,
+    NAMEDAY_PATHS,
+    HOLIDAY_PATHS,
+    PLOTLY_CONFIG,
+    PRICE_Y_MIN_SNT,
+    PRICE_Y_STEP_SNT,
+    TZ,
 )
-from utils import get_ip, report_error, _color_by_thresholds, _color_for_value, fetch_sun_times, _sun_icon
+from utils import (
+    get_ip,
+    report_error,
+    _color_by_thresholds,
+    _color_for_value,
+    fetch_sun_times,
+    _sun_icon,
+)
 from weather_icons import render_foreca_icon
 
 # ------------------- UTILITY FUNCTIONS -------------------
+
 
 def load_css(file_name: str) -> None:
     """Load and apply a CSS file to the Streamlit app.
@@ -42,6 +71,7 @@ def load_css(file_name: str) -> None:
     except Exception as e:
         report_error("load_css", e)
 
+
 def section_title(html: str, mt: int = 10, mb: int = 4) -> None:
     """Render a section title with customizable margins.
 
@@ -50,7 +80,10 @@ def section_title(html: str, mt: int = 10, mb: int = 4) -> None:
         mt: Top margin in pixels (default: 10).
         mb: Bottom margin in pixels (default: 4).
     """
-    st.markdown(f"<div style='margin:{mt}px 0 {mb}px 0'>{html}</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div style='margin:{mt}px 0 {mb}px 0'>{html}</div>", unsafe_allow_html=True
+    )
+
 
 def card(title: str, body_html: str, height_dvh: int = 16) -> None:
     """Render a card with a title and HTML body.
@@ -70,7 +103,9 @@ def card(title: str, body_html: str, height_dvh: int = 16) -> None:
         unsafe_allow_html=True,
     )
 
+
 # ------------------- NAMEDAY CARD -------------------
+
 
 def card_nameday() -> None:
     """Render a card displaying today's Finnish namedays."""
@@ -82,24 +117,38 @@ def card_nameday() -> None:
         mtime_holidays = Path(p_holidays).stat().st_mtime_ns if p_holidays else 0
 
         names = fetch_nameday_today(_cache_buster=mtime_names) or "—"
-        hol   = fetch_holiday_today(_cache_buster=max(mtime_names, mtime_holidays)) or {}
+        hol = fetch_holiday_today(_cache_buster=max(mtime_names, mtime_holidays)) or {}
 
         # --- otsikkoteksti ---
         now = datetime.now(TZ)
-        weekdays_fi = ["maanantaina","tiistaina","keskiviikkona","torstaina","perjantaina","lauantaina","sunnuntaina"]
-        title_text = f"Nimipäivät<br>{weekdays_fi[now.weekday()]} {now.day}.{now.month}."
+        weekdays_fi = [
+            "maanantaina",
+            "tiistaina",
+            "keskiviikkona",
+            "torstaina",
+            "perjantaina",
+            "lauantaina",
+            "sunnuntaina",
+        ]
+        title_text = (
+            f"Nimipäivät<br>{weekdays_fi[now.weekday()]} {now.day}.{now.month}."
+        )
 
         # --- tausta suoraan kortin backgroundiksi ---
         bg_dataurl = None
         for fname in ("butterfly-bg.png", "butterfly-bg.webp", "butterfly-bg.jpg"):
             path = HERE / fname
             if path.exists():
-                mime = {"png":"image/png","webp":"image/webp","jpg":"image/jpeg"}[path.suffix.lstrip(".")]
-                bg_dataurl = f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+                mime = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg"}[
+                    path.suffix.lstrip(".")
+                ]
+                bg_dataurl = f"data:{mime};base64," + base64.b64encode(
+                    path.read_bytes()
+                ).decode("ascii")
                 break
 
         overlay_css = "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.25) 45%, rgba(11,15,20,0.00) 70%)"
-        bg_css = (overlay_css + (f", url({bg_dataurl})" if bg_dataurl else ""))
+        bg_css = overlay_css + (f", url({bg_dataurl})" if bg_dataurl else "")
 
         # --- statusrivi (vain jos flag/loma) ---
         is_flag = bool(hol.get("is_flag_day"))
@@ -117,7 +166,9 @@ def card_nameday() -> None:
                 "</svg>"
             )
             if is_flag and is_hday:
-                label_html = f"{flag_svg}<strong>Liputus- ja lomapäivä:</strong> {holiday_name}"
+                label_html = (
+                    f"{flag_svg}<strong>Liputus- ja lomapäivä:</strong> {holiday_name}"
+                )
             elif is_flag:
                 label_html = f"{flag_svg}<strong>Liputuspäivä:</strong> {holiday_name}"
             else:
@@ -140,7 +191,9 @@ def card_nameday() -> None:
         )
 
         # --- Auringon nousu/lasku: haetaan ja näytetään pillerit ---
-        sr, ss = fetch_sun_times(LAT, LON, TZ.key)  # TZ on pytz/zoneinfo; TZ.key antaa esim. 'Europe/Helsinki'
+        sr, ss = fetch_sun_times(
+            LAT, LON, TZ.key
+        )  # TZ on pytz/zoneinfo; TZ.key antaa esim. 'Europe/Helsinki'
         sun_html = ""
         if sr or ss:
             # pillerit (lähellä muun kortin tyyliä)
@@ -181,13 +234,18 @@ def card_nameday() -> None:
         </section>
         """
 
-
         st.markdown(html, unsafe_allow_html=True)
 
     except Exception as e:
-        card("Nimipäivät", f"<span class='hint'>Ei saatu tietoa: {e}</span>", height_dvh=12)
+        card(
+            "Nimipäivät",
+            f"<span class='hint'>Ei saatu tietoa: {e}</span>",
+            height_dvh=12,
+        )
+
 
 # ------------------- ZEN QUOTE CARD -------------------
+
 
 def card_zen() -> None:
     """Render a card displaying the daily Zen quote."""
@@ -202,15 +260,16 @@ def card_zen() -> None:
         if img_path.exists():
             try:
                 with img_path.open("rb") as f:
-                    bg_dataurl = "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+                    bg_dataurl = "data:image/png;base64," + base64.b64encode(
+                        f.read()
+                    ).decode("ascii")
             except Exception as e:
                 report_error("zen: load bg", e)
 
         overlay = "linear-gradient(rgba(11,15,20,0.55), rgba(11,15,20,0.55))"
         bg_layer = f"{overlay}, url('{bg_dataurl}')" if bg_dataurl else overlay
 
-        html = (
-            f"""
+        html = f"""
             <section class="card" style="min-height:12dvh; position:relative; overflow:hidden; background-image:{bg_layer}; background-size:cover; background-position:center;">
               <div class="card-title">Päivän zen</div>
               <div class="card-body" style="display:flex; justify-content:center; align-items:center; text-align:center; flex:1;">
@@ -220,12 +279,17 @@ def card_zen() -> None:
               </div>
             </section>
             """
-        )
         st.markdown(html, unsafe_allow_html=True)
     except Exception as e:
-        card("Päivän zen", f"<span class='hint'>Ei saatu tietoa: {e}</span>", height_dvh=12)
+        card(
+            "Päivän zen",
+            f"<span class='hint'>Ei saatu tietoa: {e}</span>",
+            height_dvh=12,
+        )
+
 
 # ------------------- WEATHER CARD -------------------
+
 
 def card_weather() -> None:
     """Render a card displaying weather forecast for Riihimäki (1h/3h/6h -vaihdin otsikkorivillä, ilman JS)."""
@@ -246,7 +310,9 @@ def card_weather() -> None:
         offsets = tuple(step * i for i in range(5))
 
         # --- Hae säädata valitulla välillä ---
-        weather_data = fetch_weather_points(LAT, LON, "Europe/Helsinki", offsets=offsets)
+        weather_data = fetch_weather_points(
+            LAT, LON, "Europe/Helsinki", offsets=offsets
+        )
         points = weather_data["points"]
         min_temp = weather_data["min_temp"]
         max_temp = weather_data["max_temp"]
@@ -254,10 +320,12 @@ def card_weather() -> None:
         # --- Otsikko + pillerit (linkkeinä) ---
         title_left = "🌤️ Sää — Riihimäki"
         if (min_temp is not None) and (max_temp is not None):
-            title_left += f"&nbsp; | &nbsp; Tänään: {round(min_temp)}°C — {round(max_temp)}°C"
+            title_left += (
+                f"&nbsp; | &nbsp; Tänään: {round(min_temp)}°C — {round(max_temp)}°C"
+            )
 
         def pill(opt: str) -> str:
-            is_active = (opt == interval)
+            is_active = opt == interval
             wint = opt.replace(" ", "")  # 1h / 3h / 6h
             base_style = (
                 "display:inline-block;margin-left:8px;padding:2px 8px;border-radius:8px;"
@@ -321,12 +389,21 @@ def card_weather() -> None:
 
     except Exception as e:
         report_error("weather card", e)
-        card("Sää — Riihimäki", f"<span class='hint'>Ei saatu säätietoa: {e}</span>", height_dvh=15)
+        card(
+            "Sää — Riihimäki",
+            f"<span class='hint'>Ei saatu säätietoa: {e}</span>",
+            height_dvh=15,
+        )
 
 
 # ------------------- ELECTRICITY PRICES CARD -------------------
 
-def _next_12h_df(prices_today: Optional[List[Dict]], prices_tomorrow: Optional[List[Dict]], now_dt: datetime) -> List[Dict]:
+
+def _next_12h_df(
+    prices_today: Optional[List[Dict]],
+    prices_tomorrow: Optional[List[Dict]],
+    now_dt: datetime,
+) -> List[Dict]:
     """Generate a list of price data for the next 12 hours.
 
     Args:
@@ -347,13 +424,16 @@ def _next_12h_df(prices_today: Optional[List[Dict]], prices_tomorrow: Optional[L
         item = next((p for p in src if p["hour"] == timestamp.hour), None)
         if not item:
             continue
-        rows.append({
-            "ts": timestamp,
-            "hour_label": timestamp.strftime("%H") + ":00",
-            "cents": float(item["cents"]),
-            "is_now": i == 0,
-        })
+        rows.append(
+            {
+                "ts": timestamp,
+                "hour_label": timestamp.strftime("%H") + ":00",
+                "cents": float(item["cents"]),
+                "is_now": i == 0,
+            }
+        )
     return rows
+
 
 def card_prices() -> None:
     """Render a card displaying electricity prices for the next 12 hours."""
@@ -373,7 +453,7 @@ def card_prices() -> None:
         title_html = (
             "⚡ Pörssisähkö "
             + f"<span style='background:{COLOR_GRAY}; color:{COLOR_TEXT_GRAY}; padding:2px 10px; "
-              "border-radius:999px; font-weight:600; font-size:0.95rem'>Seuraavat 12 h</span>"
+            "border-radius:999px; font-weight:600; font-size:0.95rem'>Seuraavat 12 h</span>"
         )
         if current_cents is not None:
             badge_bg = _color_for_value(current_cents)
@@ -386,12 +466,19 @@ def card_prices() -> None:
 
         df12 = _next_12h_df(prices_today, prices_tomorrow, now_dt=datetime.now(TZ))
         if not df12:
-            card("Pörssisähkö", "<span class='hint'>Ei dataa vielä seuraaville tunneille</span>", height_dvh=16)
+            card(
+                "Pörssisähkö",
+                "<span class='hint'>Ei dataa vielä seuraaville tunneille</span>",
+                height_dvh=16,
+            )
             return
 
         values = [row["cents"] for row in df12]
         colors = _color_by_thresholds(values)
-        line_colors = ["rgba(255,255,255,0.9)" if row["is_now"] else "rgba(0,0,0,0)" for row in df12]
+        line_colors = [
+            "rgba(255,255,255,0.9)" if row["is_now"] else "rgba(0,0,0,0)"
+            for row in df12
+        ]
         line_widths = [1.5 if row["is_now"] else 0 for row in df12]
 
         step = float(max(1, PRICE_Y_STEP_SNT))
@@ -406,14 +493,18 @@ def card_prices() -> None:
         if y_max <= y_min:
             y_max = y_min + step
 
-        fig = go.Figure([
-            go.Bar(
-                x=[row["hour_label"] for row in df12],
-                y=[round(v, 2) for v in values],
-                marker=dict(color=colors, line=dict(color=line_colors, width=line_widths)),
-                hovertemplate="<b>%{x}</b><br>%{y} snt/kWh<extra></extra>",
-            )
-        ])
+        fig = go.Figure(
+            [
+                go.Bar(
+                    x=[row["hour_label"] for row in df12],
+                    y=[round(v, 2) for v in values],
+                    marker=dict(
+                        color=colors, line=dict(color=line_colors, width=line_widths)
+                    ),
+                    hovertemplate="<b>%{x}</b><br>%{y} snt/kWh<extra></extra>",
+                )
+            ]
+        )
 
         fig.update_layout(
             title=None,
@@ -431,7 +522,7 @@ def card_prices() -> None:
                 range=[y_min, y_max],
                 tick0=y_min,
                 dtick=step,
-                automargin=True
+                automargin=True,
             ),
         )
         fig.add_hline(y=0, line=dict(color="rgba(255,255,255,0.25)", width=1))
@@ -446,13 +537,17 @@ def card_prices() -> None:
               (vihreä = halpa, punainen = kallis)
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
     except Exception as e:
         section_title("Pörssisähkö – seuraavat 12 h")
-        st.markdown(f"<span class='hint'>Virhe hinnanhaussa: {e}</span>", unsafe_allow_html=True)
+        st.markdown(
+            f"<span class='hint'>Virhe hinnanhaussa: {e}</span>", unsafe_allow_html=True
+        )
+
 
 # ------------------- BITCOIN CARD -------------------
+
 
 def card_bitcoin() -> None:
     """Render a card displaying Bitcoin price with selectable history window (24h / 7d / 30d)."""
@@ -503,7 +598,9 @@ def card_bitcoin() -> None:
                 series = _call_if_exists("fetch_btc_last_hours_eur", 24)
                 if series:
                     return series, False
-                series = _call_if_exists("fetch_btc_eur_range", None, 24)  # esim. (days=None, hours=24)
+                series = _call_if_exists(
+                    "fetch_btc_eur_range", None, 24
+                )  # esim. (days=None, hours=24)
                 if series:
                     return series, False
                 # fallback: slice 7d -> 24h
@@ -522,7 +619,9 @@ def card_bitcoin() -> None:
                     if series:
                         return series, False
                 # geneerinen
-                series = _call_if_exists("fetch_btc_eur_range", 7, None)  # (days=7, hours=None)
+                series = _call_if_exists(
+                    "fetch_btc_eur_range", 7, None
+                )  # (days=7, hours=None)
                 if series:
                     return series, False
 
@@ -556,7 +655,7 @@ def card_bitcoin() -> None:
 
         # --- Otsikon pillerit: aktiivinen = vaalea harmaa, teksti tumma ---
         def pill(opt_code: str, label: str) -> str:
-            is_active = (opt_code == window)
+            is_active = opt_code == window
             base = (
                 "display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;"
                 "font-size:.95rem;text-decoration:none;border:1px solid rgba(255,255,255,.18);font-weight:600;"
@@ -565,17 +664,22 @@ def card_bitcoin() -> None:
                 style = base + "background:#e7eaee;color:#111;"
             else:
                 style = base + "background:rgba(255,255,255,0.10);color:#e7eaee;"
-            return f'<a href="?bwin={opt_code}" target="_self" style="{style}">{label}</a>'
+            return (
+                f'<a href="?bwin={opt_code}" target="_self" style="{style}">{label}</a>'
+            )
 
-        window_label = {"24h": "Viimeiset 24 h", "7d": "Viimeiset 7 päivää", "30d": "Viimeiset 30 päivää"}[window]
+        window_label = {
+            "24h": "Viimeiset 24 h",
+            "7d": "Viimeiset 7 päivää",
+            "30d": "Viimeiset 30 päivää",
+        }[window]
 
         title_html = (
             "🪙 Bitcoin "
             + pill("24h", "24 h")
-            + pill("7d",  "7 d")
+            + pill("7d", "7 d")
             + pill("30d", "30 d")
         )
-
 
         # 24h-muutosbadgi (pidetään kuten ennen)
         if change_24h is not None:
@@ -617,32 +721,40 @@ def card_bitcoin() -> None:
             tickformat = "%d.%m"
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=xs,
-            y=ys,
-            mode="lines",
-            name=name,
-            hovertemplate=hover + "<extra></extra>",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=xs,
+                y=ys,
+                mode="lines",
+                name=name,
+                hovertemplate=hover + "<extra></extra>",
+            )
+        )
 
         # ATH katkoviivana
         if ath_eur:
             x0 = xs[0] if xs else datetime.now(TZ)
             x1 = xs[-1] if xs else datetime.now(TZ)
-            fig.add_trace(go.Scatter(
-                x=[x0, x1],
-                y=[ath_eur, ath_eur],
-                mode="lines",
-                name=f"ATH {ath_eur:,.0f} €",
-                line=dict(dash="dot"),
-                hovertemplate="ATH — %{y:.0f} € (%{x|%d.%m})<extra></extra>",
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=[x0, x1],
+                    y=[ath_eur, ath_eur],
+                    mode="lines",
+                    name=f"ATH {ath_eur:,.0f} €",
+                    line=dict(dash="dot"),
+                    hovertemplate="ATH — %{y:.0f} € (%{x|%d.%m})<extra></extra>",
+                )
+            )
 
         # Y-akselin skaalaus kuten ennen
         if ys:
             data_min = min(ys)
             data_max = max(max(ys), ath_eur or -float("inf"))
-            pad_abs = max(BTC_Y_PAD_EUR, (data_max - data_min) * BTC_Y_PAD_PCT) if BTC_Y_USE_PCT_PAD else BTC_Y_PAD_EUR
+            pad_abs = (
+                max(BTC_Y_PAD_EUR, (data_max - data_min) * BTC_Y_PAD_PCT)
+                if BTC_Y_USE_PCT_PAD
+                else BTC_Y_PAD_EUR
+            )
             low = data_min - pad_abs
             high = data_max + pad_abs
             step = max(100.0, float(BTC_Y_STEP_EUR))
@@ -656,9 +768,16 @@ def card_bitcoin() -> None:
         if xs and ys:
             label_text = f"{ys[-1]:,.0f}".replace(",", " ") + " €"
             fig.add_annotation(
-                x=xs[-1], y=ys[-1], xref="x", yref="y",
-                text=label_text, showarrow=False, xanchor="right", align="right",
-                xshift=-12, font=dict(color="#e7eaee", size=12)
+                x=xs[-1],
+                y=ys[-1],
+                xref="x",
+                yref="y",
+                text=label_text,
+                showarrow=False,
+                xanchor="right",
+                align="right",
+                xshift=-12,
+                font=dict(color="#e7eaee", size=12),
             )
 
         fig.update_layout(
@@ -683,15 +802,19 @@ def card_bitcoin() -> None:
                 tickfont=dict(size=11, color="#cfd3d8"),
                 tickformat="~s",
                 fixedrange=True,
-                automargin=True
+                automargin=True,
             ),
-            hoverlabel=dict(font_size=11)
+            hoverlabel=dict(font_size=11),
         )
 
         st.plotly_chart(fig, use_container_width=True, theme=None, config=PLOTLY_CONFIG)
 
         # ATH-vihje + mahdollinen degradaatioilmoitus
-        ath_info = f" {ath_date[:10]}, {ath_eur:,.0f} €".replace(",", " ") if ath_eur and ath_date else ""
+        ath_info = (
+            f" {ath_date[:10]}, {ath_eur:,.0f} €".replace(",", " ")
+            if ath_eur and ath_date
+            else ""
+        )
         extra = ""
         if window == "30d" and degraded:
             extra = " &nbsp;|&nbsp; Näytetään 7 d (30 d data ei saatavilla)"
@@ -699,7 +822,7 @@ def card_bitcoin() -> None:
             extra = " &nbsp;|&nbsp; Viimeiset 24 h viipaloitu 7 d -datasta"
         st.markdown(
             f"<div class='hint' style='margin-top:4px;'>💎 ATH{ath_info} (pun. katkoviiva){extra}</div>",
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
         st.markdown("<div style='margin-top:6px;'></div>", unsafe_allow_html=True)
 
@@ -708,6 +831,7 @@ def card_bitcoin() -> None:
 
 
 # ------------------- SYSTEM STATUS CARD -------------------
+
 
 def card_system() -> None:
     """Render a system status card incl. device/browser info (no debug box, no UA dump)."""
@@ -891,5 +1015,3 @@ window.addEventListener('DOMContentLoaded', function () {{
     except Exception as e:
         section_title("🖥️ Järjestelmätila")
         st.markdown(f"<span class='hint'>Virhe: {e}</span>", unsafe_allow_html=True)
-
-

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # utils.py
 """Utility functions for the HomeDashboard application."""
 from typing import List, Tuple, Optional
@@ -300,4 +299,4 @@ def _sun_icon(kind: str, size: int = 18) -> str:
         "<path d='M5 18a7 7 0 0 1 14 0'/>"
         "</svg>"
     )
->>>>>>> 33f0ff7f (Initial commit from home PC)
+

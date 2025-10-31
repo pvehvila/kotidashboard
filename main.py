@@ -3,10 +3,20 @@
 import streamlit as st
 
 from config import PLOTLY_CONFIG
-from ui import card_bitcoin, card_nameday, card_prices, card_system, card_weather, card_zen, load_css
+from ui import (
+    card_bitcoin,
+    card_nameday,
+    card_prices,
+    card_system,
+    card_weather,
+    card_zen,
+    load_css,
+)
 
 
-def st_autorefresh(interval: int | None = None, key: str | None = None, **kwargs) -> None:
+def st_autorefresh(
+    interval: int | None = None, key: str | None = None, **kwargs
+) -> None:
     """Fallback implementation for auto-refreshing the Streamlit page.
 
     Args:
