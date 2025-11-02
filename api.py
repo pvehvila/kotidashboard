@@ -1700,30 +1700,52 @@ def fetch_btc_eur() -> Dict[str, Optional[float]]:
 @st.cache_data(ttl=CACHE_TTL_MED)
 def _coingecko_market_chart(days: int, vs: str = "eur") -> List[Tuple[datetime, float]]:
     """
-    Palauttaa listan (datetime_tz, price) CoinGeckolta annetulle 'days' pituudelle.
-    CoinGecko antaa ajat millisekunteina UTC:ssä -> muunnetaan TZ:ään.
-    Downsamplataan maltillisesti, jotta pisteitä on noin 24 * days.
+    Palauttaa listan (datetime_tz, price) annetulle pituudelle.
+    1) CoinGecko ensisijainen
+    2) CryptoCompare fallback, jos CG tyhjä/virhe
     """
-    url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency={vs}&days={days}"
-    data = http_get_json(url, timeout=HTTP_TIMEOUT_S)
-    prices = data.get("prices", [])
-    if not prices:
-        return []
+    # --- 1) CoinGecko ---
+    try:
+        url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency={vs}&days={days}"
+        data = http_get_json(url, timeout=HTTP_TIMEOUT_S)
+        prices = data.get("prices", []) or []
+        if prices:
+            target_points = max(24 * int(days), 24)
+            keep_every = max(len(prices) // target_points, 1)
+            out: List[Tuple[datetime, float]] = []
+            for i, (ts_ms, val) in enumerate(prices):
+                if i % keep_every != 0:
+                    continue
+                ts = datetime.fromtimestamp(ts_ms / 1000, tz=TZ)
+                out.append((ts, float(val)))
+            out.sort(key=lambda x: x[0])
+            if out:
+                return out
+    except Exception as e:
+        report_error("btc: market_chart coingecko", e)
 
-    # Tavoite ~24 pistettä / päivä
-    target_points = max(24 * int(days), 24)
-    keep_every = max(len(prices) // target_points, 1)
+    # --- 2) CryptoCompare fallback (tunnin välein) ---
+    try:
+        # 24 * days datapistettä, max 2000 per pyyntö
+        limit = min(24 * int(max(1, days)), 2000)
+        alt_url = f"https://min-api.cryptocompare.com/data/v2/histohour?fsym=BTC&tsym={vs.upper()}&limit={limit}"
+        alt = http_get_json(alt_url, timeout=HTTP_TIMEOUT_S)
+        rows = alt.get("Data", {}).get("Data", []) or []
+        if rows:
+            out = [
+                (datetime.fromtimestamp(r["time"], tz=TZ), float(r.get("close", r.get("high", r.get("low", 0.0)))))
+                for r in rows
+                if isinstance(r, dict) and "time" in r
+            ]
+            out = [p for p in out if p[1] > 0.0]
+            out.sort(key=lambda x: x[0])
+            return out
+    except Exception as e:
+        report_error("btc: market_chart cryptocompare", e)
 
-    out: List[Tuple[datetime, float]] = []
-    for i, (ts_ms, val) in enumerate(prices):
-        if i % keep_every != 0:
-            continue
-        ts = datetime.fromtimestamp(ts_ms / 1000, tz=TZ)
-        out.append((ts, float(val)))
+    # Ei dataa
+    return []
 
-    # Varmuuden vuoksi järjestys
-    out.sort(key=lambda x: x[0])
-    return out
 
 
 @st.cache_data(ttl=CACHE_TTL_MED)
