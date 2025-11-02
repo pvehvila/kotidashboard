@@ -5,7 +5,15 @@ from typing import List, Tuple, Optional
 import socket
 import streamlit as st
 
-from config import DEV, PRICE_HIGH_THR, PRICE_LOW_THR, CLOUD_T_CLEAR, CLOUD_T_ALMOST, CLOUD_T_PARTLY, CLOUD_T_MOSTLY
+from config import (
+    DEV,
+    PRICE_HIGH_THR,
+    PRICE_LOW_THR,
+    CLOUD_T_CLEAR,
+    CLOUD_T_ALMOST,
+    CLOUD_T_PARTLY,
+    CLOUD_T_MOSTLY,
+)
 
 
 def report_error(ctx: str, e: Exception) -> None:
@@ -20,7 +28,11 @@ def report_error(ctx: str, e: Exception) -> None:
         st.caption(f"⚠ {ctx}: {type(e).__name__}: {e}")
 
 
-def _color_by_thresholds(vals: List[Optional[float]], low_thr: float = PRICE_LOW_THR, high_thr: float = PRICE_HIGH_THR) -> List[str]:
+def _color_by_thresholds(
+    vals: List[Optional[float]],
+    low_thr: float = PRICE_LOW_THR,
+    high_thr: float = PRICE_HIGH_THR,
+) -> List[str]:
     """Generate a list of colors based on value thresholds for visualization.
 
     Args:
@@ -36,15 +48,19 @@ def _color_by_thresholds(vals: List[Optional[float]], low_thr: float = PRICE_LOW
         if value is None:
             colors.append("rgba(128,128,128,0.5)")  # Gray for None
         elif value < low_thr:
-            colors.append("rgba(60,180,75,0.9)")    # Green
+            colors.append("rgba(60,180,75,0.9)")  # Green
         elif value <= high_thr:
-            colors.append("rgba(255,225,25,0.9)")   # Yellow
+            colors.append("rgba(255,225,25,0.9)")  # Yellow
         else:
-            colors.append("rgba(230,25,75,0.9)")    # Red
+            colors.append("rgba(230,25,75,0.9)")  # Red
     return colors
 
 
-def _color_for_value(value: Optional[float], low_thr: float = PRICE_LOW_THR, high_thr: float = PRICE_HIGH_THR) -> str:
+def _color_for_value(
+    value: Optional[float],
+    low_thr: float = PRICE_LOW_THR,
+    high_thr: float = PRICE_HIGH_THR,
+) -> str:
     """Get a single color for a value based on thresholds.
 
     Args:
@@ -92,32 +108,42 @@ def get_ip() -> str:
     except Exception as e:
         report_error("get_ip", e)
         return "localhost"
-        
+
+
 # --- AURINGON NOUSU/LASKU (Open-Meteo, ei uusia riippuvuuksia) ---
-def fetch_sun_times(lat: float, lon: float, tz_str: str) -> Tuple[Optional[str], Optional[str]]:
+def fetch_sun_times(
+    lat: float, lon: float, tz_str: str
+) -> Tuple[Optional[str], Optional[str]]:
     """Palauttaa (sunrise_HH:MM, sunset_HH:MM) merkkijonot paikallisajassa tai (None, None)."""
     try:
         import urllib.request, urllib.parse, json as _json
-        qs = urllib.parse.urlencode({
-            "latitude": f"{lat:.6f}",
-            "longitude": f"{lon:.6f}",
-            "daily": "sunrise,sunset",
-            "timezone": tz_str,
-            "forecast_days": 1
-        })
+
+        qs = urllib.parse.urlencode(
+            {
+                "latitude": f"{lat:.6f}",
+                "longitude": f"{lon:.6f}",
+                "daily": "sunrise,sunset",
+                "timezone": tz_str,
+                "forecast_days": 1,
+            }
+        )
         url = f"https://api.open-meteo.com/v1/forecast?{qs}"
         with urllib.request.urlopen(url, timeout=6) as r:
             data = _json.loads(r.read().decode("utf-8"))
         sunrise_iso = (data.get("daily", {}).get("sunrise") or [None])[0]
-        sunset_iso  = (data.get("daily", {}).get("sunset")  or [None])[0]
+        sunset_iso = (data.get("daily", {}).get("sunset") or [None])[0]
+
         def _fmt(iso: Optional[str]) -> Optional[str]:
-            if not iso: return None
+            if not iso:
+                return None
             # Open-Meteo palauttaa jo tz:n mukaisen paikallisajan kun timezone-parametri on annettu
             try:
                 return iso[11:16]  # "YYYY-MM-DDTHH:MM"
             except Exception:
                 from datetime import datetime as _dt
+
                 return _dt.fromisoformat(iso).strftime("%H:%M")
+
         return _fmt(sunrise_iso), _fmt(sunset_iso)
     except Exception:
         return None, None
@@ -148,6 +174,8 @@ def _sun_icon(kind: str, size: int = 18) -> str:
         "<path d='M5 18a7 7 0 0 1 14 0'/>"
         "</svg>"
     )
+
+
 # utils.py
 """Utility functions for the HomeDashboard application."""
 from typing import List, Tuple, Optional
@@ -155,7 +183,15 @@ from typing import List, Tuple, Optional
 import socket
 import streamlit as st
 
-from config import DEV, PRICE_HIGH_THR, PRICE_LOW_THR, CLOUD_T_CLEAR, CLOUD_T_ALMOST, CLOUD_T_PARTLY, CLOUD_T_MOSTLY
+from config import (
+    DEV,
+    PRICE_HIGH_THR,
+    PRICE_LOW_THR,
+    CLOUD_T_CLEAR,
+    CLOUD_T_ALMOST,
+    CLOUD_T_PARTLY,
+    CLOUD_T_MOSTLY,
+)
 
 
 def report_error(ctx: str, e: Exception) -> None:
@@ -170,7 +206,11 @@ def report_error(ctx: str, e: Exception) -> None:
         st.caption(f"⚠ {ctx}: {type(e).__name__}: {e}")
 
 
-def _color_by_thresholds(vals: List[Optional[float]], low_thr: float = PRICE_LOW_THR, high_thr: float = PRICE_HIGH_THR) -> List[str]:
+def _color_by_thresholds(
+    vals: List[Optional[float]],
+    low_thr: float = PRICE_LOW_THR,
+    high_thr: float = PRICE_HIGH_THR,
+) -> List[str]:
     """Generate a list of colors based on value thresholds for visualization.
 
     Args:
@@ -186,15 +226,19 @@ def _color_by_thresholds(vals: List[Optional[float]], low_thr: float = PRICE_LOW
         if value is None:
             colors.append("rgba(128,128,128,0.5)")  # Gray for None
         elif value < low_thr:
-            colors.append("rgba(60,180,75,0.9)")    # Green
+            colors.append("rgba(60,180,75,0.9)")  # Green
         elif value <= high_thr:
-            colors.append("rgba(255,225,25,0.9)")   # Yellow
+            colors.append("rgba(255,225,25,0.9)")  # Yellow
         else:
-            colors.append("rgba(230,25,75,0.9)")    # Red
+            colors.append("rgba(230,25,75,0.9)")  # Red
     return colors
 
 
-def _color_for_value(value: Optional[float], low_thr: float = PRICE_LOW_THR, high_thr: float = PRICE_HIGH_THR) -> str:
+def _color_for_value(
+    value: Optional[float],
+    low_thr: float = PRICE_LOW_THR,
+    high_thr: float = PRICE_HIGH_THR,
+) -> str:
     """Get a single color for a value based on thresholds.
 
     Args:
@@ -242,32 +286,42 @@ def get_ip() -> str:
     except Exception as e:
         report_error("get_ip", e)
         return "localhost"
-        
+
+
 # --- AURINGON NOUSU/LASKU (Open-Meteo, ei uusia riippuvuuksia) ---
-def fetch_sun_times(lat: float, lon: float, tz_str: str) -> Tuple[Optional[str], Optional[str]]:
+def fetch_sun_times(
+    lat: float, lon: float, tz_str: str
+) -> Tuple[Optional[str], Optional[str]]:
     """Palauttaa (sunrise_HH:MM, sunset_HH:MM) merkkijonot paikallisajassa tai (None, None)."""
     try:
         import urllib.request, urllib.parse, json as _json
-        qs = urllib.parse.urlencode({
-            "latitude": f"{lat:.6f}",
-            "longitude": f"{lon:.6f}",
-            "daily": "sunrise,sunset",
-            "timezone": tz_str,
-            "forecast_days": 1
-        })
+
+        qs = urllib.parse.urlencode(
+            {
+                "latitude": f"{lat:.6f}",
+                "longitude": f"{lon:.6f}",
+                "daily": "sunrise,sunset",
+                "timezone": tz_str,
+                "forecast_days": 1,
+            }
+        )
         url = f"https://api.open-meteo.com/v1/forecast?{qs}"
         with urllib.request.urlopen(url, timeout=6) as r:
             data = _json.loads(r.read().decode("utf-8"))
         sunrise_iso = (data.get("daily", {}).get("sunrise") or [None])[0]
-        sunset_iso  = (data.get("daily", {}).get("sunset")  or [None])[0]
+        sunset_iso = (data.get("daily", {}).get("sunset") or [None])[0]
+
         def _fmt(iso: Optional[str]) -> Optional[str]:
-            if not iso: return None
+            if not iso:
+                return None
             # Open-Meteo palauttaa jo tz:n mukaisen paikallisajan kun timezone-parametri on annettu
             try:
                 return iso[11:16]  # "YYYY-MM-DDTHH:MM"
             except Exception:
                 from datetime import datetime as _dt
+
                 return _dt.fromisoformat(iso).strftime("%H:%M")
+
         return _fmt(sunrise_iso), _fmt(sunset_iso)
     except Exception:
         return None, None
@@ -298,4 +352,3 @@ def _sun_icon(kind: str, size: int = 18) -> str:
         "<path d='M5 18a7 7 0 0 1 14 0'/>"
         "</svg>"
     )
-

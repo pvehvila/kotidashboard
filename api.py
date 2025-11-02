@@ -11,15 +11,29 @@ import requests
 import streamlit as st
 
 from config import (
-    TZ, HTTP_TIMEOUT_S, CACHE_TTL_SHORT, CACHE_TTL_MED, CACHE_TTL_LONG,
-    ATH_CACHE_FILE, NAMEDAY_FILE, NAMEDAY_PATHS, HOLIDAY_FILE, HOLIDAY_PATHS,
-    POP_POSSIBLE_THRESHOLD, SLEET_TEMP_MIN, SLEET_TEMP_MAX, CLOUD_T_CLEAR, 
-    CLOUD_T_ALMOST, CLOUD_T_PARTLY, CLOUD_T_MOSTLY
+    TZ,
+    HTTP_TIMEOUT_S,
+    CACHE_TTL_SHORT,
+    CACHE_TTL_MED,
+    CACHE_TTL_LONG,
+    ATH_CACHE_FILE,
+    NAMEDAY_FILE,
+    NAMEDAY_PATHS,
+    HOLIDAY_FILE,
+    HOLIDAY_PATHS,
+    POP_POSSIBLE_THRESHOLD,
+    SLEET_TEMP_MIN,
+    SLEET_TEMP_MAX,
+    CLOUD_T_CLEAR,
+    CLOUD_T_ALMOST,
+    CLOUD_T_PARTLY,
+    CLOUD_T_MOSTLY,
 )
 from utils import report_error
 from weather_icons import render_foreca_icon
 
 # ------------------- HTTP UTILS -------------------
+
 
 def http_get_json(url: str, timeout: float = HTTP_TIMEOUT_S) -> dict:
     """Fetch JSON data from a URL with error handling."""
@@ -27,9 +41,13 @@ def http_get_json(url: str, timeout: float = HTTP_TIMEOUT_S) -> dict:
     response.raise_for_status()
     return response.json()
 
+
 # ------------------- ELECTRICITY PRICES -------------------
 
-def _parse_hour_from_item(item: dict, idx: int, date_ymd: datetime.date) -> Optional[int]:
+
+def _parse_hour_from_item(
+    item: dict, idx: int, date_ymd: datetime.date
+) -> Optional[int]:
     """Parse hour from API item, handling various key formats."""
     for key in ("hour", "Hour", "H"):
         if value := item.get(key):
@@ -40,12 +58,26 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: datetime.date) -> Opti
             except ValueError:
                 pass
 
-    for key in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start", "startDate"):
+    for key in (
+        "time",
+        "Time",
+        "timestamp",
+        "Timestamp",
+        "datetime",
+        "DateTime",
+        "start",
+        "Start",
+        "startDate",
+    ):
         if value := item.get(key):
             try:
                 timestamp = str(value).replace("Z", "+00:00")
                 dt_obj = datetime.fromisoformat(timestamp)
-                dt_obj = dt_obj.replace(tzinfo=TZ) if dt_obj.tzinfo is None else dt_obj.astimezone(TZ)
+                dt_obj = (
+                    dt_obj.replace(tzinfo=TZ)
+                    if dt_obj.tzinfo is None
+                    else dt_obj.astimezone(TZ)
+                )
                 if 0 <= dt_obj.hour <= 23 and dt_obj.date() == date_ymd:
                     return dt_obj.hour
             except ValueError:
@@ -53,9 +85,18 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: datetime.date) -> Opti
 
     return idx if 0 <= idx <= 23 else None
 
+
 def _parse_cents_from_item(item: dict) -> Optional[float]:
     """Parse price in cents from API item, handling various key formats."""
-    for key in ("cents", "cents_per_kwh", "price", "Price", "value", "Value", "EUR_per_kWh"):
+    for key in (
+        "cents",
+        "cents_per_kwh",
+        "price",
+        "Price",
+        "value",
+        "Value",
+        "EUR_per_kWh",
+    ):
         if value := item.get(key):
             try:
                 price = float(value)
@@ -64,18 +105,27 @@ def _parse_cents_from_item(item: dict) -> Optional[float]:
                 pass
     return None
 
-def _normalize_prices_list(items: List[dict], date_ymd: datetime.date) -> List[Dict[str, float]]:
+
+def _normalize_prices_list(
+    items: List[dict], date_ymd: datetime.date
+) -> List[Dict[str, float]]:
     """Normalize price data into a sorted list of hour-price dictionaries."""
     out_map = {}
     for idx, item in enumerate(items or []):
         try:
             hour = _parse_hour_from_item(item, idx, date_ymd)
             cents = _parse_cents_from_item(item)
-            if hour is not None and cents is not None and 0 <= hour <= 23 and hour not in out_map:
+            if (
+                hour is not None
+                and cents is not None
+                and 0 <= hour <= 23
+                and hour not in out_map
+            ):
                 out_map[hour] = float(cents)
         except Exception:
             continue
     return [{"hour": h, "cents": out_map[h]} for h in sorted(out_map.keys())]
+
 
 def _fetch_from_sahkonhintatanaan(date_ymd: datetime.date) -> List[Dict[str, float]]:
     """Fetch electricity prices from sahkonhintatanaan.fi API."""
@@ -84,12 +134,14 @@ def _fetch_from_sahkonhintatanaan(date_ymd: datetime.date) -> List[Dict[str, flo
     items = data.get("prices", []) if isinstance(data, dict) else data or []
     return _normalize_prices_list(items, date_ymd)
 
+
 def _fetch_from_porssisahko(date_ymd: datetime.date) -> List[Dict[str, float]]:
     """Fetch electricity prices from porssisahko.net API."""
     url = f"https://api.porssisahko.net/v1/price.json?date={date_ymd:%Y-%m-%d}"
     data = http_get_json(url)
     items = data.get("prices", []) if isinstance(data, dict) else data or []
     return _normalize_prices_list(items, date_ymd)
+
 
 def fetch_prices_for(date_ymd: datetime.date) -> List[Dict[str, float]]:
     """Fetch electricity prices for a given date, trying multiple sources."""
@@ -113,6 +165,7 @@ def fetch_prices_for(date_ymd: datetime.date) -> List[Dict[str, float]]:
 
     return []
 
+
 @st.cache_data(ttl=CACHE_TTL_MED)
 def try_fetch_prices(date_ymd: datetime.date) -> Optional[List[Dict[str, float]]]:
     """Cached wrapper for fetching electricity prices."""
@@ -127,14 +180,19 @@ def try_fetch_prices(date_ymd: datetime.date) -> Optional[List[Dict[str, float]]
         report_error(f"prices: fetch {date_ymd.isoformat()}", e)
         return None
 
+
 # ------------------- ZEN QUOTES -------------------
 
 LOCAL_ZEN = [
     {"text": "Hiljaisuus on vastaus, jota etsit.", "author": "Tuntematon"},
-    {"text": "Paranna sitä, mihin kosket, ja jätä se paremmaksi kuin sen löysit.", "author": "Tuntematon"},
+    {
+        "text": "Paranna sitä, mihin kosket, ja jätä se paremmaksi kuin sen löysit.",
+        "author": "Tuntematon",
+    },
     {"text": "Kärsivällisyys on taito odottaa rauhassa.", "author": "Tuntematon"},
     {"text": "Päivän selkeys syntyy hetken huomiosta.", "author": "Tuntematon"},
 ]
+
 
 def _from_zenquotes() -> Optional[Dict[str, str]]:
     """Fetch a daily quote from zenquotes.io."""
@@ -142,19 +200,32 @@ def _from_zenquotes() -> Optional[Dict[str, str]]:
         data = http_get_json("https://zenquotes.io/api/today", timeout=HTTP_TIMEOUT_S)
         if isinstance(data, list) and data:
             quote = data[0]
-            return {"text": quote.get("q", ""), "author": quote.get("a", ""), "source": "zenquotes"}
+            return {
+                "text": quote.get("q", ""),
+                "author": quote.get("a", ""),
+                "source": "zenquotes",
+            }
     except Exception as e:
         report_error("zen: zenquotes-today", e)
     return None
 
+
 def _from_quotable() -> Optional[Dict[str, str]]:
     """Fetch a random quote from quotable.io."""
     try:
-        data = http_get_json("https://api.quotable.io/random?tags=wisdom|life|inspirational", timeout=HTTP_TIMEOUT_S)
-        return {"text": data.get("content", ""), "author": data.get("author", ""), "source": "quotable"}
+        data = http_get_json(
+            "https://api.quotable.io/random?tags=wisdom|life|inspirational",
+            timeout=HTTP_TIMEOUT_S,
+        )
+        return {
+            "text": data.get("content", ""),
+            "author": data.get("author", ""),
+            "source": "quotable",
+        }
     except Exception as e:
         report_error("zen: quotable", e)
     return None
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_daily_quote(day_iso: str) -> Dict[str, str]:
@@ -168,32 +239,52 @@ def fetch_daily_quote(day_iso: str) -> Dict[str, str]:
     quote["source"] = "local"
     return quote
 
+
 # ------------------- WEATHER -------------------
 
 MAP_TRACE_ENABLED = False
 _MAP_TRACE: List[Dict] = []
 
-def _trace_map(wmo: Optional[int], is_day: bool, pop: Optional[int], temp_c: Optional[float], cloudcover: Optional[int], chosen_key: str, reason: str):
+
+def _trace_map(
+    wmo: Optional[int],
+    is_day: bool,
+    pop: Optional[int],
+    temp_c: Optional[float],
+    cloudcover: Optional[int],
+    chosen_key: str,
+    reason: str,
+):
     """Log weather mapping decisions for debugging."""
     if not MAP_TRACE_ENABLED:
         return
     try:
-        _MAP_TRACE.append({
-            "wmo": wmo, "is_day": is_day, "pop": pop, "temp_c": temp_c,
-            "cloudcover": cloudcover, "key": chosen_key, "reason": reason
-        })
+        _MAP_TRACE.append(
+            {
+                "wmo": wmo,
+                "is_day": is_day,
+                "pop": pop,
+                "temp_c": temp_c,
+                "cloudcover": cloudcover,
+                "key": chosen_key,
+                "reason": reason,
+            }
+        )
         if len(_MAP_TRACE) > 200:
             del _MAP_TRACE[:-120]
     except Exception:
         pass
 
+
 def get_map_trace() -> List[Dict]:
     """Return the current weather mapping trace."""
     return list(_MAP_TRACE)
 
+
 def clear_map_trace():
     """Clear the weather mapping trace."""
     _MAP_TRACE.clear()
+
 
 def _cloud_icon_from_cover(cover: Optional[int], is_day: bool) -> str:
     """Map cloud cover percentage to Foreca icon code."""
@@ -208,6 +299,7 @@ def _cloud_icon_from_cover(cover: Optional[int], is_day: bool) -> str:
     if cover < CLOUD_T_MOSTLY:
         return f"{prefix}300"  # Mostly cloudy
     return f"{prefix}400"  # Fully cloudy
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
@@ -226,9 +318,15 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
     else:
         normcols = [(norm(c), "") for c in df.columns]
 
-    wmo_idx = next((i for i, (a, b) in enumerate(normcols) if "code" in a and "figure" in a), None)
-    day_idx = next((i for i, (a, b) in enumerate(normcols) if "foreca" in a and "paiva" in b), None)
-    night_idx = next((i for i, (a, b) in enumerate(normcols) if "foreca" in a and "yo" in b), None)
+    wmo_idx = next(
+        (i for i, (a, b) in enumerate(normcols) if "code" in a and "figure" in a), None
+    )
+    day_idx = next(
+        (i for i, (a, b) in enumerate(normcols) if "foreca" in a and "paiva" in b), None
+    )
+    night_idx = next(
+        (i for i, (a, b) in enumerate(normcols) if "foreca" in a and "yo" in b), None
+    )
     if wmo_idx is None or day_idx is None or night_idx is None:
         raise KeyError(f"Columns not found: {list(df.columns)}")
 
@@ -269,12 +367,13 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
 
     return {"day": maps_day, "night": maps_night}
 
+
 def wmo_to_foreca_code(
     code: Optional[int],
     is_day: bool,
     pop: Optional[int] = None,
     temp_c: Optional[float] = None,
-    cloudcover: Optional[int] = None
+    cloudcover: Optional[int] = None,
 ) -> str:
     """Map WMO weather code to Foreca icon code, with cloud cover fallback."""
     maps = _load_wmo_foreca_map()
@@ -286,19 +385,27 @@ def wmo_to_foreca_code(
     code = int(code)
     lookup = maps["day" if is_day else "night"]
     if key := lookup.get(code):
-        _trace_map(code, is_day, pop, temp_c, cloudcover, key, "Excel mapping (päivä/yö, valmis avain)")
+        _trace_map(
+            code,
+            is_day,
+            pop,
+            temp_c,
+            cloudcover,
+            key,
+            "Excel mapping (päivä/yö, valmis avain)",
+        )
         return key
 
     key = _cloud_icon_from_cover(cloudcover, is_day)
-    _trace_map(code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover bucket")
+    _trace_map(
+        code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover bucket"
+    )
     return key
+
 
 @st.cache_data(ttl=CACHE_TTL_MED)
 def fetch_weather_points(
-    lat: float,
-    lon: float,
-    tz_name: str,
-    offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)
+    lat: float, lon: float, tz_name: str, offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)
 ) -> Dict:
     """Fetch weather forecast points for specified hours."""
     url = (
@@ -330,15 +437,21 @@ def fetch_weather_points(
         pop = pops[idx] if idx < len(pops) else None
         wmo = wmos[idx] if idx < len(wmos) else None
         ccov = covers[idx] if idx < len(covers) else None
-        is_day_flag = bool(int(isday[idx])) if idx < len(isday) else (6 <= target_time.hour <= 20)
+        is_day_flag = (
+            bool(int(isday[idx])) if idx < len(isday) else (6 <= target_time.hour <= 20)
+        )
 
-        points.append({
-            "label": "Nyt" if offset == 0 else f"+{offset} h",
-            "hour": target_time.hour,
-            "temp": temp,
-            "pop": pop,
-            "key": wmo_to_foreca_code(wmo, is_day=is_day_flag, pop=pop, temp_c=temp, cloudcover=ccov)
-        })
+        points.append(
+            {
+                "label": "Nyt" if offset == 0 else f"+{offset} h",
+                "hour": target_time.hour,
+                "temp": temp,
+                "pop": pop,
+                "key": wmo_to_foreca_code(
+                    wmo, is_day=is_day_flag, pop=pop, temp_c=temp, cloudcover=ccov
+                ),
+            }
+        )
 
     min_temp, max_temp = None, None
     try:
@@ -351,6 +464,7 @@ def fetch_weather_points(
         pass
 
     return {"points": points, "min_temp": min_temp, "max_temp": max_temp}
+
 
 def wmo_to_icon_key(code: Optional[int], is_day: bool) -> str:
     """Map WMO code to simplified weather icon key."""
@@ -376,14 +490,20 @@ def wmo_to_icon_key(code: Optional[int], is_day: bool) -> str:
         return "thunderstorm"
     return "na"
 
+
 # ------------------- WEATHER DEBUG MATRIX -------------------
+
 
 def card_weather_debug_matrix():
     """Render a debug matrix for weather icons."""
-    st.markdown("<div class='card-title'>🧪 Sääikonit – pikatesti</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='card-title'>🧪 Sääikonit – pikatesti</div>", unsafe_allow_html=True
+    )
 
     def render_row(label: str, items: List[Tuple[str, str]]) -> str:
-        row_html = f"<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
+        row_html = (
+            f"<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
+        )
         row_html += f"<div style='width:110px; opacity:.8;'>{label}</div>"
         for desc, key in items:
             img = render_foreca_icon(key, size=40)
@@ -398,19 +518,44 @@ def card_weather_debug_matrix():
     cloud_rows = []
     for is_day in (True, False):
         items = [
-            (f"cc {cc}%", wmo_to_foreca_code(0, is_day=is_day, pop=0, temp_c=10, cloudcover=cc))
+            (
+                f"cc {cc}%",
+                wmo_to_foreca_code(0, is_day=is_day, pop=0, temp_c=10, cloudcover=cc),
+            )
             for cc in (5, 30, 55, 75, 95)
         ]
-        cloud_rows.append(render_row(f"{'Päivä' if is_day else 'Yö'} – pilvisyys", items))
+        cloud_rows.append(
+            render_row(f"{'Päivä' if is_day else 'Yö'} – pilvisyys", items)
+        )
 
     # Continuous rain
     rain_rows = []
     for code in (61, 63, 65):
         cases = [
-            ("päivä, PoP 20%", wmo_to_foreca_code(code, is_day=True, pop=20, temp_c=5.0, cloudcover=70)),
-            ("päivä, PoP 80%", wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=5.0, cloudcover=70)),
-            ("päivä, 0°C (räntä)", wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=0.0, cloudcover=70)),
-            ("yö, PoP 80%", wmo_to_foreca_code(code, is_day=False, pop=80, temp_c=5.0, cloudcover=70))
+            (
+                "päivä, PoP 20%",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=20, temp_c=5.0, cloudcover=70
+                ),
+            ),
+            (
+                "päivä, PoP 80%",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=80, temp_c=5.0, cloudcover=70
+                ),
+            ),
+            (
+                "päivä, 0°C (räntä)",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=80, temp_c=0.0, cloudcover=70
+                ),
+            ),
+            (
+                "yö, PoP 80%",
+                wmo_to_foreca_code(
+                    code, is_day=False, pop=80, temp_c=5.0, cloudcover=70
+                ),
+            ),
         ]
         rain_rows.append(render_row(f"WMO {code} – sade", cases))
 
@@ -418,28 +563,51 @@ def card_weather_debug_matrix():
     shower_rows = []
     for code in (80, 81, 82):
         cases = [
-            (f"päivä, PoP {pop}%", wmo_to_foreca_code(code, is_day=True, pop=pop, temp_c=10, cloudcover=60))
+            (
+                f"päivä, PoP {pop}%",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=pop, temp_c=10, cloudcover=60
+                ),
+            )
             for pop in (20, 80)
         ]
         shower_rows.append(render_row(f"WMO {code} – kuurot", cases))
 
     # Miscellaneous weather types
     misc_cases = [
-        ("tihku heikko (51)", 51), ("tihku koht. (53)", 53), ("tihku voim. (55)", 55),
-        ("jäätävä tihku (56)", 56), ("jäätävä sade h. (66)", 66), ("jäätävä sade v. (67)", 67),
-        ("lumi (71)", 71), ("lumikuuro (85)", 85), ("ukkonen (95)", 95)
+        ("tihku heikko (51)", 51),
+        ("tihku koht. (53)", 53),
+        ("tihku voim. (55)", 55),
+        ("jäätävä tihku (56)", 56),
+        ("jäätävä sade h. (66)", 66),
+        ("jäätävä sade v. (67)", 67),
+        ("lumi (71)", 71),
+        ("lumikuuro (85)", 85),
+        ("ukkonen (95)", 95),
     ]
-    misc_rows = render_row("Muut", [
-        (label, wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=-2 if code in (71, 85) else 2, cloudcover=80))
-        for label, code in misc_cases
-    ])
+    misc_rows = render_row(
+        "Muut",
+        [
+            (
+                label,
+                wmo_to_foreca_code(
+                    code,
+                    is_day=True,
+                    pop=80,
+                    temp_c=-2 if code in (71, 85) else 2,
+                    cloudcover=80,
+                ),
+            )
+            for label, code in misc_cases
+        ],
+    )
 
     st.markdown(
         "<section class='card' style='min-height:12dvh; padding:10px;'>"
         "<div class='card-body' style='display:flex; flex-direction:column; gap:8px;'>"
         + "".join(cloud_rows + rain_rows + shower_rows + [misc_rows])
         + "</div></section>",
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     if st.toggle("Näytä päätösjäljet (trace)", value=False):
@@ -457,12 +625,16 @@ def card_weather_debug_matrix():
                 f"<div class='card-title'>Päätösjälki (uusin ensin)</div>"
                 f"<table style='width:100%; font-size:.9rem; border-collapse:collapse;'>"
                 f"{head}{body}</table></div>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
         else:
-            st.markdown("<div class='hint'>Ei jälkiä vielä.</div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div class='hint'>Ei jälkiä vielä.</div>", unsafe_allow_html=True
+            )
+
 
 # ------------------- NAMEDAYS -------------------
+
 
 def _resolve_nameday_file() -> Path:
     """Resolve the first existing nameday file from configured paths."""
@@ -474,6 +646,7 @@ def _resolve_nameday_file() -> Path:
             continue
     return Path(NAMEDAY_FILE)
 
+
 def _resolve_first_existing(paths) -> Path:
     for p in paths:
         try:
@@ -484,9 +657,11 @@ def _resolve_first_existing(paths) -> Path:
             continue
     return Path(paths[0]) if paths else Path()
 
+
 def _load_json(path: Path):
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
@@ -503,8 +678,18 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
         key_md = now.strftime("%m-%d")
         day_str = str(now.day)
         month_name = [
-            "tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu", "kesäkuu",
-            "heinäkuu", "elokuu", "syyskuu", "lokakuu", "marraskuu", "joulukuu"
+            "tammikuu",
+            "helmikuu",
+            "maaliskuu",
+            "huhtikuu",
+            "toukokuu",
+            "kesäkuu",
+            "heinäkuu",
+            "elokuu",
+            "syyskuu",
+            "lokakuu",
+            "marraskuu",
+            "joulukuu",
         ][now.month - 1]
 
         # Schema A: Flat "%m-%d" mapping
@@ -519,7 +704,14 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
         # Schema B: Nested by month
         root = data.get("nimipäivät") if isinstance(data, dict) else None
         if isinstance(root, dict):
-            month_obj = next((v for k, v in root.items() if isinstance(k, str) and k.strip().lower() == month_name), None)
+            month_obj = next(
+                (
+                    v
+                    for k, v in root.items()
+                    if isinstance(k, str) and k.strip().lower() == month_name
+                ),
+                None,
+            )
             if isinstance(month_obj, dict):
                 names = month_obj.get(day_str)
                 if isinstance(names, list):
@@ -531,6 +723,7 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
     except Exception as e:
         report_error("nameday: local json", e)
         return "—"
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
@@ -565,14 +758,20 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
             name = entry.get("name")
             # "holiday" voi olla joko bool (uudempi skeema) tai str (vanha: nimi)
             hol_field = entry.get("holiday")
-            is_holiday = bool(entry.get("is_holiday")) or (isinstance(hol_field, bool) and hol_field is True)
+            is_holiday = bool(entry.get("is_holiday")) or (
+                isinstance(hol_field, bool) and hol_field is True
+            )
             # jos name puuttuu mutta holiday on str, käytä sitä nimenä (takautuva tuki)
             if not name and isinstance(hol_field, str) and hol_field.strip():
                 name = hol_field.strip()
             is_flag = bool(entry.get("flag") or entry.get("is_flag_day"))
-            return {"holiday": name.strip() if isinstance(name, str) and name.strip() else None,
-                    "is_flag_day": is_flag,
-                    "is_holiday": is_holiday}
+            return {
+                "holiday": (
+                    name.strip() if isinstance(name, str) and name.strip() else None
+                ),
+                "is_flag_day": is_flag,
+                "is_holiday": is_holiday,
+            }
 
         # Skeema A: dict (%m-%d tai ISO)
         if isinstance(data, dict):
@@ -597,6 +796,7 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
 
 # ------------------- BITCOIN -------------------
 
+
 @st.cache_data(ttl=CACHE_TTL_SHORT)
 def fetch_btc_eur() -> Dict[str, Optional[float]]:
     """Fetch current Bitcoin price and 24h change in EUR."""
@@ -604,6 +804,7 @@ def fetch_btc_eur() -> Dict[str, Optional[float]]:
     data = http_get_json(url)
     btc = data.get("bitcoin", {})
     return {"price": btc.get("eur"), "change": btc.get("eur_24h_change")}
+
 
 @st.cache_data(ttl=CACHE_TTL_MED)
 def _coingecko_market_chart(days: int, vs: str = "eur") -> List[Tuple[datetime, float]]:
@@ -653,7 +854,9 @@ def fetch_btc_last_30d_eur() -> List[Tuple[datetime, float]]:
 
 
 @st.cache_data(ttl=CACHE_TTL_MED)
-def fetch_btc_eur_range(days: Optional[int] = None, hours: Optional[int] = None) -> List[Tuple[datetime, float]]:
+def fetch_btc_eur_range(
+    days: Optional[int] = None, hours: Optional[int] = None
+) -> List[Tuple[datetime, float]]:
     """
     Generinen range-haku: jos annetaan hours, muunnetaan päiviksi (ylöspäin).
     """
@@ -675,7 +878,10 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
         ath_date = market_data.get("ath_date", {}).get("eur")
         if ath:
             try:
-                ATH_CACHE_FILE.write_text(json.dumps({"ath_eur": float(ath), "ath_date": ath_date}), encoding="utf-8")
+                ATH_CACHE_FILE.write_text(
+                    json.dumps({"ath_eur": float(ath), "ath_date": ath_date}),
+                    encoding="utf-8",
+                )
             except Exception as e:
                 report_error("btc_ath: write cache", e)
             return float(ath), str(ath_date)
@@ -692,6 +898,8 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
             return float(cached.get("ath_eur")), str(cached.get("ath_date"))
         except Exception as e2:
             report_error("btc_ath: read local cache", e2)
+
+
 # api.py
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -705,15 +913,29 @@ import requests
 import streamlit as st
 
 from config import (
-    TZ, HTTP_TIMEOUT_S, CACHE_TTL_SHORT, CACHE_TTL_MED, CACHE_TTL_LONG,
-    ATH_CACHE_FILE, NAMEDAY_FILE, NAMEDAY_PATHS, HOLIDAY_FILE, HOLIDAY_PATHS,
-    POP_POSSIBLE_THRESHOLD, SLEET_TEMP_MIN, SLEET_TEMP_MAX, CLOUD_T_CLEAR, 
-    CLOUD_T_ALMOST, CLOUD_T_PARTLY, CLOUD_T_MOSTLY
+    TZ,
+    HTTP_TIMEOUT_S,
+    CACHE_TTL_SHORT,
+    CACHE_TTL_MED,
+    CACHE_TTL_LONG,
+    ATH_CACHE_FILE,
+    NAMEDAY_FILE,
+    NAMEDAY_PATHS,
+    HOLIDAY_FILE,
+    HOLIDAY_PATHS,
+    POP_POSSIBLE_THRESHOLD,
+    SLEET_TEMP_MIN,
+    SLEET_TEMP_MAX,
+    CLOUD_T_CLEAR,
+    CLOUD_T_ALMOST,
+    CLOUD_T_PARTLY,
+    CLOUD_T_MOSTLY,
 )
 from utils import report_error
 from weather_icons import render_foreca_icon
 
 # ------------------- HTTP UTILS -------------------
+
 
 def http_get_json(url: str, timeout: float = HTTP_TIMEOUT_S) -> dict:
     """Fetch JSON data from a URL with error handling."""
@@ -721,9 +943,13 @@ def http_get_json(url: str, timeout: float = HTTP_TIMEOUT_S) -> dict:
     response.raise_for_status()
     return response.json()
 
+
 # ------------------- ELECTRICITY PRICES -------------------
 
-def _parse_hour_from_item(item: dict, idx: int, date_ymd: datetime.date) -> Optional[int]:
+
+def _parse_hour_from_item(
+    item: dict, idx: int, date_ymd: datetime.date
+) -> Optional[int]:
     """Parse hour from API item, handling various key formats."""
     for key in ("hour", "Hour", "H"):
         if value := item.get(key):
@@ -734,12 +960,26 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: datetime.date) -> Opti
             except ValueError:
                 pass
 
-    for key in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start", "startDate"):
+    for key in (
+        "time",
+        "Time",
+        "timestamp",
+        "Timestamp",
+        "datetime",
+        "DateTime",
+        "start",
+        "Start",
+        "startDate",
+    ):
         if value := item.get(key):
             try:
                 timestamp = str(value).replace("Z", "+00:00")
                 dt_obj = datetime.fromisoformat(timestamp)
-                dt_obj = dt_obj.replace(tzinfo=TZ) if dt_obj.tzinfo is None else dt_obj.astimezone(TZ)
+                dt_obj = (
+                    dt_obj.replace(tzinfo=TZ)
+                    if dt_obj.tzinfo is None
+                    else dt_obj.astimezone(TZ)
+                )
                 if 0 <= dt_obj.hour <= 23 and dt_obj.date() == date_ymd:
                     return dt_obj.hour
             except ValueError:
@@ -747,9 +987,18 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: datetime.date) -> Opti
 
     return idx if 0 <= idx <= 23 else None
 
+
 def _parse_cents_from_item(item: dict) -> Optional[float]:
     """Parse price in cents from API item, handling various key formats."""
-    for key in ("cents", "cents_per_kwh", "price", "Price", "value", "Value", "EUR_per_kWh"):
+    for key in (
+        "cents",
+        "cents_per_kwh",
+        "price",
+        "Price",
+        "value",
+        "Value",
+        "EUR_per_kWh",
+    ):
         if value := item.get(key):
             try:
                 price = float(value)
@@ -758,18 +1007,27 @@ def _parse_cents_from_item(item: dict) -> Optional[float]:
                 pass
     return None
 
-def _normalize_prices_list(items: List[dict], date_ymd: datetime.date) -> List[Dict[str, float]]:
+
+def _normalize_prices_list(
+    items: List[dict], date_ymd: datetime.date
+) -> List[Dict[str, float]]:
     """Normalize price data into a sorted list of hour-price dictionaries."""
     out_map = {}
     for idx, item in enumerate(items or []):
         try:
             hour = _parse_hour_from_item(item, idx, date_ymd)
             cents = _parse_cents_from_item(item)
-            if hour is not None and cents is not None and 0 <= hour <= 23 and hour not in out_map:
+            if (
+                hour is not None
+                and cents is not None
+                and 0 <= hour <= 23
+                and hour not in out_map
+            ):
                 out_map[hour] = float(cents)
         except Exception:
             continue
     return [{"hour": h, "cents": out_map[h]} for h in sorted(out_map.keys())]
+
 
 def _fetch_from_sahkonhintatanaan(date_ymd: datetime.date) -> List[Dict[str, float]]:
     """Fetch electricity prices from sahkonhintatanaan.fi API."""
@@ -778,12 +1036,14 @@ def _fetch_from_sahkonhintatanaan(date_ymd: datetime.date) -> List[Dict[str, flo
     items = data.get("prices", []) if isinstance(data, dict) else data or []
     return _normalize_prices_list(items, date_ymd)
 
+
 def _fetch_from_porssisahko(date_ymd: datetime.date) -> List[Dict[str, float]]:
     """Fetch electricity prices from porssisahko.net API."""
     url = f"https://api.porssisahko.net/v1/price.json?date={date_ymd:%Y-%m-%d}"
     data = http_get_json(url)
     items = data.get("prices", []) if isinstance(data, dict) else data or []
     return _normalize_prices_list(items, date_ymd)
+
 
 def fetch_prices_for(date_ymd: datetime.date) -> List[Dict[str, float]]:
     """Fetch electricity prices for a given date, trying multiple sources."""
@@ -807,6 +1067,7 @@ def fetch_prices_for(date_ymd: datetime.date) -> List[Dict[str, float]]:
 
     return []
 
+
 @st.cache_data(ttl=CACHE_TTL_MED)
 def try_fetch_prices(date_ymd: datetime.date) -> Optional[List[Dict[str, float]]]:
     """Cached wrapper for fetching electricity prices."""
@@ -821,14 +1082,19 @@ def try_fetch_prices(date_ymd: datetime.date) -> Optional[List[Dict[str, float]]
         report_error(f"prices: fetch {date_ymd.isoformat()}", e)
         return None
 
+
 # ------------------- ZEN QUOTES -------------------
 
 LOCAL_ZEN = [
     {"text": "Hiljaisuus on vastaus, jota etsit.", "author": "Tuntematon"},
-    {"text": "Paranna sitä, mihin kosket, ja jätä se paremmaksi kuin sen löysit.", "author": "Tuntematon"},
+    {
+        "text": "Paranna sitä, mihin kosket, ja jätä se paremmaksi kuin sen löysit.",
+        "author": "Tuntematon",
+    },
     {"text": "Kärsivällisyys on taito odottaa rauhassa.", "author": "Tuntematon"},
     {"text": "Päivän selkeys syntyy hetken huomiosta.", "author": "Tuntematon"},
 ]
+
 
 def _from_zenquotes() -> Optional[Dict[str, str]]:
     """Fetch a daily quote from zenquotes.io."""
@@ -836,19 +1102,32 @@ def _from_zenquotes() -> Optional[Dict[str, str]]:
         data = http_get_json("https://zenquotes.io/api/today", timeout=HTTP_TIMEOUT_S)
         if isinstance(data, list) and data:
             quote = data[0]
-            return {"text": quote.get("q", ""), "author": quote.get("a", ""), "source": "zenquotes"}
+            return {
+                "text": quote.get("q", ""),
+                "author": quote.get("a", ""),
+                "source": "zenquotes",
+            }
     except Exception as e:
         report_error("zen: zenquotes-today", e)
     return None
 
+
 def _from_quotable() -> Optional[Dict[str, str]]:
     """Fetch a random quote from quotable.io."""
     try:
-        data = http_get_json("https://api.quotable.io/random?tags=wisdom|life|inspirational", timeout=HTTP_TIMEOUT_S)
-        return {"text": data.get("content", ""), "author": data.get("author", ""), "source": "quotable"}
+        data = http_get_json(
+            "https://api.quotable.io/random?tags=wisdom|life|inspirational",
+            timeout=HTTP_TIMEOUT_S,
+        )
+        return {
+            "text": data.get("content", ""),
+            "author": data.get("author", ""),
+            "source": "quotable",
+        }
     except Exception as e:
         report_error("zen: quotable", e)
     return None
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_daily_quote(day_iso: str) -> Dict[str, str]:
@@ -862,32 +1141,52 @@ def fetch_daily_quote(day_iso: str) -> Dict[str, str]:
     quote["source"] = "local"
     return quote
 
+
 # ------------------- WEATHER -------------------
 
 MAP_TRACE_ENABLED = False
 _MAP_TRACE: List[Dict] = []
 
-def _trace_map(wmo: Optional[int], is_day: bool, pop: Optional[int], temp_c: Optional[float], cloudcover: Optional[int], chosen_key: str, reason: str):
+
+def _trace_map(
+    wmo: Optional[int],
+    is_day: bool,
+    pop: Optional[int],
+    temp_c: Optional[float],
+    cloudcover: Optional[int],
+    chosen_key: str,
+    reason: str,
+):
     """Log weather mapping decisions for debugging."""
     if not MAP_TRACE_ENABLED:
         return
     try:
-        _MAP_TRACE.append({
-            "wmo": wmo, "is_day": is_day, "pop": pop, "temp_c": temp_c,
-            "cloudcover": cloudcover, "key": chosen_key, "reason": reason
-        })
+        _MAP_TRACE.append(
+            {
+                "wmo": wmo,
+                "is_day": is_day,
+                "pop": pop,
+                "temp_c": temp_c,
+                "cloudcover": cloudcover,
+                "key": chosen_key,
+                "reason": reason,
+            }
+        )
         if len(_MAP_TRACE) > 200:
             del _MAP_TRACE[:-120]
     except Exception:
         pass
 
+
 def get_map_trace() -> List[Dict]:
     """Return the current weather mapping trace."""
     return list(_MAP_TRACE)
 
+
 def clear_map_trace():
     """Clear the weather mapping trace."""
     _MAP_TRACE.clear()
+
 
 def _cloud_icon_from_cover(cover: Optional[int], is_day: bool) -> str:
     """Map cloud cover percentage to Foreca icon code."""
@@ -902,6 +1201,7 @@ def _cloud_icon_from_cover(cover: Optional[int], is_day: bool) -> str:
     if cover < CLOUD_T_MOSTLY:
         return f"{prefix}300"  # Mostly cloudy
     return f"{prefix}400"  # Fully cloudy
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
@@ -920,9 +1220,15 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
     else:
         normcols = [(norm(c), "") for c in df.columns]
 
-    wmo_idx = next((i for i, (a, b) in enumerate(normcols) if "code" in a and "figure" in a), None)
-    day_idx = next((i for i, (a, b) in enumerate(normcols) if "foreca" in a and "paiva" in b), None)
-    night_idx = next((i for i, (a, b) in enumerate(normcols) if "foreca" in a and "yo" in b), None)
+    wmo_idx = next(
+        (i for i, (a, b) in enumerate(normcols) if "code" in a and "figure" in a), None
+    )
+    day_idx = next(
+        (i for i, (a, b) in enumerate(normcols) if "foreca" in a and "paiva" in b), None
+    )
+    night_idx = next(
+        (i for i, (a, b) in enumerate(normcols) if "foreca" in a and "yo" in b), None
+    )
     if wmo_idx is None or day_idx is None or night_idx is None:
         raise KeyError(f"Columns not found: {list(df.columns)}")
 
@@ -963,12 +1269,13 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
 
     return {"day": maps_day, "night": maps_night}
 
+
 def wmo_to_foreca_code(
     code: Optional[int],
     is_day: bool,
     pop: Optional[int] = None,
     temp_c: Optional[float] = None,
-    cloudcover: Optional[int] = None
+    cloudcover: Optional[int] = None,
 ) -> str:
     """Map WMO weather code to Foreca icon code, with cloud cover fallback."""
     maps = _load_wmo_foreca_map()
@@ -980,19 +1287,27 @@ def wmo_to_foreca_code(
     code = int(code)
     lookup = maps["day" if is_day else "night"]
     if key := lookup.get(code):
-        _trace_map(code, is_day, pop, temp_c, cloudcover, key, "Excel mapping (päivä/yö, valmis avain)")
+        _trace_map(
+            code,
+            is_day,
+            pop,
+            temp_c,
+            cloudcover,
+            key,
+            "Excel mapping (päivä/yö, valmis avain)",
+        )
         return key
 
     key = _cloud_icon_from_cover(cloudcover, is_day)
-    _trace_map(code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover bucket")
+    _trace_map(
+        code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover bucket"
+    )
     return key
+
 
 @st.cache_data(ttl=CACHE_TTL_MED)
 def fetch_weather_points(
-    lat: float,
-    lon: float,
-    tz_name: str,
-    offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)
+    lat: float, lon: float, tz_name: str, offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)
 ) -> Dict:
     """Fetch weather forecast points for specified hours."""
     url = (
@@ -1024,15 +1339,21 @@ def fetch_weather_points(
         pop = pops[idx] if idx < len(pops) else None
         wmo = wmos[idx] if idx < len(wmos) else None
         ccov = covers[idx] if idx < len(covers) else None
-        is_day_flag = bool(int(isday[idx])) if idx < len(isday) else (6 <= target_time.hour <= 20)
+        is_day_flag = (
+            bool(int(isday[idx])) if idx < len(isday) else (6 <= target_time.hour <= 20)
+        )
 
-        points.append({
-            "label": "Nyt" if offset == 0 else f"+{offset} h",
-            "hour": target_time.hour,
-            "temp": temp,
-            "pop": pop,
-            "key": wmo_to_foreca_code(wmo, is_day=is_day_flag, pop=pop, temp_c=temp, cloudcover=ccov)
-        })
+        points.append(
+            {
+                "label": "Nyt" if offset == 0 else f"+{offset} h",
+                "hour": target_time.hour,
+                "temp": temp,
+                "pop": pop,
+                "key": wmo_to_foreca_code(
+                    wmo, is_day=is_day_flag, pop=pop, temp_c=temp, cloudcover=ccov
+                ),
+            }
+        )
 
     min_temp, max_temp = None, None
     try:
@@ -1045,6 +1366,7 @@ def fetch_weather_points(
         pass
 
     return {"points": points, "min_temp": min_temp, "max_temp": max_temp}
+
 
 def wmo_to_icon_key(code: Optional[int], is_day: bool) -> str:
     """Map WMO code to simplified weather icon key."""
@@ -1070,14 +1392,20 @@ def wmo_to_icon_key(code: Optional[int], is_day: bool) -> str:
         return "thunderstorm"
     return "na"
 
+
 # ------------------- WEATHER DEBUG MATRIX -------------------
+
 
 def card_weather_debug_matrix():
     """Render a debug matrix for weather icons."""
-    st.markdown("<div class='card-title'>🧪 Sääikonit – pikatesti</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='card-title'>🧪 Sääikonit – pikatesti</div>", unsafe_allow_html=True
+    )
 
     def render_row(label: str, items: List[Tuple[str, str]]) -> str:
-        row_html = f"<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
+        row_html = (
+            f"<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
+        )
         row_html += f"<div style='width:110px; opacity:.8;'>{label}</div>"
         for desc, key in items:
             img = render_foreca_icon(key, size=40)
@@ -1092,19 +1420,44 @@ def card_weather_debug_matrix():
     cloud_rows = []
     for is_day in (True, False):
         items = [
-            (f"cc {cc}%", wmo_to_foreca_code(0, is_day=is_day, pop=0, temp_c=10, cloudcover=cc))
+            (
+                f"cc {cc}%",
+                wmo_to_foreca_code(0, is_day=is_day, pop=0, temp_c=10, cloudcover=cc),
+            )
             for cc in (5, 30, 55, 75, 95)
         ]
-        cloud_rows.append(render_row(f"{'Päivä' if is_day else 'Yö'} – pilvisyys", items))
+        cloud_rows.append(
+            render_row(f"{'Päivä' if is_day else 'Yö'} – pilvisyys", items)
+        )
 
     # Continuous rain
     rain_rows = []
     for code in (61, 63, 65):
         cases = [
-            ("päivä, PoP 20%", wmo_to_foreca_code(code, is_day=True, pop=20, temp_c=5.0, cloudcover=70)),
-            ("päivä, PoP 80%", wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=5.0, cloudcover=70)),
-            ("päivä, 0°C (räntä)", wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=0.0, cloudcover=70)),
-            ("yö, PoP 80%", wmo_to_foreca_code(code, is_day=False, pop=80, temp_c=5.0, cloudcover=70))
+            (
+                "päivä, PoP 20%",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=20, temp_c=5.0, cloudcover=70
+                ),
+            ),
+            (
+                "päivä, PoP 80%",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=80, temp_c=5.0, cloudcover=70
+                ),
+            ),
+            (
+                "päivä, 0°C (räntä)",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=80, temp_c=0.0, cloudcover=70
+                ),
+            ),
+            (
+                "yö, PoP 80%",
+                wmo_to_foreca_code(
+                    code, is_day=False, pop=80, temp_c=5.0, cloudcover=70
+                ),
+            ),
         ]
         rain_rows.append(render_row(f"WMO {code} – sade", cases))
 
@@ -1112,28 +1465,51 @@ def card_weather_debug_matrix():
     shower_rows = []
     for code in (80, 81, 82):
         cases = [
-            (f"päivä, PoP {pop}%", wmo_to_foreca_code(code, is_day=True, pop=pop, temp_c=10, cloudcover=60))
+            (
+                f"päivä, PoP {pop}%",
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=pop, temp_c=10, cloudcover=60
+                ),
+            )
             for pop in (20, 80)
         ]
         shower_rows.append(render_row(f"WMO {code} – kuurot", cases))
 
     # Miscellaneous weather types
     misc_cases = [
-        ("tihku heikko (51)", 51), ("tihku koht. (53)", 53), ("tihku voim. (55)", 55),
-        ("jäätävä tihku (56)", 56), ("jäätävä sade h. (66)", 66), ("jäätävä sade v. (67)", 67),
-        ("lumi (71)", 71), ("lumikuuro (85)", 85), ("ukkonen (95)", 95)
+        ("tihku heikko (51)", 51),
+        ("tihku koht. (53)", 53),
+        ("tihku voim. (55)", 55),
+        ("jäätävä tihku (56)", 56),
+        ("jäätävä sade h. (66)", 66),
+        ("jäätävä sade v. (67)", 67),
+        ("lumi (71)", 71),
+        ("lumikuuro (85)", 85),
+        ("ukkonen (95)", 95),
     ]
-    misc_rows = render_row("Muut", [
-        (label, wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=-2 if code in (71, 85) else 2, cloudcover=80))
-        for label, code in misc_cases
-    ])
+    misc_rows = render_row(
+        "Muut",
+        [
+            (
+                label,
+                wmo_to_foreca_code(
+                    code,
+                    is_day=True,
+                    pop=80,
+                    temp_c=-2 if code in (71, 85) else 2,
+                    cloudcover=80,
+                ),
+            )
+            for label, code in misc_cases
+        ],
+    )
 
     st.markdown(
         "<section class='card' style='min-height:12dvh; padding:10px;'>"
         "<div class='card-body' style='display:flex; flex-direction:column; gap:8px;'>"
         + "".join(cloud_rows + rain_rows + shower_rows + [misc_rows])
         + "</div></section>",
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     if st.toggle("Näytä päätösjäljet (trace)", value=False):
@@ -1151,12 +1527,16 @@ def card_weather_debug_matrix():
                 f"<div class='card-title'>Päätösjälki (uusin ensin)</div>"
                 f"<table style='width:100%; font-size:.9rem; border-collapse:collapse;'>"
                 f"{head}{body}</table></div>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
         else:
-            st.markdown("<div class='hint'>Ei jälkiä vielä.</div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div class='hint'>Ei jälkiä vielä.</div>", unsafe_allow_html=True
+            )
+
 
 # ------------------- NAMEDAYS -------------------
+
 
 def _resolve_nameday_file() -> Path:
     """Resolve the first existing nameday file from configured paths."""
@@ -1168,6 +1548,7 @@ def _resolve_nameday_file() -> Path:
             continue
     return Path(NAMEDAY_FILE)
 
+
 def _resolve_first_existing(paths) -> Path:
     for p in paths:
         try:
@@ -1178,9 +1559,11 @@ def _resolve_first_existing(paths) -> Path:
             continue
     return Path(paths[0]) if paths else Path()
 
+
 def _load_json(path: Path):
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
@@ -1197,8 +1580,18 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
         key_md = now.strftime("%m-%d")
         day_str = str(now.day)
         month_name = [
-            "tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu", "kesäkuu",
-            "heinäkuu", "elokuu", "syyskuu", "lokakuu", "marraskuu", "joulukuu"
+            "tammikuu",
+            "helmikuu",
+            "maaliskuu",
+            "huhtikuu",
+            "toukokuu",
+            "kesäkuu",
+            "heinäkuu",
+            "elokuu",
+            "syyskuu",
+            "lokakuu",
+            "marraskuu",
+            "joulukuu",
         ][now.month - 1]
 
         # Schema A: Flat "%m-%d" mapping
@@ -1213,7 +1606,14 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
         # Schema B: Nested by month
         root = data.get("nimipäivät") if isinstance(data, dict) else None
         if isinstance(root, dict):
-            month_obj = next((v for k, v in root.items() if isinstance(k, str) and k.strip().lower() == month_name), None)
+            month_obj = next(
+                (
+                    v
+                    for k, v in root.items()
+                    if isinstance(k, str) and k.strip().lower() == month_name
+                ),
+                None,
+            )
             if isinstance(month_obj, dict):
                 names = month_obj.get(day_str)
                 if isinstance(names, list):
@@ -1225,6 +1625,7 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
     except Exception as e:
         report_error("nameday: local json", e)
         return "—"
+
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
@@ -1259,14 +1660,20 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
             name = entry.get("name")
             # "holiday" voi olla joko bool (uudempi skeema) tai str (vanha: nimi)
             hol_field = entry.get("holiday")
-            is_holiday = bool(entry.get("is_holiday")) or (isinstance(hol_field, bool) and hol_field is True)
+            is_holiday = bool(entry.get("is_holiday")) or (
+                isinstance(hol_field, bool) and hol_field is True
+            )
             # jos name puuttuu mutta holiday on str, käytä sitä nimenä (takautuva tuki)
             if not name and isinstance(hol_field, str) and hol_field.strip():
                 name = hol_field.strip()
             is_flag = bool(entry.get("flag") or entry.get("is_flag_day"))
-            return {"holiday": name.strip() if isinstance(name, str) and name.strip() else None,
-                    "is_flag_day": is_flag,
-                    "is_holiday": is_holiday}
+            return {
+                "holiday": (
+                    name.strip() if isinstance(name, str) and name.strip() else None
+                ),
+                "is_flag_day": is_flag,
+                "is_holiday": is_holiday,
+            }
 
         # Skeema A: dict (%m-%d tai ISO)
         if isinstance(data, dict):
@@ -1291,6 +1698,7 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
 
 # ------------------- BITCOIN -------------------
 
+
 @st.cache_data(ttl=CACHE_TTL_SHORT)
 def fetch_btc_eur() -> Dict[str, Optional[float]]:
     """Fetch current Bitcoin price and 24h change in EUR."""
@@ -1298,6 +1706,7 @@ def fetch_btc_eur() -> Dict[str, Optional[float]]:
     data = http_get_json(url)
     btc = data.get("bitcoin", {})
     return {"price": btc.get("eur"), "change": btc.get("eur_24h_change")}
+
 
 @st.cache_data(ttl=CACHE_TTL_MED)
 def _coingecko_market_chart(days: int, vs: str = "eur") -> List[Tuple[datetime, float]]:
@@ -1347,7 +1756,9 @@ def fetch_btc_last_30d_eur() -> List[Tuple[datetime, float]]:
 
 
 @st.cache_data(ttl=CACHE_TTL_MED)
-def fetch_btc_eur_range(days: Optional[int] = None, hours: Optional[int] = None) -> List[Tuple[datetime, float]]:
+def fetch_btc_eur_range(
+    days: Optional[int] = None, hours: Optional[int] = None
+) -> List[Tuple[datetime, float]]:
     """
     Generinen range-haku: jos annetaan hours, muunnetaan päiviksi (ylöspäin).
     """
@@ -1369,7 +1780,10 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
         ath_date = market_data.get("ath_date", {}).get("eur")
         if ath:
             try:
-                ATH_CACHE_FILE.write_text(json.dumps({"ath_eur": float(ath), "ath_date": ath_date}), encoding="utf-8")
+                ATH_CACHE_FILE.write_text(
+                    json.dumps({"ath_eur": float(ath), "ath_date": ath_date}),
+                    encoding="utf-8",
+                )
             except Exception as e:
                 report_error("btc_ath: write cache", e)
             return float(ath), str(ath_date)
