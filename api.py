@@ -692,7 +692,6 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
             return float(cached.get("ath_eur")), str(cached.get("ath_date"))
         except Exception as e2:
             report_error("btc_ath: read local cache", e2)
-=======
 # api.py
 from datetime import datetime, timedelta
 from pathlib import Path

@@ -148,7 +148,6 @@ def _sun_icon(kind: str, size: int = 18) -> str:
         "<path d='M5 18a7 7 0 0 1 14 0'/>"
         "</svg>"
     )
-=======
 # utils.py
 """Utility functions for the HomeDashboard application."""
 from typing import List, Tuple, Optional
