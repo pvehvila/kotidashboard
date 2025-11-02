@@ -14,6 +14,10 @@ from streamlit.components.v1 import html as st_html
 from api import (
     fetch_btc_ath_eur,
     fetch_btc_eur,
+    fetch_btc_last_24h_eur,   # ← LISÄÄ
+    fetch_btc_last_7d_eur,    # ← LISÄÄ
+    fetch_btc_last_30d_eur,   # ← LISÄÄ
+    fetch_btc_eur_range,      # ← LISÄÄ
     fetch_daily_quote,
     fetch_nameday_today,
     fetch_holiday_today,
@@ -572,73 +576,51 @@ def card_bitcoin() -> None:
         def _get_series(win: str):
             """
             Palauttaa listan (ts, price) aikajärjestyksessä.
-            Yrittää useita funktioita. Jos 24h -> slice 7d-datasta tarvittaessa.
-            Jos 30d ei saatavilla, palauttaa 7d ja lipun 'degraded'.
+            Yrittää useita lähteitä ja degradoi järkevästi.
             """
             now = datetime.now(TZ)
 
-            def _call_if_exists(fname, *args, **kwargs):
-                fn = globals().get(fname)
-                if callable(fn):
-                    return fn(*args, **kwargs)
-                return None
-
-            # ensisijaiset yritykset
             if win == "24h":
-                for name in ("fetch_btc_last_24h_eur", "fetch_btc_last_1d_eur"):
-                    series = _call_if_exists(name)
-                    if series:
-                        return series, False
-                # geneeriset
-                series = _call_if_exists("fetch_btc_last_hours_eur", 24)
-                if series:
-                    return series, False
-                series = _call_if_exists(
-                    "fetch_btc_eur_range", None, 24
-                )  # esim. (days=None, hours=24)
-                if series:
-                    return series, False
-                # fallback: slice 7d -> 24h
-                s7 = _call_if_exists("fetch_btc_last_7d_eur")
+                s = fetch_btc_last_24h_eur()
+                if s:
+                    return s, False
+                # geneerinen fallback
+                s = fetch_btc_eur_range(hours=24)
+                if s:
+                    return s, False
+                # viipaloi 7d → 24h
+                s7 = fetch_btc_last_7d_eur()
                 if s7:
                     cutoff = now - timedelta(hours=24)
                     s24 = [(t, v) for (t, v) in s7 if t >= cutoff]
-                    if len(s24) >= 2:
-                        return s24, False
-                    # jos liian vähän pisteitä, palauta silti 7d
-                    return s7, True
+                    return (s24 if len(s24) >= 2 else s7), (len(s24) < 2)
 
             if win == "7d":
-                for name in ("fetch_btc_last_7d_eur",):
-                    series = _call_if_exists(name)
-                    if series:
-                        return series, False
-                # geneerinen
-                series = _call_if_exists(
-                    "fetch_btc_eur_range", 7, None
-                )  # (days=7, hours=None)
-                if series:
-                    return series, False
+                s = fetch_btc_last_7d_eur()
+                if s:
+                    return s, False
+                s = fetch_btc_eur_range(days=7)
+                if s:
+                    return s, False
 
             if win == "30d":
-                for name in ("fetch_btc_last_30d_eur", "fetch_btc_last_1m_eur"):
-                    series = _call_if_exists(name)
-                    if series:
-                        return series, False
-                # geneerinen
-                series = _call_if_exists("fetch_btc_eur_range", 30, None)  # (days=30)
-                if series:
-                    return series, False
-                # fallback: jos ei 30d, ota 7d
-                s7 = _call_if_exists("fetch_btc_last_7d_eur")
+                s = fetch_btc_last_30d_eur()
+                if s:
+                    return s, False
+                s = fetch_btc_eur_range(days=30)
+                if s:
+                    return s, False
+                # fallback 7d, merkitään degradaatioksi
+                s7 = fetch_btc_last_7d_eur()
                 if s7:
                     return s7, True
 
-            # viimeinen oljenkorsi: koeta 7d
-            s7 = _call_if_exists("fetch_btc_last_7d_eur")
+            # viimeinen oljenkorsi: 7d mihin tahansa ikkunaan
+            s7 = fetch_btc_last_7d_eur()
             if s7:
                 return s7, (win != "7d")
             raise ValueError("BTC-historiasarjaa ei saatu mistään lähteestä.")
+
 
         series, degraded = _get_series(window)
 
