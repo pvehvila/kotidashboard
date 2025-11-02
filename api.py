@@ -914,10 +914,23 @@ from config import (
 
 
 def http_get_json(url: str, timeout: float = HTTP_TIMEOUT_S) -> dict:
-    """Fetch JSON data from a URL with error handling."""
-    response = requests.get(url, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
+    """Fetch JSON data from a URL with error handling and a proper User-Agent."""
+    headers = {
+        "User-Agent": "HomeDashboard/1.0 (+https://github.com/pvehvila/kotidashboard)"
+    }
+    try:
+        resp = requests.get(url, timeout=timeout, headers=headers)
+        # Yritä uudestaan 429/403, lyhyt viive
+        if resp.status_code in (429, 403):
+            import time
+            time.sleep(0.8)
+            resp = requests.get(url, timeout=timeout, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        report_error(f"http_get_json: {url}", e)
+        raise
+
 
 
 # ------------------- ELECTRICITY PRICES -------------------
