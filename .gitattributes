@@ -1,0 +1,22 @@
+# Tekstitiedostot: käytä aina LF
+* text=auto eol=lf
+
+# Python ja muut skriptit
+*.py text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+
+# Windows-komentosarjat CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binäärit
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.ico binary

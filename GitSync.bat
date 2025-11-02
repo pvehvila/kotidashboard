@@ -1,34 +1,47 @@
 @echo off
-REM =====================================================
-REM  Kotidashboard – Git Sync Script
-REM  Tekee automaattisesti git pull + git add + commit + push
-REM =====================================================
+setlocal enabledelayedexpansion
+REM Kotidashboard – turvallinen push Windowsilta
 
-setlocal
-set "REPO_DIR=%~dp0"
-cd /d "%REPO_DIR%"
+REM Aja repo-juuresta
+cd /d "%~dp0"
 
+REM 1) Varmista että olet feature-branchissa tai mainissa
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do set BRANCH=%%b
+
+echo Current branch: %BRANCH%
 echo.
-echo === Haetaan uusin versio GitHubista ===
-git pull
 
+REM 2) Hae uusin ja rebasea paikallinen historia origin/mainin paalle
+git fetch --prune
+git rebase origin/main || goto :rebased
+
+:rebased
+if errorlevel 1 (
+  echo Rebase epäonnistui. Korjaa konfliktit ja aja skripti uudestaan.
+  exit /b 1
+)
+
+REM 3) Näytä tilanne ja pyydä viesti (tai käytä oletusta)
+git status -s
 echo.
-echo === Lisätään paikalliset muutokset ===
+set /p MSG="Commit-viesti (enter=paivitys): "
+if "%MSG%"=="" set "MSG=paivitys"
+
+REM 4) Lisää vain tarkoitukselliset muutokset
 git add -A
 
-echo.
-set /p MSG="Anna commit-viesti (ENTER = 'päivitys'): "
-if "%MSG%"=="" set MSG=päivitys
+REM 5) Commitoi jos on muutoksia
+git diff --cached --quiet
+if %errorlevel%==0 (
+  echo Ei muutoksia. Ohitetaan commit.
+) else (
+  git commit -m "%MSG%"
+)
+
+REM 6) Pushaa aina fast-forward / rebase-politiikalla
+git push --set-upstream origin %BRANCH%
 
 echo.
-echo === Tehdään commit: %MSG% ===
-git commit -m "%MSG%"
-
-echo.
-echo === Työnnetään GitHubiin ===
-git push
-
-echo.
-echo ✅  Synkronointi valmis.
-timeout /t 3 >nul
+echo ✅ Valmis.
+timeout /t 2 >nul
 endlocal
