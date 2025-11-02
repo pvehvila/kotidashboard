@@ -327,7 +327,9 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
 
     for _, row in df.iterrows():
         try:
-            wmo = int(row[wmo_col])
+            wmo_value = row[wmo_col].item()
+        except ValueError:
+            raise ValueError(f"Expected a single value for {wmo_col}, got multiple values")
             raw_day = "" if pd.isna(row[day_col]) else str(row[day_col]).strip()
             raw_night = "" if pd.isna(row[night_col]) else str(row[night_col]).strip()
             day_full = _prep(raw_day, "d", last_day_full)
