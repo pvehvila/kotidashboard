@@ -1,5 +1,6 @@
 # ...existing code...
 """Utility functions for the HomeDashboard application."""
+
 from typing import List, Tuple, Optional
 
 import socket
@@ -116,7 +117,9 @@ def fetch_sun_times(
 ) -> Tuple[Optional[str], Optional[str]]:
     """Palauttaa (sunrise_HH:MM, sunset_HH:MM) merkkijonot paikallisajassa tai (None, None)."""
     try:
-        import urllib.request, urllib.parse, json as _json
+        import urllib.request
+        import urllib.parse
+        import json as _json
 
         qs = urllib.parse.urlencode(
             {
@@ -174,4 +177,6 @@ def _sun_icon(kind: str, size: int = 18) -> str:
         "<path d='M5 18a7 7 0 0 1 14 0'/>"
         "</svg>"
     )
+
+
 # ...existing code...

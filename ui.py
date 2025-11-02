@@ -1,10 +1,10 @@
 # ui.py
 """User interface components for the HomeDashboard application."""
+
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import base64
-import json
 import math
 
 import plotly.graph_objects as go
@@ -14,14 +14,10 @@ from streamlit.components.v1 import html as st_html
 from api import (
     fetch_btc_ath_eur,
     fetch_btc_eur,
-    fetch_btc_last_7d_eur,
     fetch_daily_quote,
-    fetch_nameday_today,
     fetch_nameday_today,
     fetch_holiday_today,
     fetch_weather_points,
-    get_map_trace,
-    wmo_to_icon_key,
     try_fetch_prices,
 )
 from config import (
@@ -39,7 +35,6 @@ from config import (
     NAMEDAY_PATHS,
     HOLIDAY_PATHS,
     PLOTLY_CONFIG,
-    PRICE_Y_MIN_SNT,
     PRICE_Y_STEP_SNT,
     TZ,
 )
@@ -202,8 +197,8 @@ def card_nameday() -> None:
                 "background:rgba(255,255,255,.12);backdrop-filter:blur(2px);margin-right:8px;"
                 "font-size:.95rem;line-height:1;color:#fff;"
             )
-            rise = f"<span style='{style_pill}'>{_sun_icon('rise',18)}<strong>{sr or '—'}</strong></span>"
-            sett = f"<span style='{style_pill}'>{_sun_icon('set',18)}<strong>{ss or '—'}</strong></span>"
+            rise = f"<span style='{style_pill}'>{_sun_icon('rise', 18)}<strong>{sr or '—'}</strong></span>"
+            sett = f"<span style='{style_pill}'>{_sun_icon('set', 18)}<strong>{ss or '—'}</strong></span>"
             sun_html = f"<div style='margin:2px 0 6px 0;'>{rise}{sett}</div>"
 
         meta_html = ""
@@ -223,7 +218,7 @@ def card_nameday() -> None:
           <div class="card-body" style="display:flex; align-items:flex-start; text-align:left; padding:10px 16px 12px 16px;">
             <div style="font-size:1.0rem; line-height:1.2; margin:0; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45); width:100%;">
               {status_html}  <!-- nyt ENSIMMÄISENÄ -->
-              <div class="card-title" style="margin:{'6px 0 0 0' if has_status else '0'}; color:#f2f4f7;">
+              <div class="card-title" style="margin:{"6px 0 0 0" if has_status else "0"}; color:#f2f4f7;">
                 {title_text}
               </div>
               {names_html}
@@ -274,7 +269,7 @@ def card_zen() -> None:
               <div class="card-title">Päivän zen</div>
               <div class="card-body" style="display:flex; justify-content:center; align-items:center; text-align:center; flex:1;">
                 <div style="margin:0; line-height:1.35;">
-                  <em>“{quote_text}”</em>{(' — ' + quote_author) if quote_author else ''}
+                  <em>“{quote_text}”</em>{(" — " + quote_author) if quote_author else ""}
                 </div>
               </div>
             </section>
@@ -350,8 +345,8 @@ def card_weather() -> None:
             pop = "—" if point["pop"] is None else f"{point['pop']}%"
             return f"""
                 <div class="weather-cell">
-                  <div class="label">{point['label']}</div>
-                  <div class="sub">{point['hour']}:00</div>
+                  <div class="label">{point["label"]}</div>
+                  <div class="sub">{point["hour"]}:00</div>
                   <div class="icon" style="width:48px; height:48px;">{icon_html}</div>
                   <div class="temp">{temp}°C</div>
                   <div class="pop">Sade {pop}</div>

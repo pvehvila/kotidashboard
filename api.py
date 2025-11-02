@@ -19,11 +19,7 @@ from config import (
     ATH_CACHE_FILE,
     NAMEDAY_FILE,
     NAMEDAY_PATHS,
-    HOLIDAY_FILE,
     HOLIDAY_PATHS,
-    POP_POSSIBLE_THRESHOLD,
-    SLEET_TEMP_MIN,
-    SLEET_TEMP_MAX,
     CLOUD_T_CLEAR,
     CLOUD_T_ALMOST,
     CLOUD_T_PARTLY,
@@ -502,7 +498,7 @@ def card_weather_debug_matrix():
 
     def render_row(label: str, items: List[Tuple[str, str]]) -> str:
         row_html = (
-            f"<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
+            "<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
         )
         row_html += f"<div style='width:110px; opacity:.8;'>{label}</div>"
         for desc, key in items:
@@ -885,7 +881,7 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
             except Exception as e:
                 report_error("btc_ath: write cache", e)
             return float(ath), str(ath_date)
-    except requests.HTTPError as e:
+    except requests.HTTPError:
         try:
             cached = json.loads(ATH_CACHE_FILE.read_text(encoding="utf-8"))
             return float(cached.get("ath_eur")), str(cached.get("ath_date"))
@@ -901,38 +897,18 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
 
 
 # api.py
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote
-import json
 
-import datetime as dt
-import pandas as pd
-import requests
 import streamlit as st
 
 from config import (
-    TZ,
     HTTP_TIMEOUT_S,
     CACHE_TTL_SHORT,
     CACHE_TTL_MED,
     CACHE_TTL_LONG,
-    ATH_CACHE_FILE,
-    NAMEDAY_FILE,
-    NAMEDAY_PATHS,
-    HOLIDAY_FILE,
-    HOLIDAY_PATHS,
-    POP_POSSIBLE_THRESHOLD,
-    SLEET_TEMP_MIN,
-    SLEET_TEMP_MAX,
-    CLOUD_T_CLEAR,
-    CLOUD_T_ALMOST,
-    CLOUD_T_PARTLY,
-    CLOUD_T_MOSTLY,
 )
-from utils import report_error
-from weather_icons import render_foreca_icon
 
 # ------------------- HTTP UTILS -------------------
 
@@ -1404,7 +1380,7 @@ def card_weather_debug_matrix():
 
     def render_row(label: str, items: List[Tuple[str, str]]) -> str:
         row_html = (
-            f"<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
+            "<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
         )
         row_html += f"<div style='width:110px; opacity:.8;'>{label}</div>"
         for desc, key in items:
@@ -1787,7 +1763,7 @@ def fetch_btc_ath_eur() -> Tuple[Optional[float], Optional[str]]:
             except Exception as e:
                 report_error("btc_ath: write cache", e)
             return float(ath), str(ath_date)
-    except requests.HTTPError as e:
+    except requests.HTTPError:
         try:
             cached = json.loads(ATH_CACHE_FILE.read_text(encoding="utf-8"))
             return float(cached.get("ath_eur")), str(cached.get("ath_date"))

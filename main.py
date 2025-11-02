@@ -1,8 +1,8 @@
 # main.py
 """Main entry point for the HomeDashboard Streamlit application."""
+
 import streamlit as st
 
-from config import PLOTLY_CONFIG
 from ui import (
     card_bitcoin,
     card_nameday,
