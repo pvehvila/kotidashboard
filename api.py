@@ -70,31 +70,26 @@ def http_get_json(url: str, timeout: float = HTTP_TIMEOUT_S) -> dict:
 
 # ------------------- ELECTRICITY PRICES -------------------
 
-def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[int]:
-    """Pura tunti monesta eri kenttämuodosta."""
-    for key in ("hour", "Hour", "H"):
-        if value := item.get(key):
-            try:
-                hour = int(value)
-                if 0 <= hour <= 23:
-                    return hour
-            except ValueError:
-                pass
+def _parse_cents_from_item(item: dict) -> Optional[float]:
+    # v2:lla on startDate / endDate → niissä price on jo snt/kWh
+    is_v2_like = "startDate" in item or "endDate" in item
 
-    for key in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime",
-                "start", "Start", "startDate"):
+    for key in ("cents", "cents_per_kwh", "price", "Price", "value", "Value", "EUR_per_kWh"):
         if value := item.get(key):
             try:
-                timestamp = str(value).replace("Z", "+00:00")
-                # Korjattu: datetime.fromisoformat
-                dt_obj = datetime.fromisoformat(timestamp)
-                dt_obj = dt_obj.replace(tzinfo=TZ) if dt_obj.tzinfo is None else dt_obj.astimezone(TZ)
-                if 0 <= dt_obj.hour <= 23 and dt_obj.date() == date_ymd:
-                    return dt_obj.hour
+                price = float(value)
             except ValueError:
                 continue
 
-    return idx if 0 <= idx <= 23 else None
+            # jos näyttää v2:lta, palautetaan sellaisenaan
+            if is_v2_like:
+                return price
+
+            # vanha logiikka: jos iso luku → se on jo senteissä
+            # jos pieni → se on euroja, kerrotaan sadalla
+            return price if price >= 1.0 else price * 100.0
+
+    return None
 
 def _parse_cents_from_item(item: dict) -> Optional[float]:
     for key in ("cents", "cents_per_kwh", "price", "Price", "value", "Value", "EUR_per_kWh"):
