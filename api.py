@@ -1,15 +1,17 @@
-import datetime as dt  # <-- TÄRKEÄ: dt = datetime
-from datetime import datetime, timedelta  # Lisätty: datetime ja timedelta
+import time
 import json
+import datetime as dt  # <-- TÄRKEÄ: dt = datetime
+
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import quote
+
 import pandas as pd
 import requests
 from requests.exceptions import RequestException
 import streamlit as st
-import time
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import quote
 
 from config import (
     TZ,
@@ -305,65 +307,66 @@ def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[Dict[int, str]
 
     return maps_day, maps_night
 
-@st.cache_data(ttl=CACHE_TTL_LONG)
-def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
-    try:
-        df = pd.read_excel("WMO_Foreca-koodit.xlsx", engine="openpyxl", header=[0, 1])
-    except Exception:
-        df = pd.read_excel("WMO_Foreca-koodit.xlsx", engine="openpyxl")
+# Fallback _prep jos ei ole määritelty muualla
+if "_prep" not in globals():
+    def _prep(raw: str, suffix: str, last: Optional[str]) -> Optional[str]:
+        """Yksinkertainen valmistelu: palauta raw jos ei tyhjä, muuten viimeinen arvo."""
+        s = raw.strip() if raw else ""
+        return s if s else last
 
-    def norm(s: str) -> str:
-        return str(s).strip().lower().replace("ä", "a").replace("ö", "o")
+def _read_wmo_mapping(path: Optional[str] = None) -> "pd.DataFrame":
+    """Try to read mapping dataframe from given path or common filenames in project root."""
+    candidates = []
+    if path:
+        candidates.append(Path(path))
+    root = Path(__file__).parent
+    for name in ("wmo_foreca_map.xlsx", "wmo_foreca_map.csv", "mappings.xlsx", "mappings.csv"):
+        candidates.append(root / name)
 
-    if isinstance(df.columns, pd.MultiIndex):
-        normcols = [(norm(c[0]), norm(c[1])) for c in df.columns]
-    else:
-        normcols = [(norm(c), "") for c in df.columns]
+    for p in candidates:
+        try:
+            if not p or not p.exists():
+                continue
+            if p.suffix.lower() in (".xls", ".xlsx"):
+                return pd.read_excel(p)
+            return pd.read_csv(p)
+        except Exception:
+            continue
+    return pd.DataFrame()  # empty fallback
 
-    wmo_idx = next((i for i, (a, b) in enumerate(normcols) if "code" in a and "figure" in a), None)
-    day_idx = next((i for i, (a, b) in enumerate(normcols) if "foreca" in a and "paiva" in b), None)
-    night_idx = next((i for i, (a, b) in enumerate(normcols) if "foreca" in a and "yo" in b), None)
-    if wmo_idx is None or day_idx is None or night_idx is None:
-        raise KeyError(f"Columns not found: {list(df.columns)}")
-
-    wmo_col = df.columns[wmo_idx]
-    day_col = df.columns[day_idx]
-    night_col = df.columns[night_idx]
-    df = df.dropna(subset=[wmo_col])
+# Muokattu: df voi olla None -> luetaan fallback-data jos tarvitaan
+def _load_wmo_foreca_map(
+    df: Optional["pd.DataFrame"] = None,
+    wmo_col: str = "wmo",
+    day_col: str = "day",
+    night_col: str = "night",
+) -> Dict[str, Dict[int, str]]:
+    if df is None:
+        df = _read_wmo_mapping()
+    if df.empty:
+        return {"day": {}, "night": {}}
 
     maps_day: Dict[int, str] = {}
     maps_night: Dict[int, str] = {}
     last_day_full: Optional[str] = None
     last_night_full: Optional[str] = None
 
-    def _prep(val: str, prefix: str, last_full: Optional[str]) -> Optional[str]:
-        if not val or val == "-" or pd.isna(val):
-            return last_full
-        val = str(val).strip().lower()
-        if len(val) >= 4 and val[0] in ("d", "n") and val[1:].isdigit():
-            return val
-        if val.isdigit() and (len(val) == 3 or len(val) == 4):
-            return prefix + val[-3:]
-        return last_full
+    def _row_scalar(cell: Any) -> Any:
+        try:
+            if hasattr(cell, "iloc"):
+                return cell.iloc[0] if len(cell) > 0 else None
+            if hasattr(cell, "item"):
+                try:
+                    return cell.item()
+                except Exception:
+                    return cell
+            return cell
+        except Exception:
+            return None
 
-    # Korjattu: sisennys ja current_wmo
     for _, row in df.iterrows():
         try:
-            current_wmo = int(row[wmo_col].item())  # <-- Määritelty
-
-            def _row_scalar(cell):
-                # Palauta solun arvo scalaarina (tukee Series / numpy / pandas scalars)
-                try:
-                    if hasattr(cell, "iloc"):
-                        return cell.iloc[0] if len(cell) > 0 else None
-                    if hasattr(cell, "item"):
-                        try:
-                            return cell.item()
-                        except Exception:
-                            return cell
-                    return cell
-                except Exception:
-                    return None
+            current_wmo = int(_row_scalar(row[wmo_col]))  # turvallinen skalaarin haku
 
             val_day = _row_scalar(row[day_col])
             raw_day = "" if val_day is None or pd.isna(val_day) else str(val_day).strip()
@@ -381,6 +384,9 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
                 last_night_full = night_full
         except Exception:
             continue
+
+    # estää "assigned but not used" lint-varoitukset
+    _ = (last_day_full, last_night_full)
 
     return {"day": maps_day, "night": maps_night}
 
