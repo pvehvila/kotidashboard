@@ -168,54 +168,50 @@ Price15 = Dict[str, Union[datetime, float]]  # "ts" -> datetime, "cents" -> floa
 
 
 def _normalize_prices_list_15min(items: List[dict], date_ymd: dt.date) -> List[Price15]:
-    """
-    Tehdään listasta uniikki 15 min aikaleiman mukaan.
-    """
     out_map: Dict[datetime, float] = {}
 
     for idx, item in enumerate(items or []):
-        # haetaan aikaleima jostain yleisestä kentästä
         ts: Optional[datetime] = None
         for key in (
-            "time",
-            "Time",
-            "timestamp",
-            "Timestamp",
-            "datetime",
-            "DateTime",
-            "start",
-            "Start",
+            "time", "Time",
+            "timestamp", "Timestamp",
+            "datetime", "DateTime",
+            "start", "Start",
+            "startDate",  # v2
+            "endDate",    # varalle
         ):
             if key in item and item[key]:
                 try:
                     tmp = str(item[key]).replace("Z", "+00:00")
-                    ts = datetime.fromisoformat(tmp)
-                    if ts.tzinfo is None:
-                        ts = ts.replace(tzinfo=TZ)
+                    dt_obj = datetime.fromisoformat(tmp)
+                    if dt_obj.tzinfo is None:
+                        dt_obj = dt_obj.replace(tzinfo=TZ)
                     else:
-                        ts = ts.astimezone(TZ)
+                        dt_obj = dt_obj.astimezone(TZ)
+                    ts = dt_obj
                 except Exception:
                     ts = None
                 break
 
-        # jos ei löytynyt aikaleimaa, tehdään se indeksistä
         if ts is None:
             base = datetime.combine(date_ymd, datetime.min.time()).replace(tzinfo=TZ)
             ts = base + timedelta(minutes=15 * idx)
 
         ts = _floor_to_quarter(ts)
 
-        # hinta
+        if ts.date() != date_ymd:
+            # v2 antaa 48h, suodatetaan vain pyydetty päivä
+            continue
+
         cents = _parse_cents_from_item(item)
         if cents is None:
             continue
 
-        # talteen
         if ts not in out_map:
             out_map[ts] = float(cents)
 
-    # järjestetty lista
     return [{"ts": ts, "cents": out_map[ts]} for ts in sorted(out_map.keys())]
+
 
 
 def _expand_hourly_to_15min(
@@ -244,28 +240,58 @@ def _expand_hourly_to_15min(
     return out
 
 
+def _fetch_15min_from_porssisahko_v2() -> List[dict]:
+    """
+    Hakee suoraan v2/latest-prices.json -rajapinnasta 48h varttihinnat.
+    Palauttaa sellaisenaan listan, jossa on kentät:
+      price (snt/kWh, ALV mukana)
+      startDate (UTC, Z)
+      endDate (UTC, Z)
+    """
+    url = "https://api.porssisahko.net/v2/latest-prices.json"
+    data = http_get_json(url)
+    if isinstance(data, dict):
+        return data.get("prices", []) or []
+    return []
+
 @st.cache_data(ttl=CACHE_TTL_MED)
 def try_fetch_prices_15min(date_ymd: dt.date) -> Optional[List[Price15]]:
+    """
+    Yrittää lukea hinnat 15 min tarkkuudella.
+    1) ensin yritetään v2/latest-prices.json (paras lähde vartteihin)
+    2) jos se epäonnistuu, käytetään vanhaa tuntidata -> laajennus
+    """
+    # 1) yritä v2
+    try:
+        v2_items = _fetch_15min_from_porssisahko_v2()
+        if v2_items:
+            # v2:sta tulee UTC-aikoja => normalisoidaan ja suodatetaan
+            out = _normalize_prices_list_15min(v2_items, date_ymd)
+            if out:
+                return out
+    except Exception as e:
+        # jos v2 kaatuu, jatketaan vanhaan tapaan
+        report_error(f"prices: v2 15min {date_ymd.isoformat()}", e)
+
+    # 2) vanha fallback: hae päivän hinnat (tuntina) ja laajenna
     base_items = fetch_prices_for(date_ymd)
     if not base_items:
         return None
 
-    # loki siitä mitä pohjalta lähdetään tekemään 15 min -listaa
-    logger.info("15min_base date=%s items=%s", date_ymd.isoformat(), base_items)
-
+    # tarkista onko niissä jo minuuttitietoa
     has_ts = any(
-        any(k in item for k in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start"))
+        any(k in item for k in ("time", "Time", "timestamp", "Timestamp",
+                                "datetime", "DateTime", "start", "Start",
+                                "startDate", "endDate"))
         for item in base_items
     )
 
     if has_ts:
-        out = _normalize_prices_list_15min(base_items, date_ymd)
-        logger.info("15min_norm date=%s items=%s", date_ymd.isoformat(), out)
-        return out
+        return _normalize_prices_list_15min(base_items, date_ymd)
 
-    out = _expand_hourly_to_15min(base_items, date_ymd)
-    logger.info("15min_expanded date=%s items=%s", date_ymd.isoformat(), out)
-    return out
+    return _expand_hourly_to_15min(base_items, date_ymd)
+
+
 
 
 
@@ -283,15 +309,48 @@ def _fetch_from_sahkonhintatanaan(date_ymd: dt.date) -> List[Dict[str, float]]:
 
 
 def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
-    url = f"https://api.porssisahko.net/v1/price.json?date={date_ymd:%Y-%m-%d}"
+    """
+    Hakee hinnat porssisahko v2 -rajapinnasta (latest-prices),
+    suodattaa oikean päivän ja tekee niistä tuntihinnat.
+    """
+    url = "https://api.porssisahko.net/v2/latest-prices.json"
     data = http_get_json(url)
-    _log_raw_prices("porssisahko", date_ymd, data)
 
-    items = data.get("prices", []) if isinstance(data, dict) else data or []
-    prices = _normalize_prices_list(items, date_ymd)
-    logger.info("norm_hours source=%s date=%s items=%s",
-                "porssisahko", date_ymd.isoformat(), prices)
-    return prices
+    # v2: {"prices": [{"price": 0.513, "startDate": "...Z", "endDate": "...Z"}, ...]}
+    items = data.get("prices", []) if isinstance(data, dict) else []
+
+    # suodatetaan vain ne rivit, joiden startDate osuu pyydettyyn päivään Helsingin ajassa
+    per_hour: Dict[int, List[float]] = {}
+
+    for item in items:
+        start = item.get("startDate")
+        price = item.get("price")
+        if not start or price is None:
+            continue
+
+        try:
+            # v2 on aina UTC:ssa → muutetaan dashboardin TZ:ään
+            dt_utc = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
+            dt_local = dt_utc.astimezone(TZ)
+        except Exception:
+            continue
+
+        if dt_local.date() != date_ymd:
+            continue
+
+        hour = dt_local.hour
+        per_hour.setdefault(hour, []).append(float(price))
+
+    # nyt meillä on per_hour[hour] = [4 varttia] → tehdään niistä keskiarvo
+    out: List[Dict[str, float]] = []
+    for hour, quarter_prices in sorted(per_hour.items()):
+        if not quarter_prices:
+            continue
+        avg_cents = sum(quarter_prices) / len(quarter_prices)
+        # API antaa snt/kWh → me palautetaan sama
+        out.append({"hour": hour, "cents": avg_cents})
+
+    return out
 
 
 
