@@ -1,4 +1,4 @@
-### docs/mermaid/sequence_bitcoin.md
+### 📁 docs/mermaid/sequence_bitcoin.md
 
 # Sekvenssi: Bitcoin-kortti
 
