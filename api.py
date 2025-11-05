@@ -150,9 +150,6 @@ def _parse_ts_15min_from_item(item: dict, date_ymd: dt.date, idx: int) -> Option
     return base + timedelta(minutes=15 * idx)
 
 
-from typing import List, Dict, Union, Optional
-from datetime import datetime, timedelta
-
 # yksi yhteinen tyyppi 15 min -hinnoille
 Price15 = Dict[str, Union[datetime, float]]  # "ts" -> datetime, "cents" -> float
 

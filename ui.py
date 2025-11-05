@@ -22,7 +22,6 @@ from api import (
     fetch_nameday_today,
     fetch_holiday_today,
     fetch_weather_points,
-    try_fetch_prices,
     try_fetch_prices_15min,
 )
 from config import (
