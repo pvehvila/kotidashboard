@@ -1,23 +1,15 @@
-# api.py — siivottu, ilman duplikaatteja
-
-from __future__ import annotations
-
-import logging
-from typing import Optional, Dict, Any
-import requests
-from requests.exceptions import RequestException
-import time
-
-from datetime import datetime, timedelta
-import datetime as dt
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote
+import datetime as dt  # <-- TÄRKEÄ: dt = datetime
+from datetime import datetime, timedelta  # Lisätty: datetime ja timedelta
 import json
-
+import logging
+from pathlib import Path
 import pandas as pd
 import requests
+from requests.exceptions import RequestException
 import streamlit as st
+import time
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import quote
 
 from config import (
     TZ,
@@ -92,6 +84,7 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[i
         if value := item.get(key):
             try:
                 timestamp = str(value).replace("Z", "+00:00")
+                # Korjattu: datetime.fromisoformat
                 dt_obj = datetime.fromisoformat(timestamp)
                 dt_obj = dt_obj.replace(tzinfo=TZ) if dt_obj.tzinfo is None else dt_obj.astimezone(TZ)
                 if 0 <= dt_obj.hour <= 23 and dt_obj.date() == date_ymd:
@@ -255,47 +248,30 @@ import pandas as pd
 from typing import Any
 
 def _cloud_icon_from_cover(cover: Any, is_day: bool) -> str:
-    """
-    Palauta Foreca-pilviavain pilvisyysprosentista.
-    Hyväksyy int/float, numpy-skaalarin, pandas.Series-arvon tai merkkijonon.
-    Palauttaa aina 'd000'..'d400' / 'n000'..'n400' avaimen.
-    """
-
     def ensure_int_strict(x: Any) -> int:
-        """Muunna erilaiset tyypit turvallisesti intiksi."""
-        # pandas.Series → ensimmäinen arvo
         if isinstance(x, pd.Series):
             if x.empty:
                 raise TypeError("empty Series")
             x = x.iloc[0]
-
-        # numpy-skaalarit
         try:
-            import numpy as np  # paikallinen import ettei riko ilman numpyakin
+            import numpy as np
             if isinstance(x, (np.integer, np.floating)):
-                return int(x)  # type: ignore[arg-type]
+                return int(x)
         except Exception:
             pass
-
-        # perusarvot
         if isinstance(x, (int, float)):
             return int(x)
-
-        # merkkijono joka voidaan muuntaa luvuksi
         if isinstance(x, str):
             s = x.strip().replace(",", ".")
             return int(float(s))
-
         raise TypeError(f"unsupported type: {type(x).__name__}")
 
-    # --- itse päälogiikka ---
     try:
         cov: int = ensure_int_strict(cover)
     except Exception:
-        cov = 100  # oletus jos virheellinen arvo
+        cov = 100
 
     prefix = "d" if is_day else "n"
-
     if cov < CLOUD_T_CLEAR:
         return f"{prefix}000"
     if cov < CLOUD_T_ALMOST:
@@ -306,7 +282,28 @@ def _cloud_icon_from_cover(cover: Any, is_day: bool) -> str:
         return f"{prefix}300"
     return f"{prefix}400"
 
+def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[Dict[int, str], Dict[int, str]]:
+    maps_day: Dict[int, str] = {}
+    maps_night: Dict[int, str] = {}
+    last_day_full: Optional[str] = None
+    last_night_full: Optional[str] = None
 
+    for _, row in df.iterrows():
+        try:
+            current_wmo = int(row[wmo_col].item())  # <-- Määritelty
+            day_full = row.get('day_full')
+            night_full = row.get('night_full')
+
+            if day_full:
+                maps_day[current_wmo] = day_full
+                last_day_full = day_full
+            if night_full:
+                maps_night[current_wmo] = night_full
+                last_night_full = night_full
+        except Exception:
+            continue
+
+    return maps_day, maps_night
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
@@ -349,21 +346,38 @@ def _load_wmo_foreca_map() -> Dict[str, Dict[int, str]]:
             return prefix + val[-3:]
         return last_full
 
+    # Korjattu: sisennys ja current_wmo
     for _, row in df.iterrows():
         try:
-            wmo_value = row[wmo_col].item()
-        except ValueError:
-            raise ValueError(f"Expected a single value for {wmo_col}, got multiple values")
-            raw_day = "" if pd.isna(row[day_col]) else str(row[day_col]).strip()
-            raw_night = "" if pd.isna(row[night_col]) else str(row[night_col]).strip()
+            current_wmo = int(row[wmo_col].item())  # <-- Määritelty
+
+            def _row_scalar(cell):
+                # Palauta solun arvo scalaarina (tukee Series / numpy / pandas scalars)
+                try:
+                    if hasattr(cell, "iloc"):
+                        return cell.iloc[0] if len(cell) > 0 else None
+                    if hasattr(cell, "item"):
+                        try:
+                            return cell.item()
+                        except Exception:
+                            return cell
+                    return cell
+                except Exception:
+                    return None
+
+            val_day = _row_scalar(row[day_col])
+            raw_day = "" if val_day is None or pd.isna(val_day) else str(val_day).strip()
+            val_night = _row_scalar(row[night_col])
+            raw_night = "" if val_night is None or pd.isna(val_night) else str(val_night).strip()
+
             day_full = _prep(raw_day, "d", last_day_full)
             night_full = _prep(raw_night, "n", last_night_full)
 
             if day_full:
-                maps_day[wmo] = day_full
+                maps_day[current_wmo] = day_full
                 last_day_full = day_full
             if night_full:
-                maps_night[wmo] = night_full
+                maps_night[current_wmo] = night_full
                 last_night_full = night_full
         except Exception:
             continue
@@ -383,41 +397,29 @@ def wmo_to_foreca_code(code: Optional[int], is_day: bool,
     code = int(code)
     lookup = maps["day" if is_day else "night"]
     if key := lookup.get(code):
-        _trace_map(code, is_day, pop, temp_c, cloudcover, key, "Excel mapping (päivä/yö, valmis avain)")
+        _trace_map(code, is_day, pop, temp_c, cloudcover, key, "Excel mapping")
         return key
 
     key = _cloud_icon_from_cover(cloudcover, is_day)
-    _trace_map(code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover bucket")
+    _trace_map(code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover")
     return key
 
-from typing import Optional, Any
-
 def _as_bool(x: Any) -> Optional[bool]:
-    """Convert various types to bool, handling pandas/numpy types safely."""
     try:
-        # Handle None/NaN first
         if x is None:
             return None
-        
-        # pandas.Series → extract first value
-        if hasattr(x, 'iloc'):  # More reliable check for Series
+        if hasattr(x, 'iloc'):
             if len(x) == 0:
                 return None
             x = x.iloc[0]
-        
-        # Handle pandas NA/NaT
         try:
             import pandas as pd
             if pd.isna(x):
                 return None
         except (ImportError, Exception):
             pass
-        
-        # numpy scalar → extract Python value
         if hasattr(x, "item"):
             x = x.item()
-        
-        # Now convert to bool
         if isinstance(x, bool):
             return x
         if isinstance(x, (int, float)):
@@ -428,12 +430,14 @@ def _as_bool(x: Any) -> Optional[bool]:
                 return True
             if s in ('false', '0', 'no', ''):
                 return False
-            return bool(int(float(s)))
-        
+            # KORJAUS: Lisää try-except tähän
+            try:
+                return bool(int(float(s)))
+            except (ValueError, TypeError):
+                return None
         return bool(x)
     except Exception:
         return None
-
 
 def _as_float(x: Any) -> Optional[float]:
     """Convert various types to float, handling pandas/numpy types safely."""
@@ -443,9 +447,12 @@ def _as_float(x: Any) -> Optional[float]:
         
         # pandas.Series → extract first value
         if hasattr(x, 'iloc'):
-            if len(x) == 0:
-                return None
-            x = x.iloc[0]
+            try:
+                if len(x) == 0:
+                    return None
+                x = x.iloc[0]
+            except TypeError:
+                pass
         
         # Handle pandas NA/NaT
         try:
@@ -493,9 +500,8 @@ def _as_int(x: Any) -> Optional[int]:
         return None
 
 
-@st.cache_data(ttl=CACHE_TTL_MED)
 def fetch_weather_points(lat: float, lon: float, tz_name: str,
-                         offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)) -> Dict:
+                        offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)) -> Dict:
     url = (
         f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
         f"&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover,is_day"
@@ -510,6 +516,7 @@ def fetch_weather_points(lat: float, lon: float, tz_name: str,
     covers = hourly.get("cloudcover", [])
     isday = hourly.get("is_day", [])
 
+    # Korjattu: datetime.now(TZ)
     now = datetime.now(TZ).replace(minute=0, second=0, microsecond=0)
     points = []
 
@@ -531,8 +538,8 @@ def fetch_weather_points(lat: float, lon: float, tz_name: str,
         pop = _as_int(raw_pop)
         wmo = _as_int(raw_wmo)
         ccov = _as_int(raw_ccov)
-        # Always ensure we get a proper bool value
         is_day_result = _as_bool(raw_isday)
+        # Korjattu: käytetään bool-arvoa
         is_day_flag: bool = is_day_result if is_day_result is not None else (6 <= target_time.hour <= 20)
 
         points.append({
