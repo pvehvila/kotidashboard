@@ -5,7 +5,7 @@ import datetime as dt  # <-- TÄRKEÄ: dt = datetime
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import quote
 
 import pandas as pd
@@ -119,6 +119,143 @@ def _normalize_prices_list(items: List[dict], date_ymd: dt.date) -> List[Dict[st
         except Exception:
             continue
     return [{"hour": h, "cents": out_map[h]} for h in sorted(out_map.keys())]
+
+def _floor_to_quarter(dt_obj: datetime) -> datetime:
+    q = (dt_obj.minute // 15) * 15
+    return dt_obj.replace(minute=q, second=0, microsecond=0)
+
+def _parse_ts_15min_from_item(item: dict, date_ymd: dt.date, idx: int) -> Optional[datetime]:
+    """
+    Yritetään löytää täsmällinen aikaleima (esim. 2025-11-05T09:15:00Z) riviltä.
+    Jos ei löydy, palataan None.
+    """
+    for key in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start", "startDate"):
+        if value := item.get(key):
+            try:
+                ts = str(value).replace("Z", "+00:00")
+                dt_obj = datetime.fromisoformat(ts)
+                # jos ei ole tz:tä, oletetaan dashboardin TZ
+                if dt_obj.tzinfo is None:
+                    dt_obj = dt_obj.replace(tzinfo=TZ)
+                else:
+                    dt_obj = dt_obj.astimezone(TZ)
+                # varmistetaan että päivä täsmää
+                if dt_obj.date() == date_ymd:
+                    return _floor_to_quarter(dt_obj)
+            except Exception:
+                continue
+    # fallback: jos API antaa vain järjestysindeksin, voidaan tehdä arvauksia
+    # esim. klo 00:00 + idx * 15 min
+    base = datetime.combine(date_ymd, datetime.min.time()).replace(tzinfo=TZ)
+    return base + timedelta(minutes=15 * idx)
+
+
+from typing import List, Dict, Union, Optional
+from datetime import datetime, timedelta
+
+# yksi yhteinen tyyppi 15 min -hinnoille
+Price15 = Dict[str, Union[datetime, float]]  # "ts" -> datetime, "cents" -> float
+
+
+def _normalize_prices_list_15min(items: List[dict], date_ymd: dt.date) -> List[Price15]:
+    """
+    Tehdään listasta uniikki 15 min aikaleiman mukaan.
+    """
+    out_map: Dict[datetime, float] = {}
+
+    for idx, item in enumerate(items or []):
+        # haetaan aikaleima jostain yleisestä kentästä
+        ts: Optional[datetime] = None
+        for key in (
+            "time",
+            "Time",
+            "timestamp",
+            "Timestamp",
+            "datetime",
+            "DateTime",
+            "start",
+            "Start",
+        ):
+            if key in item and item[key]:
+                try:
+                    tmp = str(item[key]).replace("Z", "+00:00")
+                    ts = datetime.fromisoformat(tmp)
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=TZ)
+                    else:
+                        ts = ts.astimezone(TZ)
+                except Exception:
+                    ts = None
+                break
+
+        # jos ei löytynyt aikaleimaa, tehdään se indeksistä
+        if ts is None:
+            base = datetime.combine(date_ymd, datetime.min.time()).replace(tzinfo=TZ)
+            ts = base + timedelta(minutes=15 * idx)
+
+        ts = _floor_to_quarter(ts)
+
+        # hinta
+        cents = _parse_cents_from_item(item)
+        if cents is None:
+            continue
+
+        # talteen
+        if ts not in out_map:
+            out_map[ts] = float(cents)
+
+    # järjestetty lista
+    return [{"ts": ts, "cents": out_map[ts]} for ts in sorted(out_map.keys())]
+
+
+def _expand_hourly_to_15min(
+    hourly: List[Dict[str, float]],
+    date_ymd: dt.date,
+) -> List[Price15]:
+    """
+    Vanhan mallinen tuntidata -> neljä 15 min -pätkää per tunti.
+    """
+    out: List[Price15] = []
+
+    for item in hourly:
+        hour = int(item["hour"])
+        cents = float(item["cents"])
+
+        base = (
+            datetime.combine(date_ymd, datetime.min.time())
+            .replace(tzinfo=TZ)
+            + timedelta(hours=hour)
+        )
+
+        for q in range(4):
+            ts = base + timedelta(minutes=15 * q)
+            out.append({"ts": ts, "cents": cents})
+
+    return out
+
+
+@st.cache_data(ttl=CACHE_TTL_MED)
+def try_fetch_prices_15min(date_ymd: dt.date) -> Optional[List[Price15]]:
+    """
+    Yrittää lukea hinnat 15 min tarkkuudella. Jos API antaa vain tuntihinnat,
+    muunnetaan ne 15 minuutin listaksi.
+    """
+    base_items = fetch_prices_for(date_ymd)
+    if not base_items:
+        return None
+
+    # jos yhdessäkään rivissä on minuutteja sisältävä aikakenttä, normalisoidaan 15 min -listaksi
+    has_ts = any(
+        any(k in item for k in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start"))
+        for item in base_items
+    )
+
+    if has_ts:
+        return _normalize_prices_list_15min(base_items, date_ymd)
+
+    # muuten: vanha tuntidata -> laajennetaan
+    return _expand_hourly_to_15min(base_items, date_ymd)
+
 
 
 def _fetch_from_sahkonhintatanaan(date_ymd: dt.date) -> List[Dict[str, float]]:
