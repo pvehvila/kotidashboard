@@ -1,3 +1,5 @@
+### 📁 **docs/mermaid/sequence_system.md**
+
 # Sekvenssi: System-kortti
 
 ```mermaid
