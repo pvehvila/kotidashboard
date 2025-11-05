@@ -91,15 +91,43 @@ def _parse_cents_from_item(item: dict) -> Optional[float]:
 
     return None
 
-def _parse_cents_from_item(item: dict) -> Optional[float]:
-    for key in ("cents", "cents_per_kwh", "price", "Price", "value", "Value", "EUR_per_kWh"):
+def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[int]:
+    """Yritetään purkaa tunti monesta eri kenttämuodosta."""
+    # suorat tuntikentät
+    for key in ("hour", "Hour", "H"):
         if value := item.get(key):
             try:
-                price = float(value)
-                return price if price >= 1.0 else price * 100.0
+                hour = int(value)
+                if 0 <= hour <= 23:
+                    return hour
             except ValueError:
                 pass
-    return None
+
+    # aikaleimakentät -> poimi tunti jos sama päivä
+    for key in (
+        "time", "Time",
+        "timestamp", "Timestamp",
+        "datetime", "DateTime",
+        "start", "Start",
+        "startDate",  # v2
+    ):
+        if value := item.get(key):
+            try:
+                ts = str(value).replace("Z", "+00:00")
+                dt_obj = datetime.fromisoformat(ts)
+                # jos rajapinta ei antanut tz:tä, oletetaan dashboardin TZ
+                if dt_obj.tzinfo is None:
+                    dt_obj = dt_obj.replace(tzinfo=TZ)
+                else:
+                    dt_obj = dt_obj.astimezone(TZ)
+                if dt_obj.date() == date_ymd and 0 <= dt_obj.hour <= 23:
+                    return dt_obj.hour
+            except ValueError:
+                continue
+
+    # fallback: järjestysindeksi
+    return idx if 0 <= idx <= 23 else None
+
 
 def _log_raw_prices(source: str, date_ymd: dt.date, data: object) -> None:
     """
@@ -115,7 +143,6 @@ def _log_raw_prices(source: str, date_ymd: dt.date, data: object) -> None:
         dumped = dumped[:2000] + "... (truncated)"
 
     logger.info("raw_prices source=%s date=%s data=%s", source, date_ymd.isoformat(), dumped)
-
 
 def _normalize_prices_list(items: List[dict], date_ymd: dt.date) -> List[Dict[str, float]]:
     out_map: Dict[int, float] = {}
