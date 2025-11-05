@@ -1,14 +1,5 @@
 # main.py
 """Main entry point for the HomeDashboard Streamlit application."""
-from logger_config import setup_logging
-import traceback
-import sys
-
-# Setup logging
-logger = setup_logging()
-
-import streamlit as st
-
 from ui import (
     card_bitcoin,
     card_nameday,
@@ -18,7 +9,14 @@ from ui import (
     card_zen,
     load_css,
 )
+import streamlit as st
 
+from logger_config import setup_logging
+import traceback
+import sys
+
+# Setup logging
+logger = setup_logging()
 
 def st_autorefresh(
     interval: int | None = None, key: str | None = None, **kwargs
