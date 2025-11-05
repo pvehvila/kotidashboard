@@ -96,7 +96,6 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[i
 
     return idx if 0 <= idx <= 23 else None
 
-
 def _parse_cents_from_item(item: dict) -> Optional[float]:
     for key in ("cents", "cents_per_kwh", "price", "Price", "value", "Value", "EUR_per_kWh"):
         if value := item.get(key):
@@ -106,6 +105,21 @@ def _parse_cents_from_item(item: dict) -> Optional[float]:
             except ValueError:
                 pass
     return None
+
+def _log_raw_prices(source: str, date_ymd: dt.date, data: object) -> None:
+    """
+    Kirjaa raakavastauksen lokiin. Lyhennetään ettei täytä lokia.
+    """
+    try:
+        dumped = json.dumps(data, ensure_ascii=False)
+    except Exception:
+        dumped = str(data)
+
+    # leikataan esim. 2000 merkkiin
+    if len(dumped) > 2000:
+        dumped = dumped[:2000] + "... (truncated)"
+
+    logger.info("raw_prices source=%s date=%s data=%s", source, date_ymd.isoformat(), dumped)
 
 
 def _normalize_prices_list(items: List[dict], date_ymd: dt.date) -> List[Dict[str, float]]:
@@ -148,7 +162,6 @@ def _parse_ts_15min_from_item(item: dict, date_ymd: dt.date, idx: int) -> Option
     # esim. klo 00:00 + idx * 15 min
     base = datetime.combine(date_ymd, datetime.min.time()).replace(tzinfo=TZ)
     return base + timedelta(minutes=15 * idx)
-
 
 # yksi yhteinen tyyppi 15 min -hinnoille
 Price15 = Dict[str, Union[datetime, float]]  # "ts" -> datetime, "cents" -> float
@@ -233,40 +246,53 @@ def _expand_hourly_to_15min(
 
 @st.cache_data(ttl=CACHE_TTL_MED)
 def try_fetch_prices_15min(date_ymd: dt.date) -> Optional[List[Price15]]:
-    """
-    Yrittää lukea hinnat 15 min tarkkuudella. Jos API antaa vain tuntihinnat,
-    muunnetaan ne 15 minuutin listaksi.
-    """
     base_items = fetch_prices_for(date_ymd)
     if not base_items:
         return None
 
-    # jos yhdessäkään rivissä on minuutteja sisältävä aikakenttä, normalisoidaan 15 min -listaksi
+    # loki siitä mitä pohjalta lähdetään tekemään 15 min -listaa
+    logger.info("15min_base date=%s items=%s", date_ymd.isoformat(), base_items)
+
     has_ts = any(
         any(k in item for k in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start"))
         for item in base_items
     )
 
     if has_ts:
-        return _normalize_prices_list_15min(base_items, date_ymd)
+        out = _normalize_prices_list_15min(base_items, date_ymd)
+        logger.info("15min_norm date=%s items=%s", date_ymd.isoformat(), out)
+        return out
 
-    # muuten: vanha tuntidata -> laajennetaan
-    return _expand_hourly_to_15min(base_items, date_ymd)
+    out = _expand_hourly_to_15min(base_items, date_ymd)
+    logger.info("15min_expanded date=%s items=%s", date_ymd.isoformat(), out)
+    return out
 
 
 
 def _fetch_from_sahkonhintatanaan(date_ymd: dt.date) -> List[Dict[str, float]]:
     url = f"https://www.sahkonhintatanaan.fi/api/v1/prices/{date_ymd:%Y}/{date_ymd:%m-%d}.json"
     data = http_get_json(url)
+    _log_raw_prices("sahkonhintatanaan", date_ymd, data)
+
     items = data.get("prices", []) if isinstance(data, dict) else data or []
-    return _normalize_prices_list(items, date_ymd)
+    prices = _normalize_prices_list(items, date_ymd)
+    logger.info("norm_hours source=%s date=%s items=%s",
+                "sahkonhintatanaan", date_ymd.isoformat(), prices)
+    return prices
+
 
 
 def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
     url = f"https://api.porssisahko.net/v1/price.json?date={date_ymd:%Y-%m-%d}"
     data = http_get_json(url)
+    _log_raw_prices("porssisahko", date_ymd, data)
+
     items = data.get("prices", []) if isinstance(data, dict) else data or []
-    return _normalize_prices_list(items, date_ymd)
+    prices = _normalize_prices_list(items, date_ymd)
+    logger.info("norm_hours source=%s date=%s items=%s",
+                "porssisahko", date_ymd.isoformat(), prices)
+    return prices
+
 
 
 def fetch_prices_for(date_ymd: dt.date) -> List[Dict[str, float]]:
