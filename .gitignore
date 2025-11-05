@@ -1,42 +1,55 @@
-# Python
+# --- Virtuaaliympäristöt ---
 .venv/
 venv/
+env/
+ENV/
+
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
+*.pyc
 *.egg-info/
+*.egg
+*.manifest
+*.spec
 
-# VS Code
+# --- Streamlit ---
+.streamlit/
+# mutta jos haluat säilyttää teema-asetukset ilman credentials-tietoja:
+!.streamlit/config.toml
+
+# --- Ympäristömuuttujat ---
+.env
+.env.*
+!*.example
+
+# --- Lokit ja välimuistit ---
+*.log
+*.tmp
+*.cache
+.cache/
+logs/
+nohup.out
+
+# --- Editorit ja työkalut ---
 .vscode/
+.idea/
 *.code-workspace
 
-# Streamlit ja lokit
-.streamlit/
-streamlit.out
-nohup.out
-*.log
-
-# Käyttöjärjestelmäkohtaiset
+# --- Järjestelmätiedostot ---
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Väliaikaiset tiedostot
-*.tmp
-*.bak
+# --- Raspberry Pi / Linux ---
 *.swp
+*.swo
+*.bak
+*.pid
 
-# Logs
-logs/
-*.log
-
-# Coverage reports
-.coverage
-coverage.xml
-htmlcov/
-
-# MyPy
-.mypy_cache/
-
-# Pytest
-.pytest_cache/
+# --- Windows / PowerShell ---
+*.ps1~
+*.bat~
+*.bak
