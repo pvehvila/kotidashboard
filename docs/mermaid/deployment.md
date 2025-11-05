@@ -3,28 +3,27 @@
 
 ### 📁 **docs/mermaid/deployment.md**
 
-```markdown
 # Deployment: Raspberry Pi 5 -ympäristö
 
 ```mermaid
 graph LR
   subgraph LAN
-    BrowserPC[PC / Phone / Lenovo M9]
-    Streamlit[HomeDashboard (Streamlit)]
-    Files[(Local JSON/PNG)]
-    Dotenv[(config / env)]
+    client["PC / phone / Lenovo M9"]
+    app["HomeDashboard Streamlit"]
+    files["Local JSON & PNG"]
+    env["Config / env"]
   end
 
   subgraph Infra
-    Pi[Raspberry Pi 5]
-    ERX[Ubiquiti EdgeRouter X (PoE)]
-    AP[Ubiquiti AC Lite AP]
+    pi["Raspberry Pi 5"]
+    router["Ubiquiti EdgeRouter X (PoE)"]
+    ap["Ubiquiti AC Lite AP"]
   end
 
-  BrowserPC <--HTTP--> Streamlit
-  Streamlit --- Files
-  Streamlit --- Dotenv
-  Pi --- Streamlit
-  ERX --- Pi
-  ERX --- AP
-  BrowserPC ~~~ AP
+  client <-- HTTP --> app
+  app --- files
+  app --- env
+  pi --- app
+  router --- pi
+  router --- ap
+  client ~~~ ap
