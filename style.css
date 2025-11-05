@@ -72,6 +72,14 @@ html body div:has(> #root) [data-testid="stAppViewContainer"]{
 }
 .card-body p{ margin:0 !important; padding:0 !important; font-size:.9rem !important; }
 small,.hint{ opacity:.75; }
+.card-top-equal {
+  display:flex;
+  flex-direction:column;
+}
+.card-top-equal .card-body {
+  flex:1;
+}
+
 
 /* =========================================================
    Plotly (korttimäiseksi)

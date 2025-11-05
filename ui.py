@@ -216,9 +216,9 @@ def card_nameday() -> None:
 
         # --- KORTTI normaalissa virrassa, ilman absoluuttisia kerroksia ---
         html = f"""
-        <section class="card"
-                 style="min-height:12dvh; position:relative; overflow:hidden;
-                        background-image:{bg_css}; background-size:cover; background-position:center;">
+        <section class="card card-top-equal"
+         style="height:180px; position:relative; overflow:hidden;
+                background-image:{bg_css}; background-size:cover; background-position:center;">
           <div class="card-body" style="display:flex; align-items:flex-start; text-align:left; padding:10px 16px 12px 16px;">
             <div style="font-size:1.0rem; line-height:1.2; margin:0; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45); width:100%;">
               {status_html}  <!-- nyt ENSIMMÄISENÄ -->
@@ -269,7 +269,7 @@ def card_zen() -> None:
         bg_layer = f"{overlay}, url('{bg_dataurl}')" if bg_dataurl else overlay
 
         html = f"""
-            <section class="card" style="min-height:12dvh; position:relative; overflow:hidden; background-image:{bg_layer}; background-size:cover; background-position:center;">
+            <section class="card card-top-equal" style="height:180px; position:relative; overflow:hidden; background-image:{bg_layer}; background-size:cover; background-position:center;">
               <div class="card-title">Päivän zen</div>
               <div class="card-body" style="display:flex; justify-content:center; align-items:center; text-align:center; flex:1;">
                 <div style="margin:0; line-height:1.35;">
