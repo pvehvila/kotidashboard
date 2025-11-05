@@ -29,3 +29,14 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# Pytest
+.pytest_cache/

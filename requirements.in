@@ -4,3 +4,19 @@ plotly
 requests
 python-dateutil
 pytz
+
+# Core dependencies
+Flask
+requests
+python-dotenv
+
+# Weather APIs
+foreca-weather
+here-location-services
+
+# Development tools
+pip-tools
+ruff
+pytest
+pytest-cov
+mypy
