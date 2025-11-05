@@ -270,15 +270,7 @@ def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
 
 
 def fetch_prices_for(date_ymd: dt.date) -> List[Dict[str, float]]:
-    try:
-        if prices := _fetch_from_sahkonhintatanaan(date_ymd):
-            return prices
-    except requests.HTTPError as e:
-        if e.response and e.response.status_code not in (400, 404):
-            report_error(f"prices: sahkonhintatanaan {date_ymd.isoformat()}", e)
-    except Exception as e:
-        report_error(f"prices: sahkonhintatanaan {date_ymd.isoformat()}", e)
-
+    # 1) yritä ensin api.porssisahko.net
     try:
         if prices := _fetch_from_porssisahko(date_ymd):
             return prices
@@ -287,6 +279,16 @@ def fetch_prices_for(date_ymd: dt.date) -> List[Dict[str, float]]:
             report_error(f"prices: porssisahko {date_ymd.isoformat()}", e)
     except Exception as e:
         report_error(f"prices: porssisahko {date_ymd.isoformat()}", e)
+
+    # 2) fallback: sahkonhintatanaan.fi
+    try:
+        if prices := _fetch_from_sahkonhintatanaan(date_ymd):
+            return prices
+    except requests.HTTPError as e:
+        if e.response and e.response.status_code not in (400, 404):
+            report_error(f"prices: sahkonhintatanaan {date_ymd.isoformat()}", e)
+    except Exception as e:
+        report_error(f"prices: sahkonhintatanaan {date_ymd.isoformat()}", e)
 
     return []
 
