@@ -1,6 +1,3 @@
-
----
-
 ### 📁 **docs/mermaid/deployment.md**
 
 # Deployment: Raspberry Pi 5 -ympäristö
