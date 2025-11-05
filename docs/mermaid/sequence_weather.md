@@ -1,3 +1,5 @@
+### 📁 **docs/mermaid/sequence_weather.md**
+
 # Sekvenssi: Sääkortti
 
 ```mermaid
