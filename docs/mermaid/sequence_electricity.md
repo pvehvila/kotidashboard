@@ -1,9 +1,5 @@
-
----
-
 ### 📁 **docs/mermaid/sequence_electricity.md**
 
-```markdown
 # Sekvenssi: Sähkön hinta -kortti
 
 ```mermaid
