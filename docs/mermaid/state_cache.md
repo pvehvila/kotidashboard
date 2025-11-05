@@ -1,9 +1,5 @@
-
----
-
 ### 📁 **docs/mermaid/state_cache.md**
 
-```markdown
 # Tilakaavio: Cache-tila
 
 ```mermaid
