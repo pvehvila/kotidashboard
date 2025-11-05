@@ -246,9 +246,6 @@ def clear_map_trace():
     _MAP_TRACE.clear()
 
 
-import pandas as pd
-from typing import Any
-
 def _cloud_icon_from_cover(cover: Any, is_day: bool) -> str:
     def ensure_int_strict(x: Any) -> int:
         if isinstance(x, pd.Series):
@@ -287,8 +284,6 @@ def _cloud_icon_from_cover(cover: Any, is_day: bool) -> str:
 def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[Dict[int, str], Dict[int, str]]:
     maps_day: Dict[int, str] = {}
     maps_night: Dict[int, str] = {}
-    last_day_full: Optional[str] = None
-    last_night_full: Optional[str] = None
 
     for _, row in df.iterrows():
         try:
@@ -298,10 +293,8 @@ def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[Dict[int, str]
 
             if day_full:
                 maps_day[current_wmo] = day_full
-                last_day_full = day_full
             if night_full:
                 maps_night[current_wmo] = night_full
-                last_night_full = night_full
         except Exception:
             continue
 
