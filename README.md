@@ -23,17 +23,8 @@
 
 ## 🧭 Koodin päivittäminen (Raspberry Pi 5)
 
-> Näillä ohjeilla voit päivittää Kotidashboardin uusimman version Raspberry Pi:lle.
-
-1. Kirjaudu SSH:lla Raspberryyn:  
-   ```bash
-   ssh admin@RaspberryPi5
-
-2. Syötä salasana:
- "admin@raspberrypi5's password: xxxxxxxxx"
-
-3. Hae tuorein versio GitHub:ista ja käynnistä palveu uudelleen:
- "update-dash"
+Hae tuorein versio GitHub:ista, päivitä Raspberry:n koodi, ja käynnistä palveu uudelleen:
+"DeployToPi.ps1"
 
 📘 README.md-linkit
 
