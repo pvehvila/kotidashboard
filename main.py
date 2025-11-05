@@ -1,5 +1,11 @@
 # main.py
 """Main entry point for the HomeDashboard Streamlit application."""
+from logger_config import setup_logging
+import traceback
+import sys
+
+# Setup logging
+logger = setup_logging()
 
 import streamlit as st
 
@@ -33,34 +39,42 @@ def st_autorefresh(
 
 def main() -> None:
     """Initialize and render the HomeDashboard layout."""
-    # Configure Streamlit page settings
-    st.set_page_config(
-        page_title="Kotidashboard",
-        layout="wide",
-        page_icon="🏠",
-    )
-    load_css("style.css")
-    st_autorefresh(interval=60_000, key="refresh")
+    try:
+        logger.info("Starting HomeDashboard")
+        # Configure Streamlit page settings
+        st.set_page_config(
+            page_title="Kotidashboard",
+            layout="wide",
+            page_icon="🏠",
+        )
+        load_css("style.css")
+        st_autorefresh(interval=60_000, key="refresh")
 
-    # Row 1: Nameday and Zen quote
-    col1, col2 = st.columns(2, gap="small")
-    with col1:
-        card_nameday()
-    with col2:
-        card_zen()
+        # Row 1: Nameday and Zen quote
+        col1, col2 = st.columns(2, gap="small")
+        with col1:
+            card_nameday()
+        with col2:
+            card_zen()
 
-    # Row 2: Weather
-    card_weather()
+        # Row 2: Weather
+        card_weather()
 
-    # Row 3: Electricity prices
-    card_prices()
+        # Row 3: Electricity prices
+        card_prices()
 
-    # Row 4: Bitcoin
-    card_bitcoin()
+        # Row 4: Bitcoin
+        card_bitcoin()
 
-    # Row 5: System status
-    card_system()
-
+        # Row 5: System status
+        card_system()
+    except KeyboardInterrupt:
+        logger.info("HomeDashboard shutdown requested")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Unhandled error: {str(e)}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

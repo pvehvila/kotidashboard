@@ -25,3 +25,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+# Logs
+logs/
+*.log

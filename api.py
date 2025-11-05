@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+from typing import Optional, Dict, Any
+import requests
+from requests.exceptions import RequestException
+import time
+
 from datetime import datetime, timedelta
 import datetime as dt
 from pathlib import Path
@@ -31,6 +37,24 @@ from config import (
 from utils import report_error
 from weather_icons import render_foreca_icon
 
+logger = logging.getLogger("homedashboard")
+
+def api_request_with_retry(url: str, 
+                          method: str = "GET", 
+                          retry_count: int = 3, 
+                          **kwargs) -> Optional[Dict[Any, Any]]:
+    """Make API request with retry logic"""
+    for attempt in range(retry_count):
+        try:
+            response = requests.request(method, url, **kwargs)
+            response.raise_for_status()
+            return response.json()
+        except RequestException as e:
+            logger.warning(f"API request failed (attempt {attempt + 1}/{retry_count}): {str(e)}")
+            if attempt == retry_count - 1:
+                logger.error(f"API request failed after {retry_count} attempts: {str(e)}")
+                return None
+            time.sleep(2 ** attempt)  # Exponential backoff
 
 # ------------------- HTTP UTILS -------------------
 
