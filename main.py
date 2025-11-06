@@ -1,6 +1,6 @@
 # main.py
 """Main entry point for the HomeDashboard Streamlit application."""
-from ui import (
+from src.ui import (
     card_bitcoin,
     card_nameday,
     card_prices,
@@ -11,7 +11,7 @@ from ui import (
 )
 import streamlit as st
 
-from logger_config import setup_logging
+from src.logger_config import setup_logging
 import traceback
 import sys
 

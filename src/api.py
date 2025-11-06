@@ -13,7 +13,7 @@ import requests
 from requests.exceptions import RequestException
 import streamlit as st
 
-from config import (
+from src.config import (
     TZ,
     HTTP_TIMEOUT_S,
     CACHE_TTL_SHORT,
@@ -28,8 +28,8 @@ from config import (
     CLOUD_T_PARTLY,
     CLOUD_T_MOSTLY,
 )
-from utils import report_error
-from weather_icons import render_foreca_icon
+from src.utils import report_error
+from src.weather_icons import render_foreca_icon
 
 logger = logging.getLogger("homedashboard")
 

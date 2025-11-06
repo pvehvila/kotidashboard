@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit.components.v1 import html as st_html
 
-from api import (
+from src.api import (
     fetch_btc_ath_eur,
     fetch_btc_eur,
     fetch_btc_last_24h_eur,   # ← LISÄÄ
@@ -24,7 +24,7 @@ from api import (
     fetch_weather_points,
     try_fetch_prices_15min,
 )
-from config import (
+from src.config import (
     BTC_Y_PAD_EUR,
     BTC_Y_PAD_PCT,
     BTC_Y_STEP_EUR,
@@ -42,7 +42,7 @@ from config import (
     PRICE_Y_STEP_SNT,
     TZ,
 )
-from utils import (
+from src.utils import (
     get_ip,
     report_error,
     _color_by_thresholds,
@@ -50,7 +50,7 @@ from utils import (
     fetch_sun_times,
     _sun_icon,
 )
-from weather_icons import render_foreca_icon
+from src.weather_icons import render_foreca_icon
 
 # ------------------- UTILITY FUNCTIONS -------------------
 

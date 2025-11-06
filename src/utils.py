@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional
 import socket
 import streamlit as st
 
-from config import (
+from src.config import (
     DEV,
     PRICE_HIGH_THR,
     PRICE_LOW_THR,

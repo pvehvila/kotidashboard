@@ -5,7 +5,7 @@ import base64
 # Yritetään useita hakemistoja (järjestyksessä). HERE tulee configista.
 SEARCH_DIRS = []
 try:
-    from config import HERE
+    from src.config import HERE
 
     SEARCH_DIRS += [HERE / "foreca", HERE / "assets" / "foreca"]
 except Exception:
