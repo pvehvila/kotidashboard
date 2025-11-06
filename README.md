@@ -21,6 +21,23 @@
 
 ---
 
+## 📁 Hakemistorakenne
+
+```text
+HomeDashboard/
+├── 📦 src/          # Sovelluskoodi (api.py, ui.py, utils.py, config.py, ...)
+├── 🎨 assets/       # Tyylit, ikonit ja taustakuvat
+├── 📊 data/         # JSON- ja XLSX-data
+├── 📚 docs/         # Dokumentaatio ja arkkitehtuurikaaviot
+├── 🧰 scripts/      # Asennus- ja päivitysskriptit (PowerShell, Bash)
+├── 🧪 tests/        # Yksikkötestit
+├── 🪵 logs/         # Lokitiedostot
+├── 🧩 .venv/        # Virtuaaliympäristö
+├── 🚀 main.py       # Streamlit-sovelluksen entrypoint
+└── 📘 README.md
+```
+---
+
 ## Asennus (Windows)
 
 1. Asenna Python 3.10+ (tarkista että `py` toimii komentoriviltä).
