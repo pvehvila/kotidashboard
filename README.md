@@ -132,3 +132,11 @@ Jokainen linkki avaa vastaavan Mermaid-kaavion tiedoston docs/mermaid/-hakemisto
 | [System-kortti](docs/mermaid/sequence_system.md)          | Järjestelmän tilakortin tiedonkeruu ja renderöinti            |
 | [Cache-tila](docs/mermaid/state_cache.md)                 | Tietovälimuistin (cache) tila ja elinkaari                    |
 | [Deployment (Raspberry Pi 5)](docs/mermaid/deployment.md) | Sovelluksen päivitys- ja käynnistysprosessi Pi:llä            |
+
+---
+
+## 🧾 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+
