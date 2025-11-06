@@ -21,10 +21,83 @@
 
 ---
 
-## 🧭 Koodin päivittäminen (Raspberry Pi 5)
+## Asennus (Windows)
 
-Hae tuorein versio GitHub:ista, päivitä Raspberry:n koodi, ja käynnistä palveu uudelleen:
-"DeployToPi.ps1"
+1. Asenna Python 3.10+ (tarkista että `py` toimii komentoriviltä).
+2. Kloonaa repo:
+   ```powershell
+   git clone https://github.com/<oma-kayttaja>/kotidashboard.git
+   cd kotidashboard
+3. Luo virtuaaliympäristö:
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\activate
+5. Asenna riippuvuudet:
+   ```powershell
+   pip install --upgrade pip
+   pip install -r requirements.txt
+6. Käynnistä:
+   ```powershell
+   streamlit run main.py --server.address 0.0.0.0 --server.port 8787
+
+Avaa selain ja mene osoitteeseen http://localhost:8787
+
+ ---
+
+## Asennus (Raspberry Pi 5)
+
+1. Päivitä paketit:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   sudo apt install -y python3 python3-venv python3-pip git
+2. Kloonaa repo:
+   ```bash
+   cd /home/admin
+   git clone https://github.com/<oma-kayttaja>/kotidashboard.git
+   cd kotidashboard
+3. Luo virtuaaliympäristö:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+4. Asenna riippuvuudet:
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt
+5. Kopioi asetukset:
+   ```bash
+   cp .env.example .env
+   nano .env   # täytä arvot
+6. Kokeile käynnistystä:
+   ```bash 
+   streamlit run main.py --server.address 0.0.0.0 --server.port 8787
+7. (Valinnainen) systemd-palvelu:
+   * kopioi repo mukana tuleva examples/kotidashboard.service → /etc/systemd/system/kotidashboard.service
+   * ota käyttöön:
+   ```bash 
+    sudo systemctl daemon-reload
+    sudo systemctl enable kotidashboard
+    sudo systemctl start kotidashboard
+
+---
+
+## `requirements.txt` – esimerkkipohja
+
+```text
+streamlit>=1.37
+requests>=2.32
+pandas>=2.2
+python-dotenv>=1.0
+pytz>=2024.1
+```
+---
+### Nopea testi
+
+```bash
+streamlit run main.py
+```
+Jos saat selaimeen dashboardin, asennus onnistui.
+
+---
 
 📘 README.md-linkit
 
