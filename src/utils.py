@@ -1,20 +1,9 @@
-# ...existing code...
 """Utility functions for the HomeDashboard application."""
 
 from pathlib import Path
-from src.paths import data_path, asset_path  # jos haluat käyttää täälläkin
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-def asset_path(filename: str) -> Path:
-    """Palauttaa polun assets-kansiossa olevaan tiedostoon."""
-    return BASE_DIR / "assets" / filename
-
-def data_path(filename: str) -> Path:
-    """Palauttaa polun data-kansiossa olevaan tiedostoon."""
-    return BASE_DIR / "data" / filename
-
 from typing import List, Tuple, Optional
+
+from src.paths import data_path, asset_path  # käytetään näitä eikä määritellä uudestaan
 
 import socket
 import streamlit as st
