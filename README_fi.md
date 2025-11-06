@@ -23,7 +23,7 @@
 
 ## 📸 Kuvakaappaus
 
-![Kuvakaappaus](docs/images/Kotidashboard.png)
+![Kuvakaappaus](docs/images/Kotidashboard.jpg)
 
 ---
 
