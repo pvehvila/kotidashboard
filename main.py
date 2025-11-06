@@ -1,14 +1,8 @@
 # main.py
 """Main entry point for the HomeDashboard Streamlit application."""
-
-from src.paths import ensure_dirs
-ensure_dirs()
-
-from pathlib import Path
-import sys
-
-BASE_DIR = Path(__file__).resolve().parent
-sys.path.append(str(BASE_DIR / "src"))
+import traceback
+from src.logger_config import setup_logging
+import streamlit as st
 
 from src.ui import (
     card_bitcoin,
@@ -20,11 +14,14 @@ from src.ui import (
     load_css,
 )
 
-import streamlit as st
-
-from src.logger_config import setup_logging
-import traceback
+from pathlib import Path
 import sys
+
+from src.paths import ensure_dirs
+ensure_dirs()
+
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.append(str(BASE_DIR / "src"))
 
 # Setup logging
 logger = setup_logging()

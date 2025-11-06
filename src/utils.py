@@ -1,9 +1,6 @@
 """Utility functions for the HomeDashboard application."""
 
-from pathlib import Path
 from typing import List, Tuple, Optional
-
-from src.paths import data_path, asset_path  # käytetään näitä eikä määritellä uudestaan
 
 import socket
 import streamlit as st
@@ -17,7 +14,6 @@ from src.config import (
     CLOUD_T_PARTLY,
     CLOUD_T_MOSTLY,
 )
-
 
 def report_error(ctx: str, e: Exception) -> None:
     """Log errors to the console and, in DEV mode, display them in the Streamlit UI.
