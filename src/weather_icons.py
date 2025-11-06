@@ -2,14 +2,12 @@
 from pathlib import Path
 import base64
 
-# Yritetään useita hakemistoja (järjestyksessä). HERE tulee configista.
-SEARCH_DIRS = []
-try:
-    from src.config import HERE
+from src.paths import ASSETS, ROOT_DIR  # ← UUSI
 
-    SEARCH_DIRS += [HERE / "foreca", HERE / "assets" / "foreca"]
-except Exception:
-    pass
+SEARCH_DIRS = [
+    ASSETS / "foreca",
+    ROOT_DIR / "foreca",
+]
 
 # CWD ja moduulin oma kansio
 SEARCH_DIRS += [

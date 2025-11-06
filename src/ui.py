@@ -11,6 +11,8 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit.components.v1 import html as st_html
 
+from src.paths import asset_path
+
 from src.api import (
     fetch_btc_ath_eur,
     fetch_btc_eur,
@@ -33,7 +35,6 @@ from src.config import (
     COLOR_GREEN,
     COLOR_RED,
     COLOR_TEXT_GRAY,
-    HERE,
     LAT,
     LON,
     NAMEDAY_PATHS,
@@ -56,19 +57,11 @@ from src.weather_icons import render_foreca_icon
 
 
 def load_css(file_name: str) -> None:
-    """Load and apply a CSS file to the Streamlit app.
-
-    Args:
-        file_name: Name of the CSS file in the project directory.
-    """
-    path = HERE / file_name
+    path = asset_path(file_name)
     if not path.exists():
         return
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    except Exception as e:
-        report_error("load_css", e)
+    with path.open("r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 def section_title(html: str, mt: int = 10, mb: int = 4) -> None:
@@ -136,7 +129,7 @@ def card_nameday() -> None:
         # --- tausta suoraan kortin backgroundiksi ---
         bg_dataurl = None
         for fname in ("butterfly-bg.png", "butterfly-bg.webp", "butterfly-bg.jpg"):
-            path = HERE / fname
+            path = asset_path(fname)
             if path.exists():
                 mime = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg"}[
                     path.suffix.lstrip(".")
@@ -255,7 +248,7 @@ def card_zen() -> None:
         quote_author = (quote.get("author") or "").strip()
 
         bg_dataurl = None
-        img_path = HERE / "zen-bg.png"
+        img_path = asset_path("zen-bg.png")
         if img_path.exists():
             try:
                 with img_path.open("rb") as f:

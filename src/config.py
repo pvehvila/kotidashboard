@@ -2,59 +2,37 @@
 """Configuration settings for the HomeDashboard application."""
 
 import os
-from pathlib import Path
 from zoneinfo import ZoneInfo
+from pathlib import Path
 
-# ------------------- HTTP AND CACHE SETTINGS -------------------
+from src.paths import data_path  # ← UUSI
 
 HTTP_TIMEOUT_S: float = 8.0
-"""HTTP request timeout in seconds."""
-
 CACHE_TTL_SHORT: int = 60
-"""Cache TTL for short-lived data (seconds)."""
-
 CACHE_TTL_MED: int = 300
-"""Cache TTL for medium-lived data (seconds)."""
-
 CACHE_TTL_LONG: int = 3600
-"""Cache TTL for long-lived data (seconds)."""
-
-# ------------------- PLOTLY SETTINGS -------------------
-
-PLOTLY_CONFIG: dict = {"displayModeBar": False}
-"""Plotly configuration to disable the mode bar."""
-
-# ------------------- ENVIRONMENT -------------------
 
 DEV: bool = os.environ.get("DEV", "0") == "1"
-"""Development mode flag, enabled if DEV=1 in environment variables."""
 
-# ------------------- FILE PATHS -------------------
-
-HERE: Path = Path(__file__).resolve().parent
-"""Base directory of the current script."""
-
-ATH_CACHE_FILE: Path = HERE / "btc_ath_cache.json"
-"""Path to Bitcoin all-time high cache file."""
-
-NAMEDAY_FILE: Path = HERE / "nimipaivat_fi.json"
-"""Default path to Finnish nameday JSON file."""
-
-HOLIDAY_FILE: Path = HERE / "pyhat_fi.json"
-"""Default path to Finnish holiday JSON file."""
+# ==== TÄRKEÄ: kaikki nämä osoittaa nyt data/ -kansioon ====
+ATH_CACHE_FILE = data_path("btc_ath_cache.json")
+NAMEDAY_FILE = data_path("nimipaivat_fi.json")
+HOLIDAY_FILE = data_path("pyhat_fi.json")
 
 NAMEDAY_PATHS: list[Path] = [
     NAMEDAY_FILE,
+    data_path("nimipaivat_fi.json"),
     Path("C:/HomeDashboard/nimipaivat_fi.json"),
     Path.home() / "HomeDashboard" / "nimipaivat_fi.json",
 ]
-"""List of potential paths to the Finnish nameday JSON file."""
 
 HOLIDAY_PATHS: list[Path] = [
     HOLIDAY_FILE,
+    data_path("pyhat_fi.json"),
     Path("C:/HomeDashboard/pyhat_fi.json"),
     Path.home() / "HomeDashboard" / "pyhat_fi.json",
 ]
+
 """List of potential paths to the Finnish holiday JSON file."""
 
 # ------------------- GEOLOCATION AND TIMEZONE -------------------
@@ -108,6 +86,14 @@ CLOUD_T_ALMOST: int = 35
 CLOUD_T_PARTLY: int = 65
 CLOUD_T_MOSTLY: int = 85
 """Cloud cover thresholds (%) for weather icons (d000, d100, d200, d300, d400)."""
+
+# ------------------- PLOTLY CONFIG -------------------
+
+PLOTLY_CONFIG: dict = {
+    "displayModeBar": False,
+    "responsive": True,
+}
+
 
 # ------------------- BITCOIN CHART SETTINGS -------------------
 

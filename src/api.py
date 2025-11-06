@@ -13,6 +13,8 @@ import requests
 from requests.exceptions import RequestException
 import streamlit as st
 
+from src.paths import DATA
+
 from src.config import (
     TZ,
     HTTP_TIMEOUT_S,
@@ -563,10 +565,17 @@ if "_prep" not in globals():
         return s if s else last
 
 def _read_wmo_mapping(path: Optional[str] = None) -> "pd.DataFrame":
-    """Try to read mapping dataframe from given path or common filenames in project root."""
     candidates = []
     if path:
         candidates.append(Path(path))
+
+    root = Path(__file__).parent
+    for name in ("wmo_foreca_map.xlsx", "wmo_foreca_map.csv", "mappings.xlsx", "mappings.csv"):
+        candidates.append(root / name)
+
+    # UUSI: katso data-kansioon se sinun oikea nimi
+    candidates.append(DATA / "WMO_Foreca-koodit.xlsx")
+    
     root = Path(__file__).parent
     for name in ("wmo_foreca_map.xlsx", "wmo_foreca_map.csv", "mappings.xlsx", "mappings.csv"):
         candidates.append(root / name)
