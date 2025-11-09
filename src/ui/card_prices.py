@@ -1,9 +1,10 @@
+# src/ui/card_prices.py
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
-
 import math
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Union
+
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -15,24 +16,18 @@ from src.config import (
     PRICE_Y_STEP_SNT,
     TZ,
 )
-from src.utils import _color_by_thresholds, _color_for_value
 from src.ui.common import section_title, card
-
-
-# -------------------- apufunktiot --------------------
+from src.utils import _color_by_thresholds, _color_for_value
 
 
 def _current_price_15min(
-    prices_today: Optional[List[Dict[str, Any]]],
+    prices_today: Optional[List[Dict[str, Union[datetime, float]]]],
     now_dt: datetime,
 ) -> Optional[float]:
-    """Palauttaa juuri nyt voimassa olevan hinnan 15 min listalta."""
     if not prices_today:
         return None
-
     minute = (now_dt.minute // 15) * 15
     slot = now_dt.replace(minute=minute, second=0, microsecond=0)
-
     hit = next(
         (
             p
@@ -41,73 +36,79 @@ def _current_price_15min(
         ),
         None,
     )
-
-    if hit and "cents" in hit and isinstance(hit["cents"], (int, float)):
-        return float(hit["cents"])
-    return None
+    if not hit:
+        return None
+    cents_val = hit.get("cents")
+    if not isinstance(cents_val, (int, float)):
+        return None
+    return float(cents_val)
 
 
 def _next_12h_15min(
-    prices_today: Optional[List[Dict[str, Any]]],
-    prices_tomorrow: Optional[List[Dict[str, Any]]],
+    prices_today: Optional[List[Dict[str, Union[datetime, float]]]],
+    prices_tomorrow: Optional[List[Dict[str, Union[datetime, float]]]],
     now_dt: datetime,
-) -> List[Dict[str, Any]]:
-    """Yhdistää tämän päivän ja huomisen 15 min hinnat ja palauttaa seuraavat 12 h."""
-    rows: List[Dict[str, Any]] = []
+) -> List[Dict[str, Union[datetime, str, float, bool]]]:
     if not prices_today and not prices_tomorrow:
-        return rows
+        return []
 
-    # yhdistä + järjestä
-    all_prices: List[Dict[str, Any]] = []
-    if prices_today:
-        all_prices.extend(prices_today)
-    if prices_tomorrow:
-        all_prices.extend(prices_tomorrow)
+    rows: List[Dict[str, Union[datetime, str, float, bool]]] = []
+    base = now_dt.replace(second=0, microsecond=0)
+    for i in range(48):
+        ts = base + timedelta(minutes=15 * i)
 
-    # suodata vain ne, joissa on kelvollinen ts ja jotka ovat tästä eteenpäin
-    start_ts = now_dt.replace(second=0, microsecond=0)
-    all_prices = [
-        p
-        for p in all_prices
-        if isinstance(p.get("ts"), datetime) and p["ts"] >= start_ts
-    ]
+        src = prices_today if ts.date() == now_dt.date() else prices_tomorrow
+        if not src:
+            continue
 
-    # lajittele aikajärjestykseen
-    all_prices.sort(key=lambda x: x["ts"])
+        hit = next(
+            (
+                p
+                for p in src
+                if isinstance(p.get("ts"), datetime) and p["ts"] == ts
+            ),
+            None,
+        )
 
-    # ota seuraavat 12 h = 48 * 15 min
-    take = all_prices[:48]
-    for item in take:
-        ts: datetime = item["ts"]  # nyt Pylance tietää että tämä on datetime
-        cents_val = item.get("cents")
+        if not hit:
+            # etsi lähellä, joskus ts voi heittää vähän
+            for p in src:
+                ts_p = p.get("ts")
+                if not isinstance(ts_p, datetime):
+                    continue
+                if abs((ts_p - ts).total_seconds()) < 60:
+                    hit = p
+                    break
+
+        if not hit:
+            continue
+
+        cents_val = hit.get("cents")
+        if not isinstance(cents_val, (int, float)):
+            cents_val = 0.0
+
         rows.append(
             {
-                "label": f"{ts.hour:02d}:{ts.minute:02d}",
-                "cents": float(cents_val) if isinstance(cents_val, (int, float)) else 0.0,
-                "is_now": ts <= now_dt < (ts + timedelta(minutes=15)),
+                "ts": ts,
+                "label": ts.strftime("%H:%M"),
+                "cents": float(cents_val),
+                "is_now": i == 0,
             }
         )
 
     return rows
 
 
-def _next_12h_df(rows: List[Dict[str, Union[str, float, bool]]]):
-    """Jätetty talteen jos halutaan datframeksi, ei käytetä nyt."""
-    return rows
-
-
 def card_prices() -> None:
-    """Render a card displaying electricity prices for the next 12 hours (15 min resolution)."""
+    """Render a card displaying electricity prices for the next 12 hours (15 min)."""
     try:
         now_dt = datetime.now(TZ)
         today = now_dt.date()
         tomorrow = today + timedelta(days=1)
 
-        # haetaan 15 min -data molemmille päiville
         prices_today = try_fetch_prices_15min(today)
         prices_tomorrow = try_fetch_prices_15min(tomorrow)
 
-        # nykyinen hinta
         current_cents = _current_price_15min(prices_today, now_dt)
 
         title_html = (
@@ -125,7 +126,6 @@ def card_prices() -> None:
 
         section_title(title_html, mt=10, mb=4)
 
-        # muodostetaan 48 riviä
         rows = _next_12h_15min(prices_today, prices_tomorrow, now_dt=now_dt)
         if not rows:
             card(
@@ -143,11 +143,13 @@ def card_prices() -> None:
             else:
                 values.append(0.0)
 
-        colors = [_color_for_value(v) for v in values]
-        line_colors = ["rgba(255,255,255,1)" if row["is_now"] else "rgba(0,0,0,0)" for row in rows]
+        colors = _color_by_thresholds(list(values))
+        line_colors = [
+            "rgba(255,255,255,0.9)" if row["is_now"] else "rgba(0,0,0,0)"
+            for row in rows
+        ]
         line_widths = [1.5 if row["is_now"] else 0 for row in rows]
 
-        # y-akselin skaalaus
         step = float(max(1, PRICE_Y_STEP_SNT))
         y_min_src = min(values, default=0.0)
         y_max_src = max(values, default=step)
@@ -175,7 +177,9 @@ def card_prices() -> None:
             title_x=0,
             title_font_size=14,
             margin=dict(l=60, r=10, t=24, b=44),
-            height=220,
+            xaxis_title=None,
+            yaxis_title="snt/kWh",
+            height=190,
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
@@ -201,7 +205,6 @@ def card_prices() -> None:
             """,
             unsafe_allow_html=True,
         )
-
     except Exception as e:
         section_title("Pörssisähkö – seuraavat 12 h")
         st.markdown(
