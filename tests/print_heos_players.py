@@ -1,13 +1,15 @@
 # tests/print_heos_players.py
 from __future__ import annotations
-from src.heos_client import HeosClient
-from src.config import (
-    HEOS_HOST,
-    HEOS_USERNAME,
-    HEOS_PASSWORD,
-)
+
 import sys
 from pathlib import Path
+
+from src.config import (
+    HEOS_HOST,
+    HEOS_PASSWORD,
+    HEOS_USERNAME,
+)
+from src.heos_client import HeosClient
 
 # lisää projektin juurikansio (C:\HomeDashboard) polulle
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,6 +36,6 @@ def main() -> None:
             f"ip={p.get('ip')}"
         )
 
+
 if __name__ == "__main__":
     main()
-

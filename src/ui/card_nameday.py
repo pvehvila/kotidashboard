@@ -37,9 +37,7 @@ def card_nameday() -> None:
             "lauantaina",
             "sunnuntaina",
         ]
-        title_text = (
-            f"Nimipäivät<br>{weekdays_fi[now.weekday()]} {now.day}.{now.month}."
-        )
+        title_text = f"Nimipäivät<br>{weekdays_fi[now.weekday()]} {now.day}.{now.month}."
 
         # --- tausta suoraan kortin backgroundiksi ---
         bg_dataurl = None
@@ -49,14 +47,12 @@ def card_nameday() -> None:
                 mime = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg"}[
                     path.suffix.lstrip(".")
                 ]
-                bg_dataurl = f"data:{mime};base64," + base64.b64encode(
-                    path.read_bytes()
-                ).decode("ascii")
+                bg_dataurl = f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode(
+                    "ascii"
+                )
                 break
 
-        overlay_css = (
-            "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.25) 45%, rgba(11,15,20,0.00) 70%)"
-        )
+        overlay_css = "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.25) 45%, rgba(11,15,20,0.00) 70%)"
         bg_css = overlay_css + (f", url({bg_dataurl})" if bg_dataurl else "")
 
         # --- statusrivi (vain jos flag/loma) ---
@@ -75,9 +71,7 @@ def card_nameday() -> None:
                 "</svg>"
             )
             if is_flag and is_hday:
-                label_html = (
-                    f"{flag_svg}<strong>Liputus- ja lomapäivä:</strong> {holiday_name}"
-                )
+                label_html = f"{flag_svg}<strong>Liputus- ja lomapäivä:</strong> {holiday_name}"
             elif is_flag:
                 label_html = f"{flag_svg}<strong>Liputuspäivä:</strong> {holiday_name}"
             else:

@@ -1,19 +1,22 @@
 """Utility functions for the HomeDashboard application."""
 
-from typing import List, Tuple, Optional
-
+import json as _json
 import socket
+import urllib.parse
+import urllib.request
+
 import streamlit as st
 
 from src.config import (
+    CLOUD_T_ALMOST,
+    CLOUD_T_CLEAR,
+    CLOUD_T_MOSTLY,
+    CLOUD_T_PARTLY,
     DEV,
     PRICE_HIGH_THR,
     PRICE_LOW_THR,
-    CLOUD_T_CLEAR,
-    CLOUD_T_ALMOST,
-    CLOUD_T_PARTLY,
-    CLOUD_T_MOSTLY,
 )
+
 
 def report_error(ctx: str, e: Exception) -> None:
     """Log errors to the console and, in DEV mode, display them in the Streamlit UI.
@@ -28,10 +31,10 @@ def report_error(ctx: str, e: Exception) -> None:
 
 
 def _color_by_thresholds(
-    vals: List[Optional[float]],
+    vals: list[float | None],
     low_thr: float = PRICE_LOW_THR,
     high_thr: float = PRICE_HIGH_THR,
-) -> List[str]:
+) -> list[str]:
     """Generate a list of colors based on value thresholds for visualization.
 
     Args:
@@ -56,7 +59,7 @@ def _color_by_thresholds(
 
 
 def _color_for_value(
-    value: Optional[float],
+    value: float | None,
     low_thr: float = PRICE_LOW_THR,
     high_thr: float = PRICE_HIGH_THR,
 ) -> str:
@@ -73,7 +76,7 @@ def _color_for_value(
     return _color_by_thresholds([value], low_thr, high_thr)[0]
 
 
-def _cloud_icon_from_cover(cover: Optional[int], is_day: bool) -> str:
+def _cloud_icon_from_cover(cover: int | None, is_day: bool) -> str:
     """Map cloud cover percentage to a Foreca-style icon code.
 
     Args:
@@ -110,15 +113,9 @@ def get_ip() -> str:
 
 
 # --- AURINGON NOUSU/LASKU (Open-Meteo, ei uusia riippuvuuksia) ---
-def fetch_sun_times(
-    lat: float, lon: float, tz_str: str
-) -> Tuple[Optional[str], Optional[str]]:
+def fetch_sun_times(lat: float, lon: float, tz_str: str) -> tuple[str | None, str | None]:
     """Palauttaa (sunrise_HH:MM, sunset_HH:MM) merkkijonot paikallisajassa tai (None, None)."""
     try:
-        import urllib.request
-        import urllib.parse
-        import json as _json
-
         qs = urllib.parse.urlencode(
             {
                 "latitude": f"{lat:.6f}",
@@ -128,18 +125,25 @@ def fetch_sun_times(
                 "forecast_days": 1,
             }
         )
+
         url = f"https://api.open-meteo.com/v1/forecast?{qs}"
-        with urllib.request.urlopen(url, timeout=6) as r:
+
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(f"Unexpected URL scheme: {parsed.scheme}")
+
+        # Tämä on kovakoodattu ja skeema tarkistettu
+        with urllib.request.urlopen(url, timeout=6) as r:  # nosec B310
             data = _json.loads(r.read().decode("utf-8"))
+
         sunrise_iso = (data.get("daily", {}).get("sunrise") or [None])[0]
         sunset_iso = (data.get("daily", {}).get("sunset") or [None])[0]
 
-        def _fmt(iso: Optional[str]) -> Optional[str]:
+        def _fmt(iso: str | None) -> str | None:
             if not iso:
                 return None
-            # Open-Meteo palauttaa jo tz:n mukaisen paikallisajan kun timezone-parametri on annettu
             try:
-                return iso[11:16]  # "YYYY-MM-DDTHH:MM"
+                return iso[11:16]
             except Exception:
                 from datetime import datetime as _dt
 

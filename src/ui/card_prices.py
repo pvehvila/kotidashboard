@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Union
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -16,43 +15,39 @@ from src.config import (
     PRICE_Y_STEP_SNT,
     TZ,
 )
-from src.ui.common import section_title, card
+from src.ui.common import card, section_title
 from src.utils import _color_by_thresholds, _color_for_value
 
 
 def _current_price_15min(
-    prices_today: Optional[List[Dict[str, Union[datetime, float]]]],
+    prices_today: list[dict[str, datetime | float]] | None,
     now_dt: datetime,
-) -> Optional[float]:
+) -> float | None:
     if not prices_today:
         return None
     minute = (now_dt.minute // 15) * 15
     slot = now_dt.replace(minute=minute, second=0, microsecond=0)
     hit = next(
-        (
-            p
-            for p in prices_today
-            if isinstance(p.get("ts"), datetime) and p["ts"] == slot
-        ),
+        (p for p in prices_today if isinstance(p.get("ts"), datetime) and p["ts"] == slot),
         None,
     )
     if not hit:
         return None
     cents_val = hit.get("cents")
-    if not isinstance(cents_val, (int, float)):
+    if not isinstance(cents_val, (int | float)):
         return None
     return float(cents_val)
 
 
 def _next_12h_15min(
-    prices_today: Optional[List[Dict[str, Union[datetime, float]]]],
-    prices_tomorrow: Optional[List[Dict[str, Union[datetime, float]]]],
+    prices_today: list[dict[str, datetime | float]] | None,
+    prices_tomorrow: list[dict[str, datetime | float]] | None,
     now_dt: datetime,
-) -> List[Dict[str, Union[datetime, str, float, bool]]]:
+) -> list[dict[str, datetime | str | float | bool]]:
     if not prices_today and not prices_tomorrow:
         return []
 
-    rows: List[Dict[str, Union[datetime, str, float, bool]]] = []
+    rows: list[dict[str, datetime | str | float | bool]] = []
     minute = (now_dt.minute // 15) * 15
     base = now_dt.replace(minute=minute, second=0, microsecond=0)
 
@@ -64,11 +59,7 @@ def _next_12h_15min(
             continue
 
         hit = next(
-            (
-                p
-                for p in src
-                if isinstance(p.get("ts"), datetime) and p["ts"] == ts
-            ),
+            (p for p in src if isinstance(p.get("ts"), datetime) and p["ts"] == ts),
             None,
         )
 
@@ -86,7 +77,7 @@ def _next_12h_15min(
             continue
 
         cents_val = hit.get("cents")
-        if not isinstance(cents_val, (int, float)):
+        if not isinstance(cents_val, (int | float)):
             cents_val = 0.0
 
         rows.append(
@@ -114,8 +105,7 @@ def card_prices() -> None:
         current_cents = _current_price_15min(prices_today, now_dt)
 
         title_html = (
-            "⚡ Pörssisähkö "
-            + "<span style='background:{0}; color:{1}; padding:2px 10px; "
+            "⚡ Pörssisähkö " + "<span style='background:{0}; color:{1}; padding:2px 10px; "
             "border-radius:999px; font-weight:600; font-size:0.95rem'>Seuraavat 12 h (15 min)</span>"
         ).format(COLOR_GRAY, COLOR_TEXT_GRAY)
 
@@ -137,18 +127,17 @@ def card_prices() -> None:
             )
             return
 
-        values: List[float] = []
+        values: list[float] = []
         for row in rows:
             val = row.get("cents")
-            if isinstance(val, (int, float)):
+            if isinstance(val, (int | float)):
                 values.append(float(val))
             else:
                 values.append(0.0)
 
         colors = _color_by_thresholds(list(values))
         line_colors = [
-            "rgba(255,255,255,0.9)" if row["is_now"] else "rgba(0,0,0,0)"
-            for row in rows
+            "rgba(255,255,255,0.9)" if row["is_now"] else "rgba(0,0,0,0)" for row in rows
         ]
         line_widths = [1.5 if row["is_now"] else 0 for row in rows]
 
@@ -166,9 +155,7 @@ def card_prices() -> None:
                 go.Bar(
                     x=[row["label"] for row in rows],
                     y=[round(v, 2) for v in values],
-                    marker=dict(
-                        color=colors, line=dict(color=line_colors, width=line_widths)
-                    ),
+                    marker=dict(color=colors, line=dict(color=line_colors, width=line_widths)),
                     hovertemplate="<b>%{x}</b><br>%{y} snt/kWh<extra></extra>",
                 )
             ]
@@ -209,6 +196,4 @@ def card_prices() -> None:
         )
     except Exception as e:
         section_title("Pörssisähkö – seuraavat 12 h")
-        st.markdown(
-            f"<span class='hint'>Virhe hinnanhaussa: {e}</span>", unsafe_allow_html=True
-        )
+        st.markdown(f"<span class='hint'>Virhe hinnanhaussa: {e}</span>", unsafe_allow_html=True)

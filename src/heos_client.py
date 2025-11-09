@@ -5,8 +5,7 @@ import json
 import socket
 import time
 import urllib.parse
-from typing import Any, Dict, Optional, List
-
+from typing import Any
 
 DEFAULT_PORT = 1255
 
@@ -18,8 +17,8 @@ class HeosClient:
         self,
         host: str,
         port: int = DEFAULT_PORT,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
         timeout: float = 3.0,
     ) -> None:
         self.host = host
@@ -30,11 +29,11 @@ class HeosClient:
 
     # --- perus I/O ---
 
-    def _send_cmd(self, cmd: str) -> Dict[str, Any]:
+    def _send_cmd(self, cmd: str) -> dict[str, Any]:
         # avataan lyhyt telnet-tyylinen yhteys jokaiselle komennolle,
         # streamlit-ympäristöön tämä on helpoin
         with socket.create_connection((self.host, self.port), self.timeout) as s:
-            s.sendall(f"heos://{cmd}\r\n".encode("utf-8"))
+            s.sendall(f"heos://{cmd}\r\n".encode())
             s.settimeout(self.timeout)
             data = s.recv(65535).decode("utf-8", errors="replace")
 
@@ -61,13 +60,13 @@ class HeosClient:
 
     # --- Soittimet ---
 
-    def get_players(self) -> List[Dict[str, Any]]:
+    def get_players(self) -> list[dict[str, Any]]:
         resp = self._send_cmd("player/get_players")
         return resp.get("payload", [])
 
-    def get_now_playing(self, pid: int) -> Dict[str, Any]:
+    def get_now_playing(self, pid: int) -> dict[str, Any]:
         return self._send_cmd(f"player/get_now_playing_media?pid={pid}")
-    
+
     def get_volume(self, pid: int) -> int:
         resp = self._send_cmd(f"player/get_volume?pid={pid}")
         return int(resp.get("payload", {}).get("level", 0))
@@ -78,7 +77,6 @@ class HeosClient:
     def set_mute(self, pid: int, state: str) -> None:
         # state: on/off/toggle
         self._send_cmd(f"player/set_mute?pid={pid}&state={state}")
-
 
     def set_play_state(self, pid: int, state: str) -> dict:
         return self._send_cmd(f"player/set_play_state?pid={pid}&state={state}")
@@ -91,17 +89,17 @@ class HeosClient:
 
     # --- Tidal-selaus ---
 
-    def _get_music_sources(self) -> List[Dict[str, Any]]:
+    def _get_music_sources(self) -> list[dict[str, Any]]:
         resp = self._send_cmd("browse/get_music_sources")
         return resp.get("payload", [])
 
-    def _get_tidal_sid(self) -> Optional[int]:
+    def _get_tidal_sid(self) -> int | None:
         for src in self._get_music_sources():
             if src.get("name", "").lower() == "tidal":
                 return int(src["sid"])
         return None
 
-    def search_tidal_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+    def search_tidal_by_name(self, name: str) -> dict[str, Any] | None:
         """Etsii Tidalista playlistin nimellä ja palauttaa ekana osuneen kontainerin."""
         sid = self._get_tidal_sid()
         if not sid:
@@ -117,7 +115,7 @@ class HeosClient:
                 return {"sid": sid, **item}
         return None
 
-    def play_tidal_container(self, pid: int, container: Dict[str, Any]) -> None:
+    def play_tidal_container(self, pid: int, container: dict[str, Any]) -> None:
         sid = container["sid"]
         cid = container["container_id"]
         # aid=4 => replace and play
@@ -154,9 +152,7 @@ class HeosClient:
             "favorites",
         ]
         for cid in candidates:
-            resp = self._send_cmd(
-                f"browse/add_to_queue?pid={pid}&sid={sid}&cid={cid}&aid=4"
-            )
+            resp = self._send_cmd(f"browse/add_to_queue?pid={pid}&sid={sid}&cid={cid}&aid=4")
             if resp.get("heos", {}).get("result") == "success":
                 return True
         return False

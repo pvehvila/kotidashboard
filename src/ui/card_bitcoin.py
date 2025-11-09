@@ -1,8 +1,8 @@
 # src/ui/card_bitcoin.py
 from __future__ import annotations
 
-from datetime import datetime
 import math
+from datetime import datetime
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -10,10 +10,10 @@ import streamlit as st
 from src.api import (
     fetch_btc_ath_eur,
     fetch_btc_eur,
-    fetch_btc_last_24h_eur,
-    fetch_btc_last_7d_eur,
-    fetch_btc_last_30d_eur,
     fetch_btc_eur_range,
+    fetch_btc_last_7d_eur,
+    fetch_btc_last_24h_eur,
+    fetch_btc_last_30d_eur,
 )
 from src.config import (
     BTC_Y_PAD_EUR,
@@ -27,7 +27,7 @@ from src.config import (
     PLOTLY_CONFIG,
     TZ,
 )
-from src.ui.common import section_title, card
+from src.ui.common import card, section_title
 
 # ------------------- BITCOIN CARD -------------------
 
@@ -105,7 +105,6 @@ def card_bitcoin() -> None:
                 return s7, (win != "7d")
             raise ValueError("BTC-historiasarjaa ei saatu mistään lähteestä.")
 
-
         series, degraded = _get_series(window)
 
         # --- ATH-taso (sama kaikille ikkunoille) ---
@@ -125,9 +124,7 @@ def card_bitcoin() -> None:
                 style = base + "background:#e7eaee;color:#111;"
             else:
                 style = base + "background:rgba(255,255,255,0.10);color:#e7eaee;"
-            return (
-                f'<a href="?bwin={opt_code}" target="_self" style="{style}">{label}</a>'
-            )
+            return f'<a href="?bwin={opt_code}" target="_self" style="{style}">{label}</a>'
 
         window_label = {
             "24h": "Viimeiset 24 h",
@@ -135,12 +132,7 @@ def card_bitcoin() -> None:
             "30d": "Viimeiset 30 päivää",
         }[window]
 
-        title_html = (
-            "🪙 Bitcoin "
-            + pill("24h", "24 h")
-            + pill("7d", "7 d")
-            + pill("30d", "30 d")
-        )
+        title_html = "🪙 Bitcoin " + pill("24h", "24 h") + pill("7d", "7 d") + pill("30d", "30 d")
 
         # 24h-muutosbadgi (pidetään kuten ennen)
         if change_24h is not None:
@@ -272,9 +264,7 @@ def card_bitcoin() -> None:
 
         # ATH-vihje + mahdollinen degradaatioilmoitus
         ath_info = (
-            f" {ath_date[:10]}, {ath_eur:,.0f} €".replace(",", " ")
-            if ath_eur and ath_date
-            else ""
+            f" {ath_date[:10]}, {ath_eur:,.0f} €".replace(",", " ") if ath_eur and ath_date else ""
         )
         extra = ""
         if window == "30d" and degraded:

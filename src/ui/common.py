@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import streamlit as st
+
 from src.paths import asset_path
 
 
@@ -21,9 +22,7 @@ def section_title(html: str, mt: int = 10, mb: int = 4) -> None:
         mt: Top margin in pixels (default: 10).
         mb: Bottom margin in pixels (default: 4).
     """
-    st.markdown(
-        f"<div style='margin:{mt}px 0 {mb}px 0'>{html}</div>", unsafe_allow_html=True
-    )
+    st.markdown(f"<div style='margin:{mt}px 0 {mb}px 0'>{html}</div>", unsafe_allow_html=True)
 
 
 def card(title: str, body_html: str, height_dvh: int = 16) -> None:

@@ -1,20 +1,19 @@
-import json
 import datetime as dt  # <-- TÄRKEÄ: dt = datetime
-
+import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import streamlit as st
 
 from src.config import (
-    TZ,
     CACHE_TTL_LONG,
+    HOLIDAY_PATHS,
     NAMEDAY_FILE,
     NAMEDAY_PATHS,
-    HOLIDAY_PATHS,
+    TZ,
 )
 from src.utils import report_error
+
 
 def _resolve_nameday_file() -> Path:
     for path in NAMEDAY_PATHS:
@@ -43,7 +42,7 @@ def _load_json(path: Path):
 
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
-def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
+def fetch_nameday_today(_cache_buster: int | None = None) -> str:
     try:
         path = _resolve_nameday_file()
         if not path.exists():
@@ -53,8 +52,18 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
         key_md = now.strftime("%m-%d")
         day_str = str(now.day)
         month_name = [
-            "tammikuu", "helmikuu", "maaliskuu", "huhtikuu", "toukokuu", "kesäkuu",
-            "heinäkuu", "elokuu", "syyskuu", "lokakuu", "marraskuu", "joulukuu",
+            "tammikuu",
+            "helmikuu",
+            "maaliskuu",
+            "huhtikuu",
+            "toukokuu",
+            "kesäkuu",
+            "heinäkuu",
+            "elokuu",
+            "syyskuu",
+            "lokakuu",
+            "marraskuu",
+            "joulukuu",
         ][now.month - 1]
 
         if isinstance(data, dict) and key_md in data:
@@ -67,8 +76,14 @@ def fetch_nameday_today(_cache_buster: Optional[int] = None) -> str:
 
         root = data.get("nimipäivät") if isinstance(data, dict) else None
         if isinstance(root, dict):
-            month_obj = next((v for k, v in root.items()
-                              if isinstance(k, str) and k.strip().lower() == month_name), None)
+            month_obj = next(
+                (
+                    v
+                    for k, v in root.items()
+                    if isinstance(k, str) and k.strip().lower() == month_name
+                ),
+                None,
+            )
             if isinstance(month_obj, dict):
                 names = month_obj.get(day_str)
                 if isinstance(names, list):
@@ -97,7 +112,9 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
         def parse_entry(entry: dict) -> dict:
             name = entry.get("name")
             hol_field = entry.get("holiday")
-            is_holiday = bool(entry.get("is_holiday")) or (isinstance(hol_field, bool) and hol_field is True)
+            is_holiday = bool(entry.get("is_holiday")) or (
+                isinstance(hol_field, bool) and hol_field is True
+            )
             if not name and isinstance(hol_field, str) and hol_field.strip():
                 name = hol_field.strip()
             is_flag = bool(entry.get("flag") or entry.get("is_flag_day"))

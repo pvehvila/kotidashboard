@@ -1,47 +1,58 @@
-
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 from urllib.parse import quote
-from src.api.http import http_get_json
-
-from src.paths import DATA
-
-from src.config import (
-    TZ,
-    CLOUD_T_CLEAR,
-    CLOUD_T_ALMOST,
-    CLOUD_T_PARTLY,
-    CLOUD_T_MOSTLY,
-)
-from src.weather_icons import render_foreca_icon
 
 import pandas as pd
 import streamlit as st
 
+from src.api.http import http_get_json
+from src.config import (
+    CLOUD_T_ALMOST,
+    CLOUD_T_CLEAR,
+    CLOUD_T_MOSTLY,
+    CLOUD_T_PARTLY,
+    TZ,
+)
+from src.paths import DATA
+from src.weather_icons import render_foreca_icon
+
 # ------------------- WEATHER -------------------
 
 MAP_TRACE_ENABLED = False
-_MAP_TRACE: List[Dict] = []
+_MAP_TRACE: list[dict] = []
 
 
-def _trace_map(wmo: Optional[int], is_day: bool, pop: Optional[int],
-               temp_c: Optional[float], cloudcover: Optional[int],
-               chosen_key: str, reason: str):
+def _trace_map(
+    wmo: int | None,
+    is_day: bool,
+    pop: int | None,
+    temp_c: float | None,
+    cloudcover: int | None,
+    chosen_key: str,
+    reason: str,
+):
     if not MAP_TRACE_ENABLED:
         return
     try:
-        _MAP_TRACE.append({
-            "wmo": wmo, "is_day": is_day, "pop": pop, "temp_c": temp_c,
-            "cloudcover": cloudcover, "key": chosen_key, "reason": reason,
-        })
+        _MAP_TRACE.append(
+            {
+                "wmo": wmo,
+                "is_day": is_day,
+                "pop": pop,
+                "temp_c": temp_c,
+                "cloudcover": cloudcover,
+                "key": chosen_key,
+                "reason": reason,
+            }
+        )
         if len(_MAP_TRACE) > 200:
             del _MAP_TRACE[:-120]
     except Exception:
         pass
 
 
-def get_map_trace() -> List[Dict]:
+def get_map_trace() -> list[dict]:
     return list(_MAP_TRACE)
 
 
@@ -57,11 +68,12 @@ def _cloud_icon_from_cover(cover: Any, is_day: bool) -> str:
             x = x.iloc[0]
         try:
             import numpy as np
-            if isinstance(x, (np.integer, np.floating)):
+
+            if isinstance(x, (np.integer | np.floating)):
                 return int(x)
         except Exception:
             pass
-        if isinstance(x, (int, float)):
+        if isinstance(x, (int | float)):
             return int(x)
         if isinstance(x, str):
             s = x.strip().replace(",", ".")
@@ -84,15 +96,16 @@ def _cloud_icon_from_cover(cover: Any, is_day: bool) -> str:
         return f"{prefix}300"
     return f"{prefix}400"
 
-def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[Dict[int, str], Dict[int, str]]:
-    maps_day: Dict[int, str] = {}
-    maps_night: Dict[int, str] = {}
+
+def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[dict[int, str], dict[int, str]]:
+    maps_day: dict[int, str] = {}
+    maps_night: dict[int, str] = {}
 
     for _, row in df.iterrows():
         try:
             current_wmo = int(row[wmo_col].item())  # <-- Määritelty
-            day_full = row.get('day_full')
-            night_full = row.get('night_full')
+            day_full = row.get("day_full")
+            night_full = row.get("night_full")
 
             if day_full:
                 maps_day[current_wmo] = day_full
@@ -103,14 +116,17 @@ def create_icon_mappings(df: pd.DataFrame, wmo_col: str) -> tuple[Dict[int, str]
 
     return maps_day, maps_night
 
+
 # Fallback _prep jos ei ole määritelty muualla
 if "_prep" not in globals():
-    def _prep(raw: str, suffix: str, last: Optional[str]) -> Optional[str]:
+
+    def _prep(raw: str, suffix: str, last: str | None) -> str | None:
         """Yksinkertainen valmistelu: palauta raw jos ei tyhjä, muuten viimeinen arvo."""
         s = raw.strip() if raw else ""
         return s if s else last
 
-def _read_wmo_mapping(path: Optional[str] = None) -> "pd.DataFrame":
+
+def _read_wmo_mapping(path: str | None = None) -> "pd.DataFrame":
     candidates = []
     if path:
         candidates.append(Path(path))
@@ -121,7 +137,7 @@ def _read_wmo_mapping(path: Optional[str] = None) -> "pd.DataFrame":
 
     # UUSI: katso data-kansioon se sinun oikea nimi
     candidates.append(DATA / "WMO_Foreca-koodit.xlsx")
-    
+
     root = Path(__file__).parent
     for name in ("wmo_foreca_map.xlsx", "wmo_foreca_map.csv", "mappings.xlsx", "mappings.csv"):
         candidates.append(root / name)
@@ -137,22 +153,23 @@ def _read_wmo_mapping(path: Optional[str] = None) -> "pd.DataFrame":
             continue
     return pd.DataFrame()  # empty fallback
 
+
 # Muokattu: df voi olla None -> luetaan fallback-data jos tarvitaan
 def _load_wmo_foreca_map(
     df: Optional["pd.DataFrame"] = None,
     wmo_col: str = "wmo",
     day_col: str = "day",
     night_col: str = "night",
-) -> Dict[str, Dict[int, str]]:
+) -> dict[str, dict[int, str]]:
     if df is None:
         df = _read_wmo_mapping()
     if df.empty:
         return {"day": {}, "night": {}}
 
-    maps_day: Dict[int, str] = {}
-    maps_night: Dict[int, str] = {}
-    last_day_full: Optional[str] = None
-    last_night_full: Optional[str] = None
+    maps_day: dict[int, str] = {}
+    maps_night: dict[int, str] = {}
+    last_day_full: str | None = None
+    last_night_full: str | None = None
 
     def _row_scalar(cell: Any) -> Any:
         try:
@@ -194,9 +211,13 @@ def _load_wmo_foreca_map(
     return {"day": maps_day, "night": maps_night}
 
 
-def wmo_to_foreca_code(code: Optional[int], is_day: bool,
-                       pop: Optional[int] = None, temp_c: Optional[float] = None,
-                       cloudcover: Optional[int] = None) -> str:
+def wmo_to_foreca_code(
+    code: int | None,
+    is_day: bool,
+    pop: int | None = None,
+    temp_c: float | None = None,
+    cloudcover: int | None = None,
+) -> str:
     maps = _load_wmo_foreca_map()
     if code is None:
         key = "d000" if is_day else "n000"
@@ -213,16 +234,18 @@ def wmo_to_foreca_code(code: Optional[int], is_day: bool,
     _trace_map(code, is_day, pop, temp_c, cloudcover, key, "fallback: cloudcover")
     return key
 
-def _as_bool(x: Any) -> Optional[bool]:
+
+def _as_bool(x: Any) -> bool | None:
     try:
         if x is None:
             return None
-        if hasattr(x, 'iloc'):
+        if hasattr(x, "iloc"):
             if len(x) == 0:
                 return None
             x = x.iloc[0]
         try:
             import pandas as pd
+
             if pd.isna(x):
                 return None
         except (ImportError, Exception):
@@ -231,13 +254,13 @@ def _as_bool(x: Any) -> Optional[bool]:
             x = x.item()
         if isinstance(x, bool):
             return x
-        if isinstance(x, (int, float)):
+        if isinstance(x, (int | float)):
             return bool(int(x))
         if isinstance(x, str):
             s = x.strip().lower()
-            if s in ('true', '1', 'yes'):
+            if s in ("true", "1", "yes"):
                 return True
-            if s in ('false', '0', 'no', ''):
+            if s in ("false", "0", "no", ""):
                 return False
             # KORJAUS: Lisää try-except tähän
             try:
@@ -248,69 +271,73 @@ def _as_bool(x: Any) -> Optional[bool]:
     except Exception:
         return None
 
-def _as_float(x: Any) -> Optional[float]:
+
+def _as_float(x: Any) -> float | None:
     """Convert various types to float, handling pandas/numpy types safely."""
     try:
         if x is None:
             return None
-        
+
         # pandas.Series → extract first value
-        if hasattr(x, 'iloc'):
+        if hasattr(x, "iloc"):
             try:
                 if len(x) == 0:
                     return None
                 x = x.iloc[0]
             except TypeError:
                 pass
-        
+
         # Handle pandas NA/NaT
         try:
             import pandas as pd
+
             if pd.isna(x):
                 return None
         except (ImportError, Exception):
             pass
-        
+
         # numpy scalar → extract Python value
         if hasattr(x, "item"):
             x = x.item()
-        
+
         return float(x)
     except Exception:
         return None
 
 
-def _as_int(x: Any) -> Optional[int]:
+def _as_int(x: Any) -> int | None:
     """Convert various types to int, handling pandas/numpy types safely."""
     try:
         if x is None:
             return None
-        
+
         # pandas.Series → extract first value
-        if hasattr(x, 'iloc'):
+        if hasattr(x, "iloc"):
             if len(x) == 0:
                 return None
             x = x.iloc[0]
-        
+
         # Handle pandas NA/NaT
         try:
             import pandas as pd
+
             if pd.isna(x):
                 return None
         except (ImportError, Exception):
             pass
-        
+
         # numpy scalar → extract Python value
         if hasattr(x, "item"):
             x = x.item()
-        
+
         return int(float(x))
     except Exception:
         return None
 
 
-def fetch_weather_points(lat: float, lon: float, tz_name: str,
-                        offsets: Tuple[int, ...] = (0, 3, 6, 9, 12)) -> Dict:
+def fetch_weather_points(
+    lat: float, lon: float, tz_name: str, offsets: tuple[int, ...] = (0, 3, 6, 9, 12)
+) -> dict:
     url = (
         f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
         f"&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover,is_day"
@@ -349,15 +376,21 @@ def fetch_weather_points(lat: float, lon: float, tz_name: str,
         ccov = _as_int(raw_ccov)
         is_day_result = _as_bool(raw_isday)
         # Korjattu: käytetään bool-arvoa
-        is_day_flag: bool = is_day_result if is_day_result is not None else (6 <= target_time.hour <= 20)
+        is_day_flag: bool = (
+            is_day_result if is_day_result is not None else (6 <= target_time.hour <= 20)
+        )
 
-        points.append({
-            "label": "Nyt" if offset == 0 else f"+{offset} h",
-            "hour": target_time.hour,
-            "temp": temp,
-            "pop": pop,
-            "key": wmo_to_foreca_code(wmo, is_day=is_day_flag, pop=pop, temp_c=temp, cloudcover=ccov),
-        })
+        points.append(
+            {
+                "label": "Nyt" if offset == 0 else f"+{offset} h",
+                "hour": target_time.hour,
+                "temp": temp,
+                "pop": pop,
+                "key": wmo_to_foreca_code(
+                    wmo, is_day=is_day_flag, pop=pop, temp_c=temp, cloudcover=ccov
+                ),
+            }
+        )
 
     min_temp = max_temp = None
     try:
@@ -372,7 +405,7 @@ def fetch_weather_points(lat: float, lon: float, tz_name: str,
     return {"points": points, "min_temp": min_temp, "max_temp": max_temp}
 
 
-def wmo_to_icon_key(code: Optional[int], is_day: bool) -> str:
+def wmo_to_icon_key(code: int | None, is_day: bool) -> str:
     if code is None:
         return "na"
     if code == 0:
@@ -398,10 +431,11 @@ def wmo_to_icon_key(code: Optional[int], is_day: bool) -> str:
 
 # ------------------- WEATHER DEBUG MATRIX -------------------
 
+
 def card_weather_debug_matrix():
     st.markdown("<div class='card-title'>🧪 Sääikonit – pikatesti</div>", unsafe_allow_html=True)
 
-    def render_row(label: str, items: List[Tuple[str, str]]) -> str:
+    def render_row(label: str, items: list[tuple[str, str]]) -> str:
         row_html = "<div style='display:flex; gap:10px; flex-wrap:wrap; align-items:center;'>"
         row_html += f"<div style='width:110px; opacity:.8;'>{label}</div>"
         for desc, key in items:
@@ -415,33 +449,68 @@ def card_weather_debug_matrix():
 
     cloud_rows = []
     for is_day in (True, False):
-        items = [(f"cc {cc}%", wmo_to_foreca_code(0, is_day=is_day, pop=0, temp_c=10, cloudcover=cc))
-                 for cc in (5, 30, 55, 75, 95)]
+        items = [
+            (f"cc {cc}%", wmo_to_foreca_code(0, is_day=is_day, pop=0, temp_c=10, cloudcover=cc))
+            for cc in (5, 30, 55, 75, 95)
+        ]
         cloud_rows.append(render_row(f"{'Päivä' if is_day else 'Yö'} – pilvisyys", items))
 
     rain_rows = []
     for code in (61, 63, 65):
         cases = [
-            ("päivä, PoP 20%", wmo_to_foreca_code(code, is_day=True, pop=20, temp_c=5.0, cloudcover=70)),
-            ("päivä, PoP 80%", wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=5.0, cloudcover=70)),
-            ("päivä, 0°C (räntä)", wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=0.0, cloudcover=70)),
-            ("yö, PoP 80%", wmo_to_foreca_code(code, is_day=False, pop=80, temp_c=5.0, cloudcover=70)),
+            (
+                "päivä, PoP 20%",
+                wmo_to_foreca_code(code, is_day=True, pop=20, temp_c=5.0, cloudcover=70),
+            ),
+            (
+                "päivä, PoP 80%",
+                wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=5.0, cloudcover=70),
+            ),
+            (
+                "päivä, 0°C (räntä)",
+                wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=0.0, cloudcover=70),
+            ),
+            (
+                "yö, PoP 80%",
+                wmo_to_foreca_code(code, is_day=False, pop=80, temp_c=5.0, cloudcover=70),
+            ),
         ]
         rain_rows.append(render_row(f"WMO {code} – sade", cases))
 
     shower_rows = []
     for code in (80, 81, 82):
-        cases = [(f"päivä, PoP {pop}%", wmo_to_foreca_code(code, is_day=True, pop=pop, temp_c=10, cloudcover=60))
-                 for pop in (20, 80)]
+        cases = [
+            (
+                f"päivä, PoP {pop}%",
+                wmo_to_foreca_code(code, is_day=True, pop=pop, temp_c=10, cloudcover=60),
+            )
+            for pop in (20, 80)
+        ]
         shower_rows.append(render_row(f"WMO {code} – kuurot", cases))
 
-    misc_cases = [("tihku heikko (51)", 51), ("tihku koht. (53)", 53), ("tihku voim. (55)", 55),
-                  ("jäätävä tihku (56)", 56), ("jäätävä sade h. (66)", 66), ("jäätävä sade v. (67)", 67),
-                  ("lumi (71)", 71), ("lumikuuro (85)", 85), ("ukkonen (95)", 95)]
-    misc_rows = render_row("Muut", [
-        (label, wmo_to_foreca_code(code, is_day=True, pop=80, temp_c=-2 if code in (71, 85) else 2, cloudcover=80))
-        for label, code in misc_cases
-    ])
+    misc_cases = [
+        ("tihku heikko (51)", 51),
+        ("tihku koht. (53)", 53),
+        ("tihku voim. (55)", 55),
+        ("jäätävä tihku (56)", 56),
+        ("jäätävä sade h. (66)", 66),
+        ("jäätävä sade v. (67)", 67),
+        ("lumi (71)", 71),
+        ("lumikuuro (85)", 85),
+        ("ukkonen (95)", 95),
+    ]
+    misc_rows = render_row(
+        "Muut",
+        [
+            (
+                label,
+                wmo_to_foreca_code(
+                    code, is_day=True, pop=80, temp_c=-2 if code in (71, 85) else 2, cloudcover=80
+                ),
+            )
+            for label, code in misc_cases
+        ],
+    )
 
     st.markdown(
         "<section class='card' style='min-height:12dvh; padding:10px;'>"

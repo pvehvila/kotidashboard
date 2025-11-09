@@ -12,23 +12,22 @@ Perusajatus:
 
 from __future__ import annotations
 
-import json
 import datetime as dt
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Union
+import json
 import logging
+from datetime import datetime, timedelta
 
 import requests
 import streamlit as st
 
-from src.config import TZ, CACHE_TTL_MED
-from src.utils import report_error
 from src.api.http import http_get_json
+from src.config import CACHE_TTL_MED, TZ
+from src.utils import report_error
 
 logger = logging.getLogger(__name__)
 
 # tyyppi 15 min -hinnoille
-Price15 = Dict[str, Union[datetime, float]]  # {"ts": datetime, "cents": float}
+Price15 = dict[str, datetime | float]  # {"ts": datetime, "cents": float}
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +36,7 @@ Price15 = Dict[str, Union[datetime, float]]  # {"ts": datetime, "cents": float}
 
 
 @st.cache_data(ttl=CACHE_TTL_MED)
-def try_fetch_prices(date_ymd: dt.date) -> Optional[List[Dict[str, float]]]:
+def try_fetch_prices(date_ymd: dt.date) -> list[dict[str, float]] | None:
     """
     Palauttaa päivän TUNTIhinnat muodossa:
         [{"hour": 0, "cents": 5.3}, ...]
@@ -56,7 +55,7 @@ def try_fetch_prices(date_ymd: dt.date) -> Optional[List[Dict[str, float]]]:
 
 
 @st.cache_data(ttl=CACHE_TTL_MED)
-def try_fetch_prices_15min(date_ymd: dt.date) -> Optional[List[Price15]]:
+def try_fetch_prices_15min(date_ymd: dt.date) -> list[Price15] | None:
     """
     Palauttaa päivän 15 min hinnat muodossa:
         [{"ts": datetime, "cents": 5.3}, ...]
@@ -81,9 +80,21 @@ def try_fetch_prices_15min(date_ymd: dt.date) -> Optional[List[Price15]]:
 
     # jos tuntidatassa on jo aikaleimat, normalisoidaan suoraan 15 min -muotoon
     has_ts = any(
-        any(k in item for k in ("time", "Time", "timestamp", "Timestamp",
-                                "datetime", "DateTime", "start", "Start",
-                                "startDate", "endDate"))
+        any(
+            k in item
+            for k in (
+                "time",
+                "Time",
+                "timestamp",
+                "Timestamp",
+                "datetime",
+                "DateTime",
+                "start",
+                "Start",
+                "startDate",
+                "endDate",
+            )
+        )
         for item in base_items
     )
     if has_ts:
@@ -98,7 +109,7 @@ def try_fetch_prices_15min(date_ymd: dt.date) -> Optional[List[Price15]]:
 # ---------------------------------------------------------------------------
 
 
-def fetch_prices_for(date_ymd: dt.date) -> List[Dict[str, float]]:
+def fetch_prices_for(date_ymd: dt.date) -> list[dict[str, float]]:
     """
     Yrittää hakea hinnat ensin api.porssisahko.net v2:sta,
     ja jos se ei onnistu, sahkonhintatanaan.fi v1:stä.
@@ -130,7 +141,7 @@ def fetch_prices_for(date_ymd: dt.date) -> List[Dict[str, float]]:
     return []
 
 
-def _fetch_from_sahkonhintatanaan(date_ymd: dt.date) -> List[Dict[str, float]]:
+def _fetch_from_sahkonhintatanaan(date_ymd: dt.date) -> list[dict[str, float]]:
     # käytetään samaa v1-osoitetta kuin alkuperäisessä koodissa
     url = f"https://www.sahkonhintatanaan.fi/api/v1/prices/{date_ymd:%Y}/{date_ymd:%m-%d}.json"
     data = http_get_json(url)
@@ -147,7 +158,7 @@ def _fetch_from_sahkonhintatanaan(date_ymd: dt.date) -> List[Dict[str, float]]:
     return prices
 
 
-def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
+def _fetch_from_porssisahko(date_ymd: dt.date) -> list[dict[str, float]]:
     """
     Hakee hinnat porssisahko v2 -rajapinnasta (latest-prices),
     suodattaa oikean päivän ja tekee niistä tuntihinnat.
@@ -157,7 +168,7 @@ def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
     data = http_get_json(url)
 
     items = data.get("prices", []) if isinstance(data, dict) else []
-    per_hour: Dict[int, List[float]] = {}
+    per_hour: dict[int, list[float]] = {}
 
     for item in items:
         start = item.get("startDate")
@@ -177,7 +188,7 @@ def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
         hour = dt_local.hour
         per_hour.setdefault(hour, []).append(float(price))
 
-    out: List[Dict[str, float]] = []
+    out: list[dict[str, float]] = []
     for hour, quarter_prices in sorted(per_hour.items()):
         if not quarter_prices:
             continue
@@ -192,7 +203,7 @@ def _fetch_from_porssisahko(date_ymd: dt.date) -> List[Dict[str, float]]:
 # ---------------------------------------------------------------------------
 
 
-def _fetch_15min_from_porssisahko_v2() -> List[dict]:
+def _fetch_15min_from_porssisahko_v2() -> list[dict]:
     """
     Hakee suoraan 48h varttidatan.
     Palauttaa sellaisenaan listan, jossa on kentät:
@@ -207,15 +218,15 @@ def _fetch_15min_from_porssisahko_v2() -> List[dict]:
     return []
 
 
-def _normalize_prices_list_15min(items: List[dict], date_ymd: dt.date) -> List[Price15]:
+def _normalize_prices_list_15min(items: list[dict], date_ymd: dt.date) -> list[Price15]:
     """
     Muuttaa varttidatan muotoon [{"ts": ..., "cents": ...}, ...]
     ja suodattaa vain pyydetyn päivän. Tämäkin on suoraan alkuperäisestä. :contentReference[oaicite:2]{index=2}
     """
-    out_map: Dict[datetime, float] = {}
+    out_map: dict[datetime, float] = {}
 
     for idx, item in enumerate(items or []):
-        ts: Optional[datetime] = None
+        ts: datetime | None = None
         # etsi aikaleima monesta eri kentästä
         for key in (
             "time",
@@ -265,20 +276,18 @@ def _normalize_prices_list_15min(items: List[dict], date_ymd: dt.date) -> List[P
     return [{"ts": ts, "cents": out_map[ts]} for ts in sorted(out_map.keys())]
 
 
-def _expand_hourly_to_15min(hourly: List[Dict[str, float]], date_ymd: dt.date) -> List[Price15]:
+def _expand_hourly_to_15min(hourly: list[dict[str, float]], date_ymd: dt.date) -> list[Price15]:
     """
     Vanhan mallinen tuntidata -> neljä 15 min -pätkää per tunti. :contentReference[oaicite:3]{index=3}
     """
-    out: List[Price15] = []
+    out: list[Price15] = []
 
     for item in hourly:
         hour = int(item["hour"])
         cents = float(item["cents"])
 
-        base = (
-            datetime.combine(date_ymd, datetime.min.time())
-            .replace(tzinfo=TZ)
-            + timedelta(hours=hour)
+        base = datetime.combine(date_ymd, datetime.min.time()).replace(tzinfo=TZ) + timedelta(
+            hours=hour
         )
 
         for q in range(4):
@@ -293,7 +302,7 @@ def _expand_hourly_to_15min(hourly: List[Dict[str, float]], date_ymd: dt.date) -
 # ---------------------------------------------------------------------------
 
 
-def _parse_cents_from_item(item: dict) -> Optional[float]:
+def _parse_cents_from_item(item: dict) -> float | None:
     # v2:lla on startDate / endDate → niissä price on jo snt/kWh
     is_v2_like = "startDate" in item or "endDate" in item
 
@@ -312,7 +321,7 @@ def _parse_cents_from_item(item: dict) -> Optional[float]:
     return None
 
 
-def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[int]:
+def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> int | None:
     # suorat tuntikentät
     for key in ("hour", "Hour", "H"):
         if value := item.get(key):
@@ -324,7 +333,17 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[i
                 pass
 
     # aikaleimat
-    for key in ("time", "Time", "timestamp", "Timestamp", "datetime", "DateTime", "start", "Start", "startDate"):
+    for key in (
+        "time",
+        "Time",
+        "timestamp",
+        "Timestamp",
+        "datetime",
+        "DateTime",
+        "start",
+        "Start",
+        "startDate",
+    ):
         if value := item.get(key):
             try:
                 ts = str(value).replace("Z", "+00:00")
@@ -342,8 +361,8 @@ def _parse_hour_from_item(item: dict, idx: int, date_ymd: dt.date) -> Optional[i
     return idx if 0 <= idx <= 23 else None
 
 
-def _normalize_prices_list(items: List[dict], date_ymd: dt.date) -> List[Dict[str, float]]:
-    out_map: Dict[int, float] = {}
+def _normalize_prices_list(items: list[dict], date_ymd: dt.date) -> list[dict[str, float]]:
+    out_map: dict[int, float] = {}
     for idx, item in enumerate(items or []):
         try:
             hour = _parse_hour_from_item(item, idx, date_ymd)

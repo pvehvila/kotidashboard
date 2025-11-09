@@ -1,6 +1,6 @@
 # 📜 Changelog
 
-Kaikki merkittävät muutokset tähän projektiin dokumentoidaan tähän tiedostoon.  
+Kaikki merkittävät muutokset tähän projektiin dokumentoidaan tähän tiedostoon.
 Tiedosto noudattaa [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) -periaatetta ja versiointi perustuu [Semantic Versioning](https://semver.org/spec/v2.0.0.html) -käytäntöön.
 
 ---

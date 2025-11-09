@@ -9,6 +9,7 @@ projektin juuresta (streamlit run main.py) vai jostain muualta.
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 
 # 1) Selvitetään tiedoston sijainti

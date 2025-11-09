@@ -1,8 +1,10 @@
 from __future__ import annotations
-from src.heos_client import HeosClient
-from src.config import HEOS_HOST, HEOS_USERNAME, HEOS_PASSWORD
+
 import sys
 from pathlib import Path
+
+from src.config import HEOS_HOST, HEOS_PASSWORD, HEOS_USERNAME
+from src.heos_client import HeosClient
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:

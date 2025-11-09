@@ -1,0 +1,5 @@
+# bandit.yaml
+skips:
+  - B110  # try/except/pass – sallitaan tässä projektissa
+  - B112  # try/except/continue – sallitaan tiedosto- ja API-loopissa
+# B310 jätetään, koska sitä varten korjasimme utils.py:n

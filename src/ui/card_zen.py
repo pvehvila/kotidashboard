@@ -26,9 +26,9 @@ def card_zen() -> None:
         if img_path.exists():
             try:
                 with img_path.open("rb") as f:
-                    bg_dataurl = "data:image/png;base64," + base64.b64encode(
-                        f.read()
-                    ).decode("ascii")
+                    bg_dataurl = "data:image/png;base64," + base64.b64encode(f.read()).decode(
+                        "ascii"
+                    )
             except Exception as e:
                 report_error("zen: load bg", e)
 
