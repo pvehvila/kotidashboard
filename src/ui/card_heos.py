@@ -1,16 +1,20 @@
+# src/ui/card_heos.py
 from __future__ import annotations
+
 import streamlit as st
+
 from src.config import HEOS_HOST, HEOS_USERNAME, HEOS_PASSWORD, HEOS_PLAYER_ID
 from src.heos_client import HeosClient
+from src.ui.common import section_title
 
 
-def render() -> None:
-    st.markdown("### 🎧 HEOS / Tidal", unsafe_allow_html=True)
+def card_heos() -> None:
+    section_title("🎧 HEOS / Tidal", mt=10, mb=4)
 
     client = HeosClient(HEOS_HOST, username=HEOS_USERNAME, password=HEOS_PASSWORD)
     client.sign_in()
 
-    # ohjausnapit ylös
+    # ohjausnapit
     c1, c2, c3 = st.columns(3)
     if c1.button("⏮️", help="Edellinen kappale"):
         client.play_previous(HEOS_PLAYER_ID)
@@ -47,7 +51,6 @@ def render() -> None:
     artist = payload.get("artist")
     album = payload.get("album")
 
-    # sama “laatikko” kuin systemissä
     box_html_start = """
     <div style="
         background:rgba(255,255,255,0.04);
@@ -78,4 +81,3 @@ def render() -> None:
             + box_html_end,
             unsafe_allow_html=True,
         )
-

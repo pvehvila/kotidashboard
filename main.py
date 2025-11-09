@@ -11,8 +11,10 @@ from src.ui import (
     card_system,
     card_weather,
     card_zen,
+    card_heos,
     load_css,
 )
+
 
 from pathlib import Path
 import sys
@@ -77,8 +79,8 @@ def main() -> None:
         with col1:
             card_system()
         with col2:
-            import card_heos  # tuodaan vasta tässä, ettei häiritse muita importteja
-            card_heos.render()
+            card_heos()
+
     except KeyboardInterrupt:
         logger.info("HomeDashboard shutdown requested")
         sys.exit(0)
