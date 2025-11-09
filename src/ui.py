@@ -1,5 +1,6 @@
 # ui.py
 """User interface components for the HomeDashboard application."""
+from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,7 @@ from streamlit.components.v1 import html as st_html
 
 from src.paths import asset_path
 
+from src import card_heos
 from src.api import (
     fetch_btc_ath_eur,
     fetch_btc_eur,
@@ -946,14 +948,6 @@ def card_system() -> None:
 
 <script>
 window.addEventListener('DOMContentLoaded', function () {{
-  // DEBUG pois päältä: ei näytetä mitään debug-tekstiä tai laatikkoa
-  var ENABLE_DEBUG = false;
-
-  function debugLog(msg) {{
-    if (!ENABLE_DEBUG) return;
-    // (ei debug-laatikkoa enää)
-  }}
-
   var target = document.getElementById('device-info');
 
   function show(rows) {{
@@ -966,16 +960,10 @@ window.addEventListener('DOMContentLoaded', function () {{
 
   try {{
     var ua = navigator.userAgent || "";
-    var platform = navigator.platform || "—";
-    var lang = (navigator.languages && navigator.languages[0]) || navigator.language || "—";
-    var dpr = (window.devicePixelRatio || 1);
     var vw = Math.round(window.innerWidth || 0);
     var vh = Math.round(window.innerHeight || 0);
     var sw = (screen && screen.width) ? screen.width : 0;
     var sh = (screen && screen.height) ? screen.height : 0;
-
-    function isOnePlus(str) {{ return /OnePlus/i.test(str) || /CPH25\\d{{2}}|CPH24\\d{{2}}|CPH23\\d{{2}}/i.test(str); }}
-    var isOP = isOnePlus(ua);
 
     function detectOS() {{
       if (ua.indexOf("Windows NT") > -1) {{
@@ -991,28 +979,15 @@ window.addEventListener('DOMContentLoaded', function () {{
       if (/CrOS/i.test(ua)) return "ChromeOS";
       if (/iPhone|iPod/i.test(ua)) return "iOS";
       if (/iPad/i.test(ua) || (ua.indexOf("Macintosh")>-1 && 'ontouchend' in document)) return "iPadOS";
-      if (/Android/i.test(ua)) {{
-        var av = /Android\\s([\\d\\.]+)/i.exec(ua);
-        var ver = av ? av[1] : "";
-        var androidStr = ver ? ("Android " + ver) : "Android";
-        if (isOP) androidStr += " (OxygenOS)";
-        return androidStr;
-      }}
+      if (/Android/i.test(ua)) return "Android";
       if (/Mac OS X|Macintosh/i.test(ua)) return "macOS";
-      if (/Linux/i.test(ua)) {{
-        if (/aarch64|arm64/i.test(ua)) return "Linux (ARM64)";
-        if (/armv7|armv8/i.test(ua)) return "Linux (ARM)";
-        return "Linux";
-      }}
+      if (/Linux/i.test(ua)) return "Linux";
       return navigator.platform || "Tuntematon";
     }}
 
-    var isAndroid = /Android/i.test(ua);
-    var isIPad = /iPad/i.test(ua) || (ua.indexOf("Macintosh")>-1 && 'ontouchend' in document);
-    var isPhoneHint = /(Mobile|Android.*Mobile|Phone)/i.test(ua);
+    var isPhone = /(Mobile|Android.*Mobile|Phone)/i.test(ua);
     var isTV = /(SmartTV|TV|BRAVIA|AFT[BMT]|AppleTV|Tizen|Web0S)/i.test(ua);
-    var isTablet = isIPad || (isAndroid && !isPhoneHint && !isTV);
-    var deviceType = isTablet ? "Tablet" : (isPhoneHint ? "Puhelin" : "Tietokone");
+    var deviceType = isTV ? "TV" : (isPhone ? "Puhelin" : "Tietokone");
 
     var b = (/(Edg|OPR|Chrome|Firefox|Safari)/i.exec(ua) || ["","Tuntematon"])[1];
     if (b === "OPR") b = "Opera";
@@ -1020,57 +995,14 @@ window.addEventListener('DOMContentLoaded', function () {{
 
     var osLabel = detectOS();
 
-    var deviceName = "—";
-    if (isOP) {{
-      var match = /CPH(25[78][0135]|24[58][17]|23\\d{{2}})/i.exec(ua);
-      if (match) {{
-        var code = match[0].toUpperCase();
-        if (/CPH2581|CPH2573|CPH2575/i.test(code)) deviceName = "OnePlus 12";
-        else if (/CPH2487|CPH2451/i.test(code)) deviceName = "OnePlus 11";
-        else deviceName = code;
-      }} else {{
-        deviceName = "OnePlus";
-      }}
-    }}
-
-    // HUOM: EI User-Agent -riviä
     var rows = [
       ["Laitetyyppi", deviceType],
       ["Käyttöjärjestelmä", osLabel],
       ["Selain", b],
-      ["Kieli", lang],
-      ["DPR", String(dpr)],
-      ["Viewport", vw + "&times;" + vh],
-      ["Resoluutio", sw + "&times;" + sh],
-      ["Laite", deviceName]
+      ["Viewport", vw + "×" + vh],
+      ["Resoluutio", sw + "×" + sh]
     ];
     show(rows);
-
-    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {{
-      navigator.userAgentData.getHighEntropyValues(['platform','platformVersion','model','fullVersionList'])
-        .then(function (d) {{
-          var os = osLabel;
-          var platform = (d.platform || '').toLowerCase();
-          var model = (d.model || '').trim();
-          var major = parseInt(String(d.platformVersion || '').split('.')[0] || '', 10);
-
-          if (platform === 'android' && !isNaN(major)) {{
-            os = "Android " + major + (isOnePlus(model) ? " (OxygenOS)" : "");
-            var labels = Array.prototype.slice.call(document.querySelectorAll('#device-info .hint'));
-            for (var i=0; i<labels.length; i++) {{
-              var key = labels[i].textContent.replace(':','').trim();
-              if (key === "Käyttöjärjestelmä") {{
-                var valEl = labels[i].nextElementSibling;
-                if (valEl) valEl.innerHTML = os;
-              }}
-              if (key === "Laite" && model && model !== 'Android SDK built for x86') {{
-                var mEl = labels[i].nextElementSibling;
-                if (mEl) mEl.innerHTML = model;
-              }}
-            }}
-          }}
-        }});
-    }}
   }} catch (err) {{
     target.innerHTML = "<div class='hint'>Virhe:</div><div>" + (err && err.message ? err.message : String(err)) + "</div>";
   }}
@@ -1078,9 +1010,10 @@ window.addEventListener('DOMContentLoaded', function () {{
 </script>
 </body></html>
 """
-        # laatikkoa ei tarvita korkeaksi enää
-        st_html(html, height=240, scrolling=False)
+        st_html(html, height=200, scrolling=False)
 
     except Exception as e:
         section_title("🖥️ Järjestelmätila")
         st.markdown(f"<span class='hint'>Virhe: {e}</span>", unsafe_allow_html=True)
+
+

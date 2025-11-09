@@ -72,8 +72,13 @@ def main() -> None:
         # Row 4: Bitcoin
         card_bitcoin()
 
-        # Row 5: System status
-        card_system()
+        # Row 5: System status + Tidal player
+        col1, col2 = st.columns(2, gap="small")
+        with col1:
+            card_system()
+        with col2:
+            import card_heos  # tuodaan vasta tässä, ettei häiritse muita importteja
+            card_heos.render()
     except KeyboardInterrupt:
         logger.info("HomeDashboard shutdown requested")
         sys.exit(0)

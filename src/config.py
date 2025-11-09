@@ -108,3 +108,13 @@ BTC_Y_PAD_PCT: float = 0.02
 
 BTC_Y_USE_PCT_PAD: bool = True
 # Use max(BTC_Y_PAD_EUR, BTC_Y_PAD_PCT * data_range) for Y-axis padding.
+
+# ------------------- HEOS SETTINGS -------------------
+HEOS_HOST = os.getenv("HEOS_HOST", "192.168.1.231")
+HEOS_USERNAME = os.getenv("HEOS_USERNAME", "")
+HEOS_PASSWORD = os.getenv("HEOS_PASSWORD", "")
+HEOS_PLAYER_ID = int(os.getenv("HEOS_PLAYER_ID", "186388645"))
+HEOS_TIDAL_PLAYLIST = os.getenv("HEOS_TIDAL_PLAYLIST", "My Daily Discovery")
+HEOS_TIDAL_SID = int(os.getenv("HEOS_TIDAL_SID", "10"))
+HEOS_TIDAL_CID = os.getenv("HEOS_TIDAL_CID", "1025")
+
