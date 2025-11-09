@@ -73,11 +73,11 @@ All quality checks are automated and executed through pre-commit hooks before ea
 🧾 Files Summary
     | File | Description |
     |:----|:------------|
-    |pyproject.toml	| Central config for Ruff, Pytest, Coverage
-    |.pre-commit-config.yaml | Defines active hooks
-    |bandit.yaml | Security rules
-    |scripts/SetupQuality.ps1 |	Automates setup on Windows
-    |tests/	| Contains all unit tests
+    |pyproject.toml	| Central config for Ruff, Pytest, Coverage |
+    |.pre-commit-config.yaml | Defines active hooks |
+    |bandit.yaml | Security rules |
+    |scripts/SetupQuality.ps1 |	Automates setup on Windows |
+    |tests/	| Contains all unit tests |
 
 ✅ Quality Pipeline Status
 
