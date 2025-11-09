@@ -1,113 +1,34 @@
-# src/ui/card_prices.py
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta
 
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.api import try_fetch_prices_15min
+from src.api.electricity_viewmodel import build_electricity_12h_view
 from src.config import (
     COLOR_GRAY,
     COLOR_TEXT_GRAY,
     PLOTLY_CONFIG,
     PRICE_Y_STEP_SNT,
-    TZ,
 )
 from src.ui.common import card, section_title
 from src.utils import _color_by_thresholds, _color_for_value
 
 
-def _current_price_15min(
-    prices_today: list[dict[str, datetime | float]] | None,
-    now_dt: datetime,
-) -> float | None:
-    if not prices_today:
-        return None
-    minute = (now_dt.minute // 15) * 15
-    slot = now_dt.replace(minute=minute, second=0, microsecond=0)
-    hit = next(
-        (p for p in prices_today if isinstance(p.get("ts"), datetime) and p["ts"] == slot),
-        None,
-    )
-    if not hit:
-        return None
-    cents_val = hit.get("cents")
-    if not isinstance(cents_val, (int | float)):
-        return None
-    return float(cents_val)
-
-
-def _next_12h_15min(
-    prices_today: list[dict[str, datetime | float]] | None,
-    prices_tomorrow: list[dict[str, datetime | float]] | None,
-    now_dt: datetime,
-) -> list[dict[str, datetime | str | float | bool]]:
-    if not prices_today and not prices_tomorrow:
-        return []
-
-    rows: list[dict[str, datetime | str | float | bool]] = []
-    minute = (now_dt.minute // 15) * 15
-    base = now_dt.replace(minute=minute, second=0, microsecond=0)
-
-    for i in range(48):
-        ts = base + timedelta(minutes=15 * i)
-
-        src = prices_today if ts.date() == now_dt.date() else prices_tomorrow
-        if not src:
-            continue
-
-        hit = next(
-            (p for p in src if isinstance(p.get("ts"), datetime) and p["ts"] == ts),
-            None,
-        )
-
-        if not hit:
-            # etsi lähellä, joskus ts voi heittää vähän
-            for p in src:
-                ts_p = p.get("ts")
-                if not isinstance(ts_p, datetime):
-                    continue
-                if abs((ts_p - ts).total_seconds()) < 60:
-                    hit = p
-                    break
-
-        if not hit:
-            continue
-
-        cents_val = hit.get("cents")
-        if not isinstance(cents_val, (int | float)):
-            cents_val = 0.0
-
-        rows.append(
-            {
-                "ts": ts,
-                "label": ts.strftime("%H:%M"),
-                "cents": float(cents_val),
-                "is_now": i == 0,
-            }
-        )
-
-    return rows
-
-
 def card_prices() -> None:
-    """Render a card displaying electricity prices for the next 12 hours (15 min)."""
+    """Renderöi pörssisähkön hintakortin käyttäen valmista viewmodelia."""
     try:
-        now_dt = datetime.now(TZ)
-        today = now_dt.date()
-        tomorrow = today + timedelta(days=1)
+        vm = build_electricity_12h_view()
+        rows = vm["rows"]
+        current_cents = vm["current_cents"]
 
-        prices_today = try_fetch_prices_15min(today)
-        prices_tomorrow = try_fetch_prices_15min(tomorrow)
-
-        current_cents = _current_price_15min(prices_today, now_dt)
-
+        # otsikko + badge
         title_html = (
-            "⚡ Pörssisähkö " + "<span style='background:{0}; color:{1}; padding:2px 10px; "
+            "⚡ Pörssisähkö "
+            f"<span style='background:{COLOR_GRAY}; color:{COLOR_TEXT_GRAY}; padding:2px 10px; "
             "border-radius:999px; font-weight:600; font-size:0.95rem'>Seuraavat 12 h (15 min)</span>"
-        ).format(COLOR_GRAY, COLOR_TEXT_GRAY)
+        )
 
         if current_cents is not None:
             badge_bg = _color_for_value(current_cents)
@@ -118,7 +39,7 @@ def card_prices() -> None:
 
         section_title(title_html, mt=10, mb=4)
 
-        rows = _next_12h_15min(prices_today, prices_tomorrow, now_dt=now_dt)
+        # jos ei rivejä -> näytä tyhjäkortti
         if not rows:
             card(
                 "Pörssisähkö",
@@ -127,6 +48,7 @@ def card_prices() -> None:
             )
             return
 
+        # plotdata
         values: list[float] = []
         for row in rows:
             val = row.get("cents")
@@ -196,4 +118,7 @@ def card_prices() -> None:
         )
     except Exception as e:
         section_title("Pörssisähkö – seuraavat 12 h")
-        st.markdown(f"<span class='hint'>Virhe hinnanhaussa: {e}</span>", unsafe_allow_html=True)
+        st.markdown(
+            f"<span class='hint'>Virhe hinnanhaussa: {e}</span>",
+            unsafe_allow_html=True,
+        )
