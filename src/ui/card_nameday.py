@@ -10,7 +10,7 @@ from src.api import fetch_holiday_today, fetch_nameday_today
 from src.config import HOLIDAY_PATHS, LAT, LON, NAMEDAY_PATHS, TZ
 from src.paths import asset_path
 from src.ui.common import card
-from src.utils import _sun_icon, fetch_sun_times
+from src.utils_sun import _sun_icon, fetch_sun_times
 
 
 def card_nameday() -> None:
