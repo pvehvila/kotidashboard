@@ -1,165 +1,202 @@
-# Refaktorointisuunnitelma
+# REFACTORING.md
 
-Tämä dokumentti kuvaa HomeDashboard-projektin tämänhetkisen koodin rakenteesta nousseet selkeät refaktorointikohteet. Lähteenä on käytetty rivimääräanalyysia (project_metrics.ps1) sekä radon-kompleksisuusraporttia.
+Refaktorointisuunnitelma – HomeDashboard
+Päivitetty: 2025-11-09
+Lähde: Radon CC -raportti (src/…-tiedostot), tehty refaktorointi (bitcoin, utils, sähkökortti)
 
-Tavoitteet:
-- pienentää yksittäisten moduulien (erityisesti `api/` ja `ui/`) kokoa
-- erottaa domain-logiikka (API-haku, normalisointi) käyttöliittymästä
-- helpottaa testausta pilkkomalla pitkät funktiot erillisiin, puhtaisiin apufunktioihin
+Tämän dokumentin tarkoitus on pitää näkyvissä ne tiedostot ja funktiot, joissa monimutkaisuus on vielä koholla, sekä kirjata, mitä on jo tehty. Tavoitteena on, että UI-kortit renderöivät ja API-/viewmodel-taso kokoaa datan.
 
 ---
 
-## 1. `src/api/weather.py` (540 riviä)
+## 1. Nykytila Radonin mukaan
 
-**Ongelma:** sama tiedosto sisältää sekä säädatan haun, WMO/Foreca-mäppäyksen että debug-näkymän.
+Radon-raportin perusteella valtaosa projektista on nyt tasolla **A** ja **B**:
+
+- **Hyvin kevyet / valmiit:**
+  - `src/heos_client.py` – kaikki metodit A (3–4)
+  - `src/logger_config.py` – A (3)
+  - `src/paths.py` – A (1)
+  - `src/utils.py` (jäljelle jäänyt osa) – A (2)
+  - `src/api/http.py` – A (3–4)
+  - `src/api/quotes.py` – A (2–4)
+  - `src/api/weather.py` – A (1)
+  - `src/ui/common.py` – A (1–2)
+  - `src/ui/card_bitcoin.py` – A (3)
+
+Näihin ei tarvita lisärefaktorointia nyt.
+
+---
+
+## 2. Jo tehdyt refaktoroinnit
+
+### 2.1 Utilsin pilkkominen
+**Tavoite:** poistaa “kaatopaikka”-tiedosto.
+
+- [x] Luotu `src/utils_colors.py` ja siirretty:
+  - `_color_by_thresholds` – A (5)
+  - `_color_for_value` – A (1)
+- [x] Luotu `src/utils_sun.py` ja siirretty:
+  - `fetch_sun_times` – A (5)
+  - `_sun_icon` – A (2)
+- [x] Luotu `src/utils_net.py` ja siirretty:
+  - `get_ip` – A (2)
+- [x] Alkuperäinen `src/utils.py` sisältää nyt vain oikeasti yleiskäyttöiset utilit.
+
+**Tulos:** utils ei ole enää monitoimitiedosto, ja Radonin pisteet ovat A-tasoa → ei jatkotoimia.
+
+---
+
+### 2.2 Bitcoin-API:n siistiminen
+**Ongelma havaittu:** `_coingecko_market_chart(...)` oli liian iso ja teki sekä HTTP-pyynnön että muunnoksen.
+
+**Toteutettu ratkaisu:** pilkottu kolmeen vaiheeseen.
+- [x] HTTP-pyyntö omaksi funktioksi (`_get_coingecko_market_chart` – A (1))
+- [x] Raakadatan prices-listan poiminta omaksi funktioksi (`_extract_coingecko_prices` – B (6))
+- [x] Datan muuntaminen dashboard-muotoon omaksi funktioksi (`_to_dashboard_from_ms` / `_to_dashboard_from_unix` – A (4))
+
+**Tulos Radonissa:**
+- `src/api/bitcoin.py`
+  - `_extract_cryptocompare_prices` – B (9)
+  - `_extract_coingecko_prices` – B (6)
+  - `_btc_market_chart` – A (5)
+  - loput A (1–4)
+
+**Johtopäätös:** bitcoin on nyt hyväksyttävällä tasolla, eikä vaadi lisäpilkkomista.
+
+---
+
+### 2.3 Sähkön hintakortin eriyttäminen
+**Aiempi ongelma:** `src/ui/card_prices.py` sisälsi sekä laskennan (seuraavat 12 h / 15 min) että UI:n.
+
+**Toteutettu ratkaisu:**
+- [x] Laskentalogiikka siirretty erilliseen moduuliin: `src/api/electricity_viewmodel.py`
+  - siellä nyt mm. `_next_12h_15min - C (15)`
+  - ja `_current_price_15min - B (7)`
+  - sekä `build_electricity_12h_view - A (3)`
+- [x] `src/ui/card_prices.py` jättää vain kortin piirtämisen valmiilla viewmodelilla.
+
+**Tulos:** UI-tiedosto on kevyempi, ja monimutkaisuus “saa” nyt olla viewmodelissa, koska se tekee oikeaa työtä.
+
+---
+
+### 2.4 Sähkön hakujen pilkkominen
+**Toteutettu:**
+- [x] `src/api/electricity_sources.py` – kaikki yksittäiset lähdehaut A–B
+- [x] `src/api/electricity_service.py` – koonti ja fallbackit
+- [x] `src/api/electricity_normalize.py` – normalisointi ja 15 min -laajennus
+- [x] `src/api/electricity_log.py` – lokitus
+
+**Tulos Radonissa:**
+- Lähdehaut: A (3–4)
+- Palvelufunktiot: yksi C (13)
+- Normalisointi: yksi C (13) ja yksi C (12)
+
+---
+
+## 3. Jäljellä olevat hotspotit
+
+Nämä ovat ne, joissa Radon näyttää **C–D** ja jotka kannattaa seuraavaksi pilkkoa. Järjestys on tarkoituksella konkreettinen.
+
+### 3.1 `src/ui/card_nameday.py` – **tärkein**
+- Radon: `card_nameday - D (30)`
+- Tämä on selvästi liian iso UI-funktio.
+- **Tavoite:** kortti saa vain renderöidä, ei päättää monimutkaisia “tänään on sekä pyhä että nimipäivä” -tiloja.
 
 **Toimenpiteet:**
+1. Tee sisäinen viewmodel-funktio, esim. `_nameday_viewmodel()` joka palauttaa kaiken kortin tarvitsemana datana.
+2. Tee erillinen renderöintifunktio, esim. `_render_nameday_content(vm)` joka tekee HTML/Streamlitin.
+3. Pidä `card_nameday(...)` vain koordinoivana.
 
-- [ ] Luo uusi tiedosto `src/api/weather_fetch.py` ja siirrä sinne:
-  - `fetch_weather_points(...)`
-  - muut ulkoiset rajapintakutsut
-- [ ] Luo uusi tiedosto `src/api/weather_mapping.py` ja siirrä sinne:
-  - `_load_wmo_foreca_map(...)`
-  - `_read_wmo_mapping(...)`
-  - `wmo_to_icon_key(...)`
-  - `wmo_to_foreca_code(...)`
-- [ ] Luo tarvittaessa `src/api/weather_utils.py` ja siirrä sinne pienet muunnosfunktiot:
-  - `_as_bool(...)`
-  - `_as_float(...)`
-  - `_as_int(...)`
-- [ ] Siirrä `card_weather_debug_matrix(...)` joko erilliseen `weather_debug.py` -tiedostoon tai jätä vain kehityskäyttöön.
-
-**Valmis, kun:** varsinainen `weather.py` sisältää enää “orkestroivan” tason, ja yksittäiset osat ovat alle ~150 riviä kukin.
+**Valmis, kun:** `card_nameday` tippuu C- tai B-tasolle.
 
 ---
 
-## 2. `src/api/electricity.py` (386 riviä)
+### 3.2 `src/api/electricity_normalize.py`
+- Radon:
+  - `normalize_prices_list_15min - C (13)`
+  - `parse_hour_from_item - C (12)`
+  - `normalize_prices_list - B (9)`
 
-**Ongelma:** sama tiedosto hoitaa lähdekohtaiset haut, normalisoinnin (tunti → 15 min) ja lokituksen.
+**Mitä täältä kannattaa erottaa:**
+- syötteen rakenteen tunnistus (eri lähteet)
+- 60→15 min -laajennus
+- puuttuvien arvojen/fallbackien käsittely
 
-**Toimenpiteet:**
-
-- [ ] Luo `src/api/electricity_sources.py` ja siirrä sinne:
-  - `_fetch_from_porssisahko(...)`
-  - `_fetch_15min_from_porssisahko_v2(...)`
-  - `_fetch_from_sahkonhintatanaan(...)`
-- [ ] Luo `src/api/electricity_normalize.py` ja siirrä sinne:
-  - `_normalize_prices_list_15min(...)` **(C 13)**
-  - `_normalize_prices_list(...)`
-  - `_expand_hourly_to_15min(...)`
-  - `_parse_hour_from_item(...)` **(C 12)**
-  - `_parse_cents_from_item(...)`
-- [ ] Luo `src/api/electricity_service.py` ja siirrä “public”-funktiot:
-  - `try_fetch_prices_15min(...)`
-  - `try_fetch_prices(...)`
-  - `fetch_prices_for(...)`
-- [ ] Siirrä `_log_raw_prices(...)` erilliseen debug/logi -tiedostoon.
-
-**Valmis, kun:** yksittäinen tiedosto ei sisällä sekä API-kutsua että 15 min -normalisointia samassa.
+Eli yksi funktio yksi vastuu. Nyt se tekee kolmea.
 
 ---
 
-## 3. `src/ui/card_bitcoin.py` (281 riviä) – **radon: D (27)**
+### 3.3 `src/api/electricity_service.py`
+- Radon: `fetch_prices_for - C (13)`
 
-**Ongelma:** kortti tekee liikaa: hakee dataa, muotoilee ja piirtää UI:n.
-
-**Toimenpiteet:**
-
-- [ ] Jätä `card_bitcoin(...)` vain Streamlit-/UI-rakenteelle.
-- [ ] Siirrä datan muotoilu erilliseen tiedostoon, esim. `src/ui/card_bitcoin_parts.py`:
-  - hinnan formatointi
-  - prosenttimuutokset
-  - mahdollinen historiadata, jos sitä näytetään
-- [ ] Varmista, että varsinainen datan haku pysyy `src/api/bitcoin.py`:ssä.
-
-**Valmis, kun:** varsinainen korttifunktio on noin 50–80 riviä ja kutsuu selkeitä apufunktioita.
+**Toimenpide:**
+- tee funktiosta pelkkä orkestrointi:
+  - yritä 15 min (`try_fetch_prices_15min`)
+  - jos epäonnistuu → tuntidata (`try_fetch_prices`)
+  - normalisoi
+- jätä yksityiskohdat jo olemassa oleville pienemmille funktioille
 
 ---
 
-## 4. Nimipäiväketju: `src/api/calendar.py` ja `src/ui/card_nameday.py`
+### 3.4 `src/api/calendar_nameday.py`
+- Radon: `fetch_nameday_today - C (20)`
+- Tämä on sama ketju kuin UI-puolella: päivämäärän ratkaisu, datalähteen valinta ja lopputuloksen muotoilu ovat yhdessä.
 
-**Havainnot:**
-- `fetch_nameday_today` → **D (23)**
-- `card_nameday` → **D (29)**
+**Toimenpide:**
+1. hae “raw” nimipäivädata tälle päivälle
+2. muunna se dashboardin käyttämään muotoon
+3. palauta valmis rakenne
 
-**Toimenpiteet:**
-
-- [ ] Jaa `src/api/calendar.py` kahteen tai kolmeen tiedostoon:
-  - `calendar_data.py` → tiedoston resolvoinnit, `_resolve_nameday_file(...)`, `_resolve_first_existing(...)`, `_load_json(...)`
-  - `calendar_nameday.py` → `fetch_nameday_today(...)`
-  - `calendar_holiday.py` → `fetch_holiday_today(...)`
-- [ ] Jaa `src/ui/card_nameday.py` kahteen funktioon:
-  - `card_nameday(...)` → UI-rakenne
-  - `_render_nameday_block(...)` → datan esitys
-
-**Valmis, kun:** kumpikaan funktio ei ole D-tason monimutkaisuutta.
+→ API-taso pysyy lyhyenä, ja samalla UI-taso kevenee.
 
 ---
 
-## 5. `src/ui/card_prices.py` (199 riviä)
+### 3.5 Viewmodelin jatkojalostus
+`src/api/electricity_viewmodel.py` → `_next_12h_15min - C (15)`
 
-**Ongelma:** kortti sisältää sekä laskentaa (seuraavat 12h / 15 min) että UI:n.
-
-**Toimenpiteet:**
-
-- [ ] Siirrä laskentalogiikka, kuten `_next_12h_15min(...)` **(C 15)**, erilliseen moduuliin esim. `src/api/electricity_viewmodel.py`
-- [ ] Jätä tähän tiedostoon vain kortin piirtäminen.
-
-**Valmis, kun:** kortti saa valmiin “viewmodelin” ja ainoastaan renderöi sen.
+**Toimenpide (valinnainen):**
+- erottele “aikajakson muodostus” ja “UI:lle sopiva lista”
+- näin viewmodel pysyy muutettavana ilman että CC nousee uudestaan
 
 ---
 
-## 6. `src/utils.py` (184 riviä)
+## 4. Hyväksytty monimutkaisuus
 
-**Ongelma:** yleinen “kaatopaikka”.
+On muutama kohta, joissa C-luokka on hyväksyttävissä, koska ne käsittelevät luonnostaan monimutkaista dataa:
 
-**Toimenpiteet:**
+- `src/api/weather_fetch.py` → `fetch_weather_points - C (16)`
+- `src/api/weather_mapping.py` → `wmo_to_icon_key - C (13)`
+- `src/api/weather_utils.py` → `as_bool - C (14)`
+- `src/api/calendar_holiday.py` → `fetch_holiday_today - C (13)`
 
-- [ ] Luo `src/utils_colors.py` ja siirrä:
-  - `_color_by_thresholds(...)`
-  - `_color_for_value(...)`
-- [ ] Luo `src/utils_sun.py` ja siirrä:
-  - `fetch_sun_times(...)`
-  - `_sun_icon(...)`
-- [ ] Luo `src/utils_net.py` ja siirrä:
-  - `get_ip(...)`
-
-**Valmis, kun:** alkuperäinen `utils.py` sisältää vain oikeasti yleiskäyttöiset utilit.
+**Periaate:** näitä ei tarvitse pilkkoa heti, ellei niihin lisätä uusia haaroja tai uusia datalähteitä.
 
 ---
 
-## 7. `src/api/bitcoin.py`
+## 5. Valmis / ei lisätoimia
 
-**Havainto:** `_coingecko_market_chart(...)` → **C (15)**
+Nämä tiedostot/funktiot ovat Radonin mukaan A–B ja ovat jo riittävän yksinkertaisia:
 
-**Toimenpiteet:**
-
-- [ ] Pilko kolmeen osaan:
-  1. HTTP-pyyntö
-  2. raakadatasta `prices`-listan poiminta
-  3. datan muuntaminen dashboardin käyttämään muotoon
-
-**Valmis, kun:** yksikään funktio ei tee sekä pyyntöä että muunnosta.
-
----
-
-## 8. Yleinen sääntö jatkoon
-
-- [ ] Aja `.\project_metrics.ps1` aina ison refaktoroinnin jälkeen.
-- [ ] Jos radon cc näyttää **C** tai **D**, pilko funktio.
-- [ ] Pidä `api/`-kansio niin, että:
-  - ulkoiset haut = oma tiedosto
-  - normalisointi/mapping = oma tiedosto
-  - debug/testi = oma tiedosto
+- `src/heos_client.py` (kaikki metodit A)
+- `src/logger_config.py`
+- `src/paths.py`
+- `src/utils_*.py` (colors, sun, net)
+- `src/api/http.py`
+- `src/api/quotes.py`
+- `src/api/bitcoin.py` (pilkottu)
+- `src/ui/common.py`
+- `src/ui/card_bitcoin.py`
 
 ---
 
-## Seuranta
+## 6. Seurantalista
 
-- [ ] 1: `api/weather.py` pilkottu
-- [ ] 2: `api/electricity.py` pilkottu
-- [ ] 3: `ui/card_bitcoin.py` kevennetty
-- [ ] 4: kalenteri/nimipäiväketju eroteltu
-- [ ] 5: hintakortin laskentalogiikka siirretty
-- [ ] 6: utils jaettu domainin mukaan
-- [ ] 7: bitcoin-haku jaettu kolmeen vaiheeseen
+- [x] Utils jaettu domain-kohtaisiin tiedostoihin
+- [x] Bitcoin-API pilkottu: HTTP → poiminta → muunto
+- [x] Sähkön hintakortin laskenta siirretty omaan viewmodeliin
+- [x] Sähkön hakulogiikka jaettu lähteisiin, palveluun ja normalisointiin
+- [ ] Nimipäiväkortin (`src/ui/card_nameday.py`) pilkkominen
+- [ ] Sähkön normalisoinnin (2 kpl C-luokan funktioita) pilkkominen
+- [ ] Nimipäivä-API:n (`src/api/calendar_nameday.py`) keventäminen
+
+Kun yllä olevat kolme kohtaa on tehty, projektin näkyvimmät D- ja C-luokan funktiot poistuvat ja koodi on tasalaatuista.
