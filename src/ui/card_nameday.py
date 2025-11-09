@@ -1,4 +1,3 @@
-# src/ui/card_nameday.py
 from __future__ import annotations
 
 import base64
@@ -15,9 +14,7 @@ from src.utils import _sun_icon, fetch_sun_times
 
 
 def card_nameday() -> None:
-    """Render a card displaying today's Finnish namedays (liputuspäivä, nimipäivät, aurinko, mahdollinen juhla)."""
     try:
-        # --- cache-busterit mtime:stä ---
         p_names = next((p for p in NAMEDAY_PATHS if Path(p).exists()), None)
         mtime_names = Path(p_names).stat().st_mtime_ns if p_names else 0
         p_holidays = next((p for p in HOLIDAY_PATHS if Path(p).exists()), None)
@@ -26,7 +23,10 @@ def card_nameday() -> None:
         names = fetch_nameday_today(_cache_buster=mtime_names) or "—"
         hol = fetch_holiday_today(_cache_buster=max(mtime_names, mtime_holidays)) or {}
 
-        # --- otsikkoteksti ---
+        # jos holiday tuli avaimella "name", muunna se vanhaan muotoon
+        if "holiday" not in hol and "name" in hol:
+            hol["holiday"] = hol["name"]
+
         now = datetime.now(TZ)
         weekdays_fi = [
             "maanantaina",
@@ -39,7 +39,6 @@ def card_nameday() -> None:
         ]
         title_text = f"Nimipäivät<br>{weekdays_fi[now.weekday()]} {now.day}.{now.month}."
 
-        # --- tausta suoraan kortin backgroundiksi ---
         bg_dataurl = None
         for fname in ("butterfly-bg.png", "butterfly-bg.webp", "butterfly-bg.jpg"):
             path = asset_path(fname)
@@ -55,14 +54,13 @@ def card_nameday() -> None:
         overlay_css = "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.25) 45%, rgba(11,15,20,0.00) 70%)"
         bg_css = overlay_css + (f", url({bg_dataurl})" if bg_dataurl else "")
 
-        # --- statusrivi (vain jos flag/loma) ---
         is_flag = bool(hol.get("is_flag_day"))
         is_hday = bool(hol.get("is_holiday"))
         holiday_name = (hol.get("holiday") or "").strip()
         has_status = is_flag or is_hday
 
         status_html = ""
-        if is_flag or is_hday:
+        if has_status:
             flag_svg = (
                 "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='16' viewBox='0 0 22 16' aria-label='Suomen lippu' style='flex:0 0 auto;'>"
                 "<rect width='22' height='16' fill='#ffffff'/>"
@@ -92,7 +90,6 @@ def card_nameday() -> None:
             f"{names}</div>"
         )
 
-        # --- Auringon nousu/lasku: pillerit ---
         sr, ss = fetch_sun_times(LAT, LON, TZ.key)
         sun_html = ""
         if sr or ss:
@@ -119,7 +116,7 @@ def card_nameday() -> None:
          style="height:180px; position:relative; overflow:hidden;
                 background-image:{bg_css}; background-size:cover; background-position:center;">
           <div class="card-body" style="display:flex; align-items:flex-start; text-align:left; padding:10px 16px 12px 16px;">
-            <div style="font-size:1.0rem; line-height:1.2; margin:0; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45); width:100%;">
+            <div style="font-size:1.0rem; line-height:1.2; margin:0; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,.45); width:100%;">
               {status_html}
               <div class="card-title" style="margin:{'6px 0 0 0' if has_status else '0'}; color:#f2f4f7;">
                 {title_text}

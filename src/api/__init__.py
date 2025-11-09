@@ -17,8 +17,15 @@ from .bitcoin import (
 from .bitcoin import (
     fetch_btc_last_30d_eur as fetch_btc_last_30d_eur,
 )
-from .calendar import fetch_holiday_today as fetch_holiday_today
-from .calendar import fetch_nameday_today as fetch_nameday_today
+from .calendar import (
+    fetch_holiday_today as fetch_holiday_today,
+)
+from .calendar import (
+    fetch_nameday_today as fetch_nameday_today,
+)
+from .calendar import (
+    get_nameday_and_holiday as get_nameday_and_holiday,
+)
 from .electricity import try_fetch_prices as try_fetch_prices
 from .electricity import try_fetch_prices_15min as try_fetch_prices_15min
 from .quotes import fetch_daily_quote as fetch_daily_quote
