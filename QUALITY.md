@@ -58,11 +58,11 @@ All quality checks are automated and executed through pre-commit hooks before ea
     Purpose: automatically runs all quality checks before commits.
     Configuration: .pre-commit-config.yaml
     Installed hooks:
-        Hook	Function
-        ruff	Lint & fix imports
-        ruff-format	Auto-format code
-        bandit	Security scan
-    end-of-file-fixer, trailing-whitespace	Basic hygiene
+        Hook	                                Function
+        ruff	                                Lint & fix imports
+        ruff-format	                            Auto-format code
+        bandit	                                Security scan
+        end-of-file-fixer, trailing-whitespace	Basic hygiene
 
     Setup command:
 
@@ -71,6 +71,7 @@ All quality checks are automated and executed through pre-commit hooks before ea
         pre-commit run --all-files
 
 🧾 Files Summary
+
     | File | Description |
     |:----|:------------|
     |pyproject.toml	| Central config for Ruff, Pytest, Coverage |
