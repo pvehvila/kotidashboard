@@ -53,7 +53,9 @@ def _next_12h_15min(
         return []
 
     rows: List[Dict[str, Union[datetime, str, float, bool]]] = []
-    base = now_dt.replace(second=0, microsecond=0)
+    minute = (now_dt.minute // 15) * 15
+    base = now_dt.replace(minute=minute, second=0, microsecond=0)
+
     for i in range(48):
         ts = base + timedelta(minutes=15 * i)
 

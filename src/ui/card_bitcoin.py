@@ -1,7 +1,7 @@
 # src/ui/card_bitcoin.py
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import math
 
 import plotly.graph_objects as go
