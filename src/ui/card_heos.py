@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.config import HEOS_HOST, HEOS_USERNAME, HEOS_PASSWORD, HEOS_PLAYER_ID
+from src.config import HEOS_HOST, HEOS_PASSWORD, HEOS_PLAYER_ID, HEOS_USERNAME
 from src.heos_client import HeosClient
 from src.ui.common import section_title
 

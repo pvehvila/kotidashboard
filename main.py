@@ -1,25 +1,25 @@
 # main.py
 """Main entry point for the HomeDashboard Streamlit application."""
+
+import sys
 import traceback
-from src.logger_config import setup_logging
+from pathlib import Path
+
 import streamlit as st
 
+from src.logger_config import setup_logging
+from src.paths import ensure_dirs
 from src.ui import (
     card_bitcoin,
+    card_heos,
     card_nameday,
     card_prices,
     card_system,
     card_weather,
     card_zen,
-    card_heos,
     load_css,
 )
 
-
-from pathlib import Path
-import sys
-
-from src.paths import ensure_dirs
 ensure_dirs()
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,9 +28,8 @@ sys.path.append(str(BASE_DIR / "src"))
 # Setup logging
 logger = setup_logging()
 
-def st_autorefresh(
-    interval: int | None = None, key: str | None = None, **kwargs
-) -> None:
+
+def st_autorefresh(interval: int | None = None, key: str | None = None, **kwargs) -> None:
     """Fallback implementation for auto-refreshing the Streamlit page.
 
     Args:
@@ -88,6 +87,7 @@ def main() -> None:
         logger.error(f"Unhandled error: {str(e)}")
         logger.error(traceback.format_exc())
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

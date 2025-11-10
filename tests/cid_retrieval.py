@@ -1,5 +1,5 @@
+from src.config import HEOS_HOST, HEOS_PASSWORD, HEOS_USERNAME
 from src.heos_client import HeosClient
-from src.config import HEOS_HOST, HEOS_USERNAME, HEOS_PASSWORD
 
 client = HeosClient(HEOS_HOST, username=HEOS_USERNAME, password=HEOS_PASSWORD)
 client.sign_in()

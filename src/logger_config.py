@@ -26,13 +26,11 @@ def setup_logging(log_dir: str | None = None) -> logging.Logger:
     file_handler = RotatingFileHandler(
         Path(log_dir) / "homedashboard.log",
         maxBytes=5_000_000,  # 5 MB
-        backupCount=3
+        backupCount=3,
     )
 
     # Formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     console.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 

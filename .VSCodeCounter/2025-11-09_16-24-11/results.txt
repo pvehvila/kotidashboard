@@ -1,0 +1,105 @@
+Date : 2025-11-09 16:24:11
+Directory : c:\HomeDashboard
+Total : 59 files,  3821 codes, 466 comments, 795 blanks, all 5082 lines
+
+Languages
++------------------+------------+------------+------------+------------+------------+
+| language         | files      | code       | comment    | blank      | total      |
++------------------+------------+------------+------------+------------+------------+
+| Python           |         30 |      2,412 |        395 |        549 |      3,356 |
+| Markdown         |         12 |        542 |          0 |        140 |        682 |
+| JSON             |          4 |        432 |          0 |         14 |        446 |
+| PowerShell       |          4 |        141 |         24 |         35 |        200 |
+| PostCSS          |          1 |        109 |         24 |         14 |        147 |
+| YAML             |          3 |         64 |          2 |         13 |         79 |
+| Shell Script     |          1 |         58 |         10 |         12 |         80 |
+| Batch            |          1 |         29 |          8 |         11 |         48 |
+| pip requirements |          2 |         26 |          3 |          5 |         34 |
+| Properties       |          1 |          8 |          0 |          2 |         10 |
++------------------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                  | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                     |         59 |      3,821 |        466 |        795 |      5,082 |
+| . (Files)                                             |         12 |        541 |         29 |        146 |        716 |
+| .github                                               |          1 |         34 |          0 |          9 |         43 |
+| .github\workflows                                     |          1 |         34 |          0 |          9 |         43 |
+| assets                                                |          1 |        109 |         24 |         14 |        147 |
+| data                                                  |          3 |        431 |          0 |         13 |        444 |
+| docs                                                  |          7 |        144 |          0 |         32 |        176 |
+| docs\mermaid                                          |          7 |        144 |          0 |         32 |        176 |
+| scripts                                               |          6 |        228 |         42 |         58 |        328 |
+| src                                                   |         24 |      2,221 |        363 |        487 |      3,071 |
+| src (Files)                                           |          8 |        386 |        151 |        135 |        672 |
+| src\api                                               |          7 |      1,029 |         99 |        211 |      1,339 |
+| src\ui                                                |          9 |        806 |        113 |        141 |      1,060 |
+| tests                                                 |          5 |        113 |          8 |         36 |        157 |
++-------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------+------------------+------------+------------+------------+------------+
+| filename                                              | language         | code       | comment    | blank      | total      |
++-------------------------------------------------------+------------------+------------+------------+------------+------------+
+| c:\HomeDashboard\.github\workflows\ci.yml             | YAML             |         34 |          0 |          9 |         43 |
+| c:\HomeDashboard\.pre-commit-config.yaml              | YAML             |         27 |          0 |          3 |         30 |
+| c:\HomeDashboard\CHANGELOG.md                         | Markdown         |         31 |          0 |         11 |         42 |
+| c:\HomeDashboard\CHANGELOG_EN.md                      | Markdown         |         31 |          0 |         11 |         42 |
+| c:\HomeDashboard\QUALITY.md                           | Markdown         |         92 |          0 |         30 |        122 |
+| c:\HomeDashboard\README.md                            | Markdown         |        122 |          0 |         28 |        150 |
+| c:\HomeDashboard\README_en.md                         | Markdown         |        122 |          0 |         28 |        150 |
+| c:\HomeDashboard\assets\style.css                     | PostCSS          |        109 |         24 |         14 |        147 |
+| c:\HomeDashboard\bandit.yaml                          | YAML             |          3 |          2 |          1 |          6 |
+| c:\HomeDashboard\check_imports.py                     | Python           |         21 |          7 |          8 |         36 |
+| c:\HomeDashboard\data\btc_ath_cache.json              | JSON             |          1 |          0 |          1 |          2 |
+| c:\HomeDashboard\data\nimipaivat_fi.json              | JSON             |        394 |          0 |          1 |        395 |
+| c:\HomeDashboard\data\pyhat_fi.json                   | JSON             |         36 |          0 |         11 |         47 |
+| c:\HomeDashboard\docs\mermaid\architecture.md         | Markdown         |         39 |          0 |          8 |         47 |
+| c:\HomeDashboard\docs\mermaid\deployment.md           | Markdown         |         22 |          0 |          5 |         27 |
+| c:\HomeDashboard\docs\mermaid\sequence_bitcoin.md     | Markdown         |         19 |          0 |          4 |         23 |
+| c:\HomeDashboard\docs\mermaid\sequence_electricity.md | Markdown         |         21 |          0 |          4 |         25 |
+| c:\HomeDashboard\docs\mermaid\sequence_system.md      | Markdown         |         12 |          0 |          4 |         16 |
+| c:\HomeDashboard\docs\mermaid\sequence_weather.md     | Markdown         |         21 |          0 |          4 |         25 |
+| c:\HomeDashboard\docs\mermaid\state_cache.md          | Markdown         |         10 |          0 |          3 |         13 |
+| c:\HomeDashboard\main.py                              | Python           |         58 |         17 |         19 |         94 |
+| c:\HomeDashboard\requirements.in                      | pip requirements |         16 |          3 |          4 |         23 |
+| c:\HomeDashboard\requirements.txt                     | pip requirements |         10 |          0 |          1 |         11 |
+| c:\HomeDashboard\scripts\DeployToPi.ps1               | PowerShell       |         69 |          3 |         14 |         86 |
+| c:\HomeDashboard\scripts\Generate-UML.ps1             | PowerShell       |         13 |          0 |          5 |         18 |
+| c:\HomeDashboard\scripts\GitSync.bat                  | Batch            |         29 |          8 |         11 |         48 |
+| c:\HomeDashboard\scripts\SetupQuality.ps1             | PowerShell       |         52 |         18 |         12 |         82 |
+| c:\HomeDashboard\scripts\Update-Dependencies.ps1      | PowerShell       |          7 |          3 |          4 |         14 |
+| c:\HomeDashboard\scripts\update.sh                    | Shell Script     |         58 |         10 |         12 |         80 |
+| c:\HomeDashboard\setup.cfg                            | Properties       |          8 |          0 |          2 |         10 |
+| c:\HomeDashboard\src\__init__.py                      | Python           |          0 |          0 |          1 |          1 |
+| c:\HomeDashboard\src\api\__init__.py                  | Python           |         25 |          1 |          1 |         27 |
+| c:\HomeDashboard\src\api\bitcoin.py                   | Python           |        108 |          2 |         19 |        129 |
+| c:\HomeDashboard\src\api\calendar.py                  | Python           |        125 |          0 |         19 |        144 |
+| c:\HomeDashboard\src\api\electricity.py               | Python           |        240 |         76 |         71 |        387 |
+| c:\HomeDashboard\src\api\http.py                      | Python           |         33 |          1 |          8 |         42 |
+| c:\HomeDashboard\src\api\quotes.py                    | Python           |         58 |          1 |         10 |         69 |
+| c:\HomeDashboard\src\api\weather.py                   | Python           |        440 |         18 |         83 |        541 |
+| c:\HomeDashboard\src\btc_ath_cache.json               | JSON             |          1 |          0 |          1 |          2 |
+| c:\HomeDashboard\src\config.py                        | Python           |         57 |         28 |         35 |        120 |
+| c:\HomeDashboard\src\heos_client.py                   | Python           |        107 |         23 |         29 |        159 |
+| c:\HomeDashboard\src\logger_config.py                 | Python           |         25 |          7 |         11 |         43 |
+| c:\HomeDashboard\src\paths.py                         | Python           |         23 |         18 |         16 |         57 |
+| c:\HomeDashboard\src\ui\__init__.py                   | Python           |         18 |          2 |          3 |         23 |
+| c:\HomeDashboard\src\ui\card_bitcoin.py               | Python           |        224 |         24 |         34 |        282 |
+| c:\HomeDashboard\src\ui\card_heos.py                  | Python           |         69 |          3 |         12 |         84 |
+| c:\HomeDashboard\src\ui\card_nameday.py               | Python           |        109 |         18 |         16 |        143 |
+| c:\HomeDashboard\src\ui\card_prices.py                | Python           |        158 |         10 |         32 |        200 |
+| c:\HomeDashboard\src\ui\card_system.py                | Python           |        100 |         10 |         17 |        127 |
+| c:\HomeDashboard\src\ui\card_weather.py               | Python           |         74 |         16 |         11 |        101 |
+| c:\HomeDashboard\src\ui\card_zen.py                   | Python           |         36 |         11 |          8 |         55 |
+| c:\HomeDashboard\src\ui\common.py                     | Python           |         18 |         19 |          8 |         45 |
+| c:\HomeDashboard\src\utils.py                         | Python           |        110 |         48 |         27 |        185 |
+| c:\HomeDashboard\src\weather_icons.py                 | Python           |         63 |         27 |         15 |        105 |
+| c:\HomeDashboard\tests\cid_retrieval.py               | Python           |          9 |          0 |          3 |         12 |
+| c:\HomeDashboard\tests\list_heos_playlists.py         | Python           |         31 |          2 |         12 |         45 |
+| c:\HomeDashboard\tests\list_tidal_containers.py       | Python           |         40 |          2 |         12 |         54 |
+| c:\HomeDashboard\tests\print_heos_players.py          | Python           |         31 |          3 |          8 |         42 |
+| c:\HomeDashboard\tests\test_smoke.py                  | Python           |          2 |          1 |          1 |          4 |
+| Total                                                 |                  |      3,821 |        466 |        795 |      5,082 |
++-------------------------------------------------------+------------------+------------+------------+------------+------------+

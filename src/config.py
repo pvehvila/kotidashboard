@@ -2,8 +2,8 @@
 """Configuration settings for the HomeDashboard application."""
 
 import os
-from zoneinfo import ZoneInfo
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from src.paths import data_path  # ← UUSI
 
@@ -117,4 +117,3 @@ HEOS_PLAYER_ID = int(os.getenv("HEOS_PLAYER_ID", "186388645"))
 HEOS_TIDAL_PLAYLIST = os.getenv("HEOS_TIDAL_PLAYLIST", "My Daily Discovery")
 HEOS_TIDAL_SID = int(os.getenv("HEOS_TIDAL_SID", "10"))
 HEOS_TIDAL_CID = os.getenv("HEOS_TIDAL_CID", "1025")
-

@@ -2,8 +2,8 @@
 
 # 🏠 Kotidashboard
 
-> **Kotidashboard** on Streamlit-pohjainen kojelauta, joka kokoaa keskeiset arjen tiedot yhdelle näytölle.  
-> Sovellus hakee reaaliaikaisia tietoja muun muassa säästä, sähkön hinnasta, Bitcoinin kurssista, nimipäivistä ja järjestelmän tilasta.  
+> **Kotidashboard** on Streamlit-pohjainen kojelauta, joka kokoaa keskeiset arjen tiedot yhdelle näytölle.
+> Sovellus hakee reaaliaikaisia tietoja muun muassa säästä, sähkön hinnasta, Bitcoinin kurssista, nimipäivistä ja järjestelmän tilasta.
 > Toteutus toimii sekä **Windowsissa** että **Raspberry Pi 5**:llä ja päivittyy suoraan GitHubista yhdellä komennolla.
 
 ---

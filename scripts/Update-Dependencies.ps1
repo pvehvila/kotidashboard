@@ -1,13 +1,22 @@
-# Päivitä pip
+# --- Update-Dependencies.ps1 ---
+
 Write-Host "Updating pip..."
 python -m pip install --upgrade pip
 
-# Asenna/päivitä riippuvuudet
+# Selvitetään projektin juurikansio (yksi taso ylöspäin tästä skriptistä)
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+$Requirements = Join-Path $ProjectRoot "requirements.txt"
+
 Write-Host "Installing/updating dependencies..."
-pip install -r requirements.txt
 
-# Asenna kehitystyökalut
+if (Test-Path $Requirements) {
+    python -m pip install -r $Requirements
+} else {
+    Write-Host "ERROR: requirements.txt not found at $Requirements" -ForegroundColor Red
+}
+
+# Kehitystyökalut
 Write-Host "Installing development tools..."
-pip install ruff pytest pytest-cov
+python -m pip install ruff pytest pytest-cov
 
-Write-Host "Dependencies updated successfully!"
+Write-Host "Dependencies updated successfully!" -ForegroundColor Green

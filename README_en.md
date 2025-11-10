@@ -2,8 +2,8 @@
 
 # 🏠 Kotidashboard
 
-> **Kotidashboard** is a Streamlit-based home dashboard that gathers essential daily information into one screen.  
-> It fetches real-time data such as weather, electricity prices, Bitcoin rates, namedays, and system status.  
+> **Kotidashboard** is a Streamlit-based home dashboard that gathers essential daily information into one screen.
+> It fetches real-time data such as weather, electricity prices, Bitcoin rates, namedays, and system status.
 > Runs on both **Windows** and **Raspberry Pi 5**, updating directly from GitHub with a single command.
 
 ---

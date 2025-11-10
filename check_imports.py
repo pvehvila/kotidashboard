@@ -5,6 +5,7 @@ Käyttö:
 """
 
 from __future__ import annotations
+
 import re
 from pathlib import Path
 
@@ -20,7 +21,7 @@ violations: list[tuple[str, int, str]] = []
 for py_file in BASE_DIR.rglob("*.py"):
     if any(part in EXCLUDE_DIRS for part in py_file.parts):
         continue
-    with open(py_file, "r", encoding="utf-8") as f:
+    with open(py_file, encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
             if PATTERN.search(line):
                 violations.append((str(py_file.relative_to(BASE_DIR)), lineno, line.strip()))

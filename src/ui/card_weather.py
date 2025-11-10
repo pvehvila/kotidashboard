@@ -6,7 +6,7 @@ from streamlit.components.v1 import html as st_html
 
 from src.api import fetch_weather_points
 from src.config import LAT, LON
-from src.ui.common import section_title, card
+from src.ui.common import card, section_title
 from src.weather_icons import render_foreca_icon
 
 
@@ -27,18 +27,14 @@ def card_weather() -> None:
         step = int(interval.split()[0])
         offsets = tuple(step * i for i in range(5))
 
-        weather_data = fetch_weather_points(
-            LAT, LON, "Europe/Helsinki", offsets=offsets
-        )
+        weather_data = fetch_weather_points(LAT, LON, "Europe/Helsinki", offsets=offsets)
         points = weather_data["points"]
         min_temp = weather_data["min_temp"]
         max_temp = weather_data["max_temp"]
 
         title_left = "🌤️ Sää — Riihimäki"
         if (min_temp is not None) and (max_temp is not None):
-            title_left += (
-                f"&nbsp; | &nbsp; Tänään: {round(min_temp)}°C — {round(max_temp)}°C"
-            )
+            title_left += f"&nbsp; | &nbsp; Tänään: {round(min_temp)}°C — {round(max_temp)}°C"
 
         def pill(opt: str) -> str:
             is_active = opt == interval
