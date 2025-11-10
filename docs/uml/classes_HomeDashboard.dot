@@ -1,5 +1,4 @@
 digraph "classes_HomeDashboard" {
 rankdir=BT
 charset="utf-8"
-"src.heos_client.HeosClient" [color="black", fontcolor="black", label=<{HeosClient|host : str<br ALIGN="LEFT"/>password : str \| None<br ALIGN="LEFT"/>port : int<br ALIGN="LEFT"/>timeout : float<br ALIGN="LEFT"/>username : str \| None<br ALIGN="LEFT"/>|get_now_playing(pid: int): dict[str, Any]<br ALIGN="LEFT"/>get_players(): list[dict[str, Any]]<br ALIGN="LEFT"/>get_volume(pid: int): int<br ALIGN="LEFT"/>play_next(pid: int): dict<br ALIGN="LEFT"/>play_previous(pid: int): dict<br ALIGN="LEFT"/>play_tidal_container(pid: int, container: dict[str, Any]): None<br ALIGN="LEFT"/>play_tidal_known_container(pid: int): bool<br ALIGN="LEFT"/>register_for_events(): None<br ALIGN="LEFT"/>search_heos_playlist_by_name(name: str): dict \| None<br ALIGN="LEFT"/>search_tidal_by_name(name: str): dict[str, Any] \| None<br ALIGN="LEFT"/>set_mute(pid: int, state: str): None<br ALIGN="LEFT"/>set_play_state(pid: int, state: str): dict<br ALIGN="LEFT"/>set_volume(pid: int, level: int): None<br ALIGN="LEFT"/>sign_in(): None<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
 }

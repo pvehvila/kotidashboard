@@ -1,51 +1,51 @@
 param(
-    # Projektin nimi, näkyy UML-kuvien nimessä
     [string]$Name = "HomeDashboard"
 )
 
-# 1) Mene projektin juureen (skriptin yläkansio)
+# 1) Projektin juuri skriptin sijainnista
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjRoot  = Resolve-Path (Join-Path $ScriptDir "..")
 Set-Location $ProjRoot
 
-# 2) Missä UML-kuvat säilytetään
+# 2) UML-ulostulokansio
 $OutDir = Join-Path $ProjRoot "docs\uml"
 if (-not (Test-Path $OutDir)) {
     New-Item -ItemType Directory -Path $OutDir | Out-Null
 }
 
-# 3) Etsi pyreverse
+# 3) pyreverse polku
 $pyreverse = $null
 $venvPyreverse = Join-Path $ProjRoot ".venv\Scripts\pyreverse.exe"
 if (Test-Path $venvPyreverse) {
     $pyreverse = $venvPyreverse
 } else {
-    # luotetaan PATH:iin
     $pyreverse = "pyreverse"
 }
 
-# 4) Mitkä hakemistot analysoidaan
-# useimmiten riittää src, ei haluta __pycache__ eikä tests
-$Target = "src"
+# 4) Analysoitavat kansiot → vain arkkitehtuuritaso
+$Targets = @(
+    "src/api",
+    "src/ui",
+    "src/utils.py",       # jos utils on vielä yhtenä tiedostona
+    "src/utils_colors.py",
+    "src/utils_sun.py",
+    "src/utils_net.py"
+)
 
 Write-Host "Projektin juuri: $ProjRoot"
-Write-Host "UML kohdekansio: $OutDir"
 Write-Host "Käytettävä pyreverse: $pyreverse"
-Write-Host "Analysoitava hakemisto: $Target"
+Write-Host "Analysoidaan: $($Targets -join ', ')"
 Write-Host ""
 
-# 5) Aja pyreverse → tuottaa .dot -tiedostot
-# -o dot  = graphviz
-# -p name = projektin nimi
 try {
-    & $pyreverse -o dot -p $Name $Target
+    # 5) Aja pyreverse niille
+    & $pyreverse -o dot -p $Name $Targets
 } catch {
-    Write-Error "pyreverse ei löytynyt. Asenna se esim.: 'python -m pip install pylint'"
+    Write-Error "pyreverse ei löytynyt. Asenna: .\.venv\Scripts\python.exe -m pip install pylint"
     exit 1
 }
 
-# 6) Siirrä syntyneet .dot -tiedostot docs/uml -kansioon ja tee niistä png:t
-# pyreverse luo yleensä: classes_$Name.dot ja packages_$Name.dot
+# 6) Siirrä .dot -tiedostot
 $classesDot  = "classes_$Name.dot"
 $packagesDot = "packages_$Name.dot"
 
@@ -56,9 +56,8 @@ if (Test-Path $packagesDot) {
     Move-Item $packagesDot $OutDir -Force
 }
 
-# 7) Muunna .dot → .png (vaatii Graphvizin: 'dot' komentona)
+# 7) Muunna png:ksi (Graphviz)
 $dotCmd = "dot"
-
 $classesPng  = Join-Path $OutDir "classes_$Name.png"
 $packagesPng = Join-Path $OutDir "packages_$Name.png"
 
