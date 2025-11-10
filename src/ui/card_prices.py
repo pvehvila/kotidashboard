@@ -13,7 +13,7 @@ from src.config import (
     PRICE_Y_STEP_SNT,
 )
 from src.ui.common import card, section_title
-from src.utils_colors import _color_by_thresholds, _color_for_value
+from src.utils import _color_by_thresholds, _color_for_value
 
 
 def card_prices() -> None:

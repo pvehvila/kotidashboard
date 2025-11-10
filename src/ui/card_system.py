@@ -8,7 +8,7 @@ from streamlit.components.v1 import html as st_html
 
 from src.config import TZ
 from src.ui.common import section_title
-from src.utils_net import get_ip
+from src.utils import get_ip
 
 # ------------------- SYSTEM STATUS CARD -------------------
 
