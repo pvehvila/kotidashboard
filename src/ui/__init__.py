@@ -1,22 +1,32 @@
 # src/ui/__init__.py
-"""UI package that exposes dashboard cards and helpers."""
+"""
+UI cards export module.
 
-from .card_bitcoin import card_bitcoin
-from .card_heos import card_heos
-from .card_nameday import card_nameday
-from .card_prices import card_prices
-from .card_system import card_system
-from .card_weather import card_weather
-from .card_zen import card_zen
-from .common import load_css
+This file tries to import all known cards, but does not crash
+if some of them are missing. This is useful while refactoring.
+"""
 
-__all__ = [
-    "load_css",
-    "card_nameday",
-    "card_zen",
-    "card_weather",
-    "card_prices",
-    "card_bitcoin",
-    "card_system",
-    "card_heos",
-]
+__all__ = []
+
+def _safe_import(name, alias=None):
+    try:
+        module = __import__(f"src.ui.{name}", fromlist=["*"])
+    except ImportError:
+        return
+    obj_name = alias or name
+    globals()[obj_name] = module.__dict__[obj_name] if obj_name in module.__dict__ else module
+    __all__.append(obj_name)
+
+
+# --- list your cards here ---
+# these are ones we've seen in your repo/logs
+_safe_import("card_prices", "card_prices")
+_safe_import("card_weather", "card_weather")
+_safe_import("card_bitcoin", "card_bitcoin")
+_safe_import("card_nameday", "card_nameday")
+_safe_import("card_system", "card_system")
+
+# if you have Tidal / HEOS / sun cards etc., add them here:
+# _safe_import("card_tidal", "card_tidal")
+# _safe_import("card_sun", "card_sun")
+# _safe_import("card_zenquotes", "card_zenquotes")
