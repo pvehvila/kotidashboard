@@ -5,6 +5,17 @@ Tiedosto noudattaa [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) -per
 
 ---
 
+## [Unreleased]
+### Korjattu
+- 📅 `card_nameday()` rikkoutuminen refaktoroinnin jälkeen: palautettu toiminnallinen versio, joka lukee datan ensisijaisesti `data/nimipaivat_fi.json` -tiedostosta ja käyttää `src/api/calendar_nameday.py` -yhteensopivuuskerrosta.
+- ⚡ Sähkön hintakortti (`card_prices()`) palautettu aiemmasta toimivasta commitista (`eda6fbbf Revert "Sähkökortin refaktorointi"`), jotta UI vastaa ennen refaktorointia toiminutta versiota.
+- 🧱 `src/ui/__init__.py` päivitetty vastaamaan nykyistä korttivalikoimaa (nimipäivä + sähkön hinta + muut kortit), jotta `main.py` importit eivät enää kaadu.
+
+### Lisätty
+- 📄 `docs/CARD_NAMEDAY.md` dokumentoimaan nimipäiväkortin datalähteen ja polut.
+
+---
+
 ## [1.0.0] – 2025-11-06
 ### 🎉 Ensimmäinen julkinen julkaisu
 

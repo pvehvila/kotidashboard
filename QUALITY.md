@@ -94,6 +94,9 @@ pre-commit run --all-files
 | `bandit.yaml`               | Security rules and exceptions                 |
 | `scripts/SetupQuality.ps1`  | Automates setup on Windows                    |
 | `tests/`                    | Contains all unit tests                       |
+| `src/api/nameday.py`        | New: provides unified nameday/holiday lookup for UI cards |
+| `src/api/calendar_nameday.py` | New: backward compatibility shim so older cards keep working |
+| `pyproject.toml`            | Central config for Ruff, Pytest, and Coverage |
 
 ---
 

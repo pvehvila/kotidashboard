@@ -56,6 +56,15 @@ HomeDashboard/
 └── 📘 README.md
 ```
 
+## 📊 Data
+
+Projektissa käytetään paikallista dataa seuraavista poluista:
+
+- `data/nimipaivat_fi.json` – suomenkielinen nimipäivälista kuukausittain (tammikuu → päivä → nimet). Tätä käyttää nimipäiväkortti.
+- `data/pyhat_fi.json` – suomalaiset pyhä- ja liputuspäivät, joita nimipäiväkortti voi näyttää “chippinä” päivän otsikon alla.
+
+Jos ajat dashboardia eri hakemistosta tai Raspberry Pi:ltä, varmista että nämä kaksi tiedostoa ovat mukana `data/`-kansiossa, muuten `card_nameday()` näyttää vain viivan.
+
 ---
 
 ## 🪟 Asennus (Windows)

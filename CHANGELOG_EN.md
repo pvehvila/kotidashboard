@@ -5,6 +5,17 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 
 ---
 
+## [Unreleased]
+### Fixed
+- 📅 Restored the `card_nameday()` functionality after UI refactoring: the card now reads from `data/nimipaivat_fi.json` (Finnish month/day structure) and is wrapped with `src/api/calendar_nameday.py` for backward compatibility.
+- ⚡ Restored the electricity price card (`card_prices()`) from the previously working commit (`eda6fbbf Revert "Sähkökortin refaktorointi"`) so the dashboard shows spot prices again.
+- 🧱 Updated `src/ui/__init__.py` to export the currently available cards so `main.py` imports no longer fail.
+
+### Added
+- 📄 `docs/CARD_NAMEDAY.md` to document how the nameday card picks its data sources.
+
+---
+
 ## [1.0.0] – 2025-11-06
 ### 🎉 Initial Public Release
 

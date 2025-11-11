@@ -8,6 +8,19 @@ Tämän dokumentin tarkoitus on pitää näkyvissä ne tiedostot ja funktiot, jo
 
 ---
 
+## 0. Mitä juuri korjattiin (2025-11-11)
+
+- `src/ui/card_nameday.py` lakkasi toimimasta, koska aiempi koodi oletti moduulin `src.api.calendar_nameday`.  
+  **Korjaus:** lisättiin uusi tiedosto `src/api/calendar_nameday.py`, joka vain re-exporttaa `fetch_nameday_today`-funktion `src/api/nameday.py`:stä.  
+- Nimipäivädata ei löytynyt, koska projekti käyttää juurihakemiston tiedostoja `data/nimipaivat_fi.json` ja `data/pyhat_fi.json` (eri rakenne kuin aiemmin).  
+  **Korjaus:** uusi `src/api/nameday.py` tunnistaa suomalaisen kuukausirakenteen (`"marraskuu" -> "11" -> "Panu"`).  
+- UI-korttien export-lista ei vastannut enää todellista tilannetta.  
+  **Korjaus:** `src/ui/__init__.py` päivitettiin uudelleen.  
+- Sähkökortti poistui refaktoroinnin yhteydessä.  
+  **Korjaus:** `src/ui/card_prices.py` palautettiin commitista `eda6fbbf`, koska se oli viimeinen varmuudella toimiva versio.
+
+---
+
 ## 1. Nykytila Radonin mukaan
 
 Radon-raportin perusteella valtaosa projektista on nyt tasolla **A** ja **B**:
@@ -101,6 +114,7 @@ Nämä ovat ne, joissa Radon näyttää **C–D** ja jotka kannattaa seuraavaksi
 - Radon: `card_nameday - D (30)`
 - Tämä on selvästi liian iso UI-funktio.
 - **Tavoite:** kortti saa vain renderöidä, ei päättää monimutkaisia “tänään on sekä pyhä että nimipäivä” -tiloja.
+- **Uusi huomio (2025-11-11):** kortti ei saa näyttää pyhä-/liputuspäivän debug-tekstiä jos päivälle ei ole merkintää → tämä on nyt toteutettu UI:ssa.
 
 **Toimenpiteet:**
 1. Tee sisäinen viewmodel-funktio, esim. `_nameday_viewmodel()` joka palauttaa kaiken kortin tarvitsemana datana.
@@ -194,9 +208,10 @@ Nämä tiedostot/funktiot ovat Radonin mukaan A–B ja ovat jo riittävän yksin
 - [x] Utils jaettu domain-kohtaisiin tiedostoihin
 - [x] Bitcoin-API pilkottu: HTTP → poiminta → muunto
 - [x] Sähkön hintakortin laskenta siirretty omaan viewmodeliin
-- [x] Sähkön hakulogiikka jaettu lähteisiin, palveluun ja normalisointiin
-- [ ] Nimipäiväkortin (`src/ui/card_nameday.py`) pilkkominen
+- [x] Sähkökortti palautettu vanhasta toimivasta commitista (2025-11-11)
+- [x] Nimipäivä-API korjattu lukemaan `data/nimipaivat_fi.json`
+- [ ] Nimipäiväkortin (`src/ui/card_nameday.py`) varsinainen pilkkominen pienempiin funktioihin
 - [ ] Sähkön normalisoinnin (2 kpl C-luokan funktioita) pilkkominen
-- [ ] Nimipäivä-API:n (`src/api/calendar_nameday.py`) keventäminen
+- [ ] Nimipäivä-API:n keventäminen (nyt toimii, mutta voisi olla 2-vaiheinen)
 
 Kun yllä olevat kolme kohtaa on tehty, projektin näkyvimmät D- ja C-luokan funktiot poistuvat ja koodi on tasalaatuista.

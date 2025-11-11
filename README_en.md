@@ -56,6 +56,15 @@ HomeDashboard/
 └── 📘 README.md
 ```
 
+## 📊 Local data
+
+The dashboard expects some JSON data in the project root under `data/`:
+
+- `data/nimipaivat_fi.json` – Finnish namedays, month-based structure (e.g. "marraskuu" → "11" → "Panu").
+- `data/pyhat_fi.json` – Finnish holidays and flag days. The nameday card uses this to render the badge only on those days.
+
+If these files are missing, the nameday card will fall back to showing just the date header.
+
 ---
 
 ## 🪟 Installation (Windows)
