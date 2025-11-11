@@ -4,14 +4,13 @@ from __future__ import annotations
 import streamlit as st
 from streamlit.components.v1 import html as st_html
 
-from src.api import fetch_weather_points
-from src.config import LAT, LON
+from src.api.weather_viewmodel import build_weather_view
 from src.ui.common import card, section_title
 from src.weather_icons import render_foreca_icon
 
 
 def card_weather() -> None:
-    """Render a card displaying weather forecast for Riihimäki (1h/3h/6h)."""
+    """Renderöi sääkortin."""
     try:
         qp = st.query_params
         if "wint" in qp:
@@ -24,17 +23,15 @@ def card_weather() -> None:
             st.session_state["weather_interval"] = "3 h"
 
         interval = st.session_state["weather_interval"]
-        step = int(interval.split()[0])
-        offsets = tuple(step * i for i in range(5))
-
-        weather_data = fetch_weather_points(LAT, LON, "Europe/Helsinki", offsets=offsets)
-        points = weather_data["points"]
-        min_temp = weather_data["min_temp"]
-        max_temp = weather_data["max_temp"]
+        vm = build_weather_view(interval)
 
         title_left = "🌤️ Sää — Riihimäki"
-        if (min_temp is not None) and (max_temp is not None):
-            title_left += f"&nbsp; | &nbsp; Tänään: {round(min_temp)}°C — {round(max_temp)}°C"
+        if (vm["min_temp"] is not None) and (vm["max_temp"] is not None):
+            title_left += (
+                f"&nbsp; | &nbsp; Tänään: {round(vm['min_temp'])}°C — {round(vm['max_temp'])}°C"
+            )
+
+        # ... (pillerit, cell()-renderointi ja HTML pysyvät ennallaan, vain lähdedata tulee vm["points"])
 
         def pill(opt: str) -> str:
             is_active = opt == interval
@@ -90,7 +87,7 @@ def card_weather() -> None:
             </style></head><body>
               <div class="weather-card"><div class="weather-row">
             """
-            + "".join(cell(p) for p in points)
+            + "".join(cell(p) for p in vm["points"])
             + "</div></div></body></html>"
         )
 
