@@ -29,6 +29,10 @@ testpaths = ["tests"]
 [tool.coverage.run]
 source = ["src"]
 branch = true
+omit = [
+    "src/logger_config.py",      # Käynnistys- ja konfiguraatiotaso
+    "src/api/weather_debug.py",  # Kehitysapumoduuli, ei tuotantokoodia
+]
 
 [tool.coverage.report]
 show_missing = true
