@@ -109,32 +109,6 @@ Kun tämä on tehty, UI-puolen CC putoaa A/B-tasolle ja testaus helpottuu, koska
 
 ---
 
-### 🧼 Ruff / laadulliset korjaukset
-
-Ruff nosti aiemmin esiin `src/api/weather_utils.py` -tiedostosta mm.:
-
-- `isinstance(value, (int, float))` → pitäisi käyttää uutta union-syntaksia: `isinstance(value, int | float)` (UP038)
-- `as_bool = lambda x: safe_cast(x, bool)` → “Do not assign a lambda expression, use a def” (E731)
-
-**Toimenpiteet:**
-
-```python
-# src/api/weather_utils.py
-
-def as_bool(x):
-    return safe_cast(x, bool)
-
-def as_int(x):
-    return safe_cast(x, int)
-
-def as_float(x):
-    return safe_cast(x, float)
-```
-
-ja tyyppitarkistus uuteen muotoon. Tämä pienentää turhia diffauksia, kun pre-commit ajetaan.
-
----
-
 ### 📊 Hyväksytyt C-tasot
 
 | Moduuli | Perustelu |
