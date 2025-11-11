@@ -43,3 +43,10 @@ def test_cloud_icon_from_cover_can_be_forced(monkeypatch):
 
     # yö
     assert wu.cloud_icon_from_cover(0, False) == "n000"
+
+
+def test_safe_cast_basic():
+    assert wu.safe_cast("true", bool) is True
+    assert wu.safe_cast("12,5", float) == 12.5
+    assert wu.safe_cast("12,0", int) == 12
+    assert wu.safe_cast("maybe", bool) is None
