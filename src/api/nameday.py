@@ -20,6 +20,7 @@ def _find_existing_json() -> str:
         assets_path = asset_path(rel)
         if os.path.exists(assets_path):
             return str(assets_path)
+        # fallback projektin juureen
         local_path = os.path.join("data", os.path.basename(rel))
         if os.path.exists(local_path):
             return str(local_path)
@@ -41,7 +42,7 @@ def fetch_nameday_today() -> str:
     data = _load_json()
     today = date.today()
 
-    # 1️⃣ Jos data on nimipaivat_fi.json-rakennetta
+    # 1) nimipaivat_fi.json -rakenne
     if "nimipäivät" in data:
         months = [
             "tammikuu",
@@ -65,7 +66,7 @@ def fetch_nameday_today() -> str:
         except KeyError:
             return ""
 
-    # 2️⃣ Jos data on pyhat_fi.json-rakennetta
+    # 2) pyhat_fi.json -tyyli
     key = today.strftime("%Y-%m-%d")
     if key in data:
         info = data[key]

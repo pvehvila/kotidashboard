@@ -16,6 +16,7 @@ from src.utils import report_error
 
 
 def _resolve_nameday_file() -> Path:
+    """Palauta ensimmäinen olemassa oleva nimipäiväpolku configista."""
     for path in NAMEDAY_PATHS:
         try:
             if path and Path(path).exists():
@@ -26,6 +27,7 @@ def _resolve_nameday_file() -> Path:
 
 
 def _resolve_first_existing(paths) -> Path:
+    """Palauta ensimmäinen olemassa oleva polku annetusta listasta."""
     for p in paths:
         try:
             pp = Path(p)
@@ -43,10 +45,17 @@ def _load_json(path: Path):
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_nameday_today(_cache_buster: int | None = None) -> str:
+    """
+    fetch -> transform -> return
+    Tukee kahta rakennetta:
+      1) {"11-11": ["Panu"]} tai {"11-11": "Panu"}
+      2) {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
+    """
     try:
         path = _resolve_nameday_file()
         if not path.exists():
             return "—"
+
         data = _load_json(path)
         now = datetime.now(TZ)
         key_md = now.strftime("%m-%d")
@@ -66,6 +75,7 @@ def fetch_nameday_today(_cache_buster: int | None = None) -> str:
             "joulukuu",
         ][now.month - 1]
 
+        # 1) litteä muoto: {"11-11": [...]}
         if isinstance(data, dict) and key_md in data:
             names = data[key_md]
             if isinstance(names, list):
@@ -74,8 +84,10 @@ def fetch_nameday_today(_cache_buster: int | None = None) -> str:
                 return names.strip()
             return "—"
 
+        # 2) sisäkkäinen muoto: {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
         root = data.get("nimipäivät") if isinstance(data, dict) else None
         if isinstance(root, dict):
+            # avaimet voivat olla eri kirjainkoossa, joten vertaillaan lowerilla
             month_obj = next(
                 (
                     v
@@ -90,6 +102,7 @@ def fetch_nameday_today(_cache_buster: int | None = None) -> str:
                     return ", ".join(n.strip() for n in names if str(n).strip()) or "—"
                 if isinstance(names, str) and names.strip():
                     return names.strip()
+
         return "—"
     except Exception as e:
         report_error("nameday: local json", e)
@@ -98,6 +111,14 @@ def fetch_nameday_today(_cache_buster: int | None = None) -> str:
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
+    """
+    Palauttaa dictin:
+      {
+        "holiday": str | None,
+        "is_flag_day": bool,
+        "is_holiday": bool,
+      }
+    """
     out = {"holiday": None, "is_flag_day": False, "is_holiday": False}
     try:
         p = _resolve_first_existing(HOLIDAY_PATHS)
@@ -115,6 +136,7 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
             is_holiday = bool(entry.get("is_holiday")) or (
                 isinstance(hol_field, bool) and hol_field is True
             )
+            # joskus nimi on vain "holiday"-kentässä
             if not name and isinstance(hol_field, str) and hol_field.strip():
                 name = hol_field.strip()
             is_flag = bool(entry.get("flag") or entry.get("is_flag_day"))
@@ -124,12 +146,14 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
                 "is_holiday": is_holiday,
             }
 
+        # dict-muoto
         if isinstance(data, dict):
             entry = data.get(key_md) or data.get(key_iso)
             if isinstance(entry, dict):
                 return parse_entry(entry)
             return out
 
+        # lista-muoto
         if isinstance(data, list):
             for item in data:
                 if not isinstance(item, dict):
@@ -141,3 +165,12 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
     except Exception as e:
         report_error("holiday: local json", e)
         return out
+
+
+__all__ = [
+    "TZ",
+    "_resolve_nameday_file",
+    "_resolve_first_existing",
+    "fetch_nameday_today",
+    "fetch_holiday_today",
+]

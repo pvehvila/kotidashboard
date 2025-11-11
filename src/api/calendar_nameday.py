@@ -1,11 +1,22 @@
-# src/api/calendar_nameday.py
-"""Backward compatibility shim for nameday API.
+"""
+Yhdistetty kalenteri-/nimipäivämoduuli.
 
-Older code used:
-    from src.api.calendar_nameday import fetch_nameday_today
-
-Now the actual logic lives in src/api/nameday.py.
-This file simply re-exports that function for compatibility.
+Varsinainen logiikka on src.api.calendarissa, jotta olemassa olevat testit
+(monkeypatch src.api.calendar.*) eivät rikkoudu.
 """
 
-from .nameday import fetch_nameday_today  # noqa: F401
+from src.api.calendar import (
+    TZ,
+    _resolve_first_existing,
+    _resolve_nameday_file,
+    fetch_holiday_today,
+    fetch_nameday_today,
+)
+
+__all__ = [
+    "TZ",
+    "_resolve_nameday_file",
+    "_resolve_first_existing",
+    "fetch_nameday_today",
+    "fetch_holiday_today",
+]

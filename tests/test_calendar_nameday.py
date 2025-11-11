@@ -2,6 +2,7 @@ import datetime as dt
 import json
 
 import src.api.calendar as cal
+import src.api.calendar_nameday as caln
 import src.api.nameday as nd
 
 # ------------------------------------------------------------------
@@ -11,14 +12,17 @@ import src.api.nameday as nd
 
 def _clear_calendar_caches():
     # streamlitin @st.cache_data -funktioilla on .clear()
-    try:
-        cal.fetch_nameday_today.clear()
-    except Exception:
-        pass
-    try:
-        cal.fetch_holiday_today.clear()
-    except Exception:
-        pass
+    for fn in (cal.fetch_nameday_today, cal.fetch_holiday_today):
+        try:
+            fn.clear()
+        except Exception:
+            pass
+    # ja samoin wrapperille, jos UI käyttää sitä
+    for fn in (caln.fetch_nameday_today, caln.fetch_holiday_today):
+        try:
+            fn.clear()
+        except Exception:
+            pass
 
 
 # ------------------------------------------------------------------
@@ -34,7 +38,6 @@ def test_fetch_nameday_today_from_nested(monkeypatch, tmp_path):
 
     monkeypatch.setattr(cal, "_resolve_nameday_file", lambda: f)
 
-    # pakotetaan uusi välimuisti
     result = cal.fetch_nameday_today(_cache_buster=1)
     assert result == "Panu"
 
@@ -70,21 +73,18 @@ def test_fetch_holiday_today_flag(monkeypatch, tmp_path):
     f = tmp_path / "pyhat.json"
     f.write_text(json.dumps(data), encoding="utf-8")
 
-    # calendar.py odottaa listaa poluista, mutta meidän apufunktio palauttaa Pathin,
-    # joten monkeypatchataan suoraan resolveri
     monkeypatch.setattr(cal, "_resolve_first_existing", lambda _: f)
 
     out = cal.fetch_holiday_today(_cache_buster=4)
     assert out["holiday"] == "Liputuspäivä"
     assert out["is_flag_day"] is True
-    # ei ole ehkä varsinaisesti vapaapäivä, joten se saa olla False
-    assert out["is_holiday"] in (False, True)
+    # is_holiday voi olla False, joten ei lukita sitä täysin
+    assert "is_holiday" in out
 
 
 def test_fetch_holiday_today_missing(monkeypatch, tmp_path):
     _clear_calendar_caches()
     f = tmp_path / "does_not_exist.json"
-    # palautetaan polku, jota ei ole
     monkeypatch.setattr(cal, "_resolve_first_existing", lambda _: f)
 
     out = cal.fetch_holiday_today(_cache_buster=5)
@@ -92,19 +92,46 @@ def test_fetch_holiday_today_missing(monkeypatch, tmp_path):
 
 
 # ------------------------------------------------------------------
-# nameday.py – oma toteutus
+# calendar_nameday.py – varmista, että wrapper vie samat funktiot
 # ------------------------------------------------------------------
 
 
-def test_nameday_finds_nimipaivat(monkeypatch, tmp_path):
+def test_calendar_nameday_wrapper_uses_same_impl(monkeypatch, tmp_path):
+    _clear_calendar_caches()
     data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
-    f = tmp_path / "nimipaivat_fi.json"
+    f = tmp_path / "nimipaivat.json"
     f.write_text(json.dumps(data), encoding="utf-8")
 
-    # asset_path -> osoittaa tähän tmp-tiedostoon
-    monkeypatch.setattr(nd, "asset_path", lambda p: str(f))
-    # os.path.exists -> sanoo että löytyy
-    monkeypatch.setattr(nd.os.path, "exists", lambda p: True)
+    # patchataan alkuperäinen kalenteri
+    monkeypatch.setattr(cal, "_resolve_nameday_file", lambda: f)
 
-    # nyt tämän päivän pitää olla 11.11. että tämä menee läpi – tehdään day stub
-    monkeypatch.setattr(nd, "date", lambda: None)  # ei toimi näin
+    # kutsutaan wrapperia
+    result = caln.fetch_nameday_today(_cache_buster=10)
+    assert result == "Panu"
+
+
+# ------------------------------------------------------------------
+# nameday.py – helpompi, ei tarvita enää oikeaa tiedostoa
+# ------------------------------------------------------------------
+
+
+def test_nameday_finds_nimipaivat_via_load_json(monkeypatch):
+    """Tämä moduli saa pysyä omanaan, mutta luetaan data suoraan ilman tiedostopolkuja."""
+    data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
+
+    # ohitetaan koko tiedostonhaku
+    monkeypatch.setattr(nd, "_load_json", lambda: data)
+
+    # stubataan päiväksi 11.11.
+    monkeypatch.setattr(nd, "date", lambda: None)  # pitää olla olemassa mutta sitä ei käytetä
+
+    # helpoin tapa: patchataan date.today-kutsu moduulin sisällä
+    class _D(dt.date):
+        @classmethod
+        def today(cls):
+            return cls(2025, 11, 11)
+
+    monkeypatch.setattr(nd, "date", _D)
+
+    out = nd.fetch_nameday_today()
+    assert out == "Panu"
