@@ -1,137 +1,156 @@
+# tests/test_calendar_nameday.py
 import datetime as dt
 import json
+from pathlib import Path
 
-import src.api.calendar as cal
 import src.api.calendar_nameday as caln
 import src.api.nameday as nd
 
-# ------------------------------------------------------------------
-# Aputyökalut cachetuille funktioille
-# ------------------------------------------------------------------
+# --- apu ------------------------------------------------------------
 
 
 def _clear_calendar_caches():
-    # streamlitin @st.cache_data -funktioilla on .clear()
-    for fn in (cal.fetch_nameday_today, cal.fetch_holiday_today):
-        try:
-            fn.clear()
-        except Exception:
-            pass
-    # ja samoin wrapperille, jos UI käyttää sitä
-    for fn in (caln.fetch_nameday_today, caln.fetch_holiday_today):
-        try:
-            fn.clear()
-        except Exception:
-            pass
+    """Tyhjentää cachetut Streamlit-funktiot, jotta testit saavat uudet arvot."""
+    try:
+        caln.fetch_nameday_today.clear()
+    except Exception:
+        pass
+    try:
+        caln.fetch_holiday_today.clear()
+    except Exception:
+        pass
 
 
-# ------------------------------------------------------------------
-# calendar.py – nimipäivät
-# ------------------------------------------------------------------
+# --- nimipäivien testit --------------------------------------------
 
 
 def test_fetch_nameday_today_from_nested(monkeypatch, tmp_path):
-    _clear_calendar_caches()
+    """Tarkistaa, että sisäkkäinen nimipäivärakenne toimii oikein."""
     data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
     f = tmp_path / "nimipaivat.json"
     f.write_text(json.dumps(data), encoding="utf-8")
 
-    monkeypatch.setattr(cal, "_resolve_nameday_file", lambda: f)
+    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
+    _clear_calendar_caches()
 
-    result = cal.fetch_nameday_today(_cache_buster=1)
+    result = caln.fetch_nameday_today(_cache_buster=1)
     assert result == "Panu"
 
 
-def test_fetch_nameday_today_file_missing(monkeypatch, tmp_path):
+def test_fetch_nameday_today_from_flat(monkeypatch, tmp_path):
+    """Tarkistaa, että litteä JSON toimii myös."""
+    data = {"11-11": ["Mauno", "Maunu"]}
+    f = tmp_path / "nimipaivat.json"
+    f.write_text(json.dumps(data), encoding="utf-8")
+
+    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
     _clear_calendar_caches()
-    monkeypatch.setattr(cal, "_resolve_nameday_file", lambda: tmp_path / "missing.json")
-    result = cal.fetch_nameday_today(_cache_buster=2)
+
+    result = caln.fetch_nameday_today(_cache_buster=2)
+    assert result == "Mauno, Maunu"
+
+
+def test_fetch_nameday_today_file_missing(monkeypatch, tmp_path):
+    """Jos tiedostoa ei ole, palauttaa '—'."""
+    f = tmp_path / "puuttuu.json"
+    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
+    _clear_calendar_caches()
+
+    result = caln.fetch_nameday_today(_cache_buster=3)
     assert result == "—"
 
 
 def test_fetch_nameday_today_handles_error(monkeypatch):
+    """Jos tiedoston luku epäonnistuu, palauttaa '—' eikä kaadu."""
+
+    def bad_loader(_):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: Path("fake.json"))
+    monkeypatch.setattr(caln, "_load_nameday_data", bad_loader)
     _clear_calendar_caches()
-    monkeypatch.setattr(cal, "_resolve_nameday_file", lambda: 1 / 0)
-    out = cal.fetch_nameday_today(_cache_buster=3)
-    assert out == "—"
+
+    result = caln.fetch_nameday_today(_cache_buster=4)
+    assert result == "—"
 
 
-# ------------------------------------------------------------------
-# calendar.py – pyhät / liputuspäivät
-# ------------------------------------------------------------------
+def test_pick_today_name_variants():
+    """Testaa _pick_today_name suoraan eri muodoilla."""
+    today = dt.datetime(2025, 11, 11)
 
+    data_flat = {"11-11": ["Mauno", "Maunu"]}
+    assert caln._pick_today_name(data_flat, today) == "Mauno, Maunu"
 
-def test_fetch_holiday_today_flag(monkeypatch, tmp_path):
-    _clear_calendar_caches()
-    today = dt.datetime.now(cal.TZ)
-    data = {
-        today.strftime("%Y-%m-%d"): {
-            "name": "Liputuspäivä",
-            "flag": True,
-        }
-    }
-    f = tmp_path / "pyhat.json"
-    f.write_text(json.dumps(data), encoding="utf-8")
+    data_nested = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
+    assert caln._pick_today_name(data_nested, today) == "Panu"
 
-    monkeypatch.setattr(cal, "_resolve_first_existing", lambda _: f)
-
-    out = cal.fetch_holiday_today(_cache_buster=4)
-    assert out["holiday"] == "Liputuspäivä"
-    assert out["is_flag_day"] is True
-    # is_holiday voi olla False, joten ei lukita sitä täysin
-    assert "is_holiday" in out
-
-
-def test_fetch_holiday_today_missing(monkeypatch, tmp_path):
-    _clear_calendar_caches()
-    f = tmp_path / "does_not_exist.json"
-    monkeypatch.setattr(cal, "_resolve_first_existing", lambda _: f)
-
-    out = cal.fetch_holiday_today(_cache_buster=5)
-    assert out == {"holiday": None, "is_flag_day": False, "is_holiday": False}
-
-
-# ------------------------------------------------------------------
-# calendar_nameday.py – varmista, että wrapper vie samat funktiot
-# ------------------------------------------------------------------
+    data_invalid = {"foo": "bar"}
+    assert caln._pick_today_name(data_invalid, today) == "—"
 
 
 def test_calendar_nameday_wrapper_uses_same_impl(monkeypatch, tmp_path):
+    """Varmistaa, että calendar_nameday toimii odotetusti (patchataan suoraan caln)."""
     _clear_calendar_caches()
     data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
     f = tmp_path / "nimipaivat.json"
     f.write_text(json.dumps(data), encoding="utf-8")
 
-    # patchataan alkuperäinen kalenteri
-    monkeypatch.setattr(cal, "_resolve_nameday_file", lambda: f)
-
-    # kutsutaan wrapperia
+    # Patchataan calendar_nameday eikä calendar
+    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
     result = caln.fetch_nameday_today(_cache_buster=10)
     assert result == "Panu"
 
 
-# ------------------------------------------------------------------
-# nameday.py – helpompi, ei tarvita enää oikeaa tiedostoa
-# ------------------------------------------------------------------
-
-
-def test_nameday_finds_nimipaivat_via_load_json(monkeypatch):
-    """Tämä moduli saa pysyä omanaan, mutta luetaan data suoraan ilman tiedostopolkuja."""
+def test_nameday_wrapper_calls_calendar_nameday(monkeypatch, tmp_path):
+    """Varmistaa, että nameday.fetch_nameday_today ohjaa calendar_nameday:lle."""
     data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
+    f = tmp_path / "nimipaivat.json"
+    f.write_text(json.dumps(data), encoding="utf-8")
 
-    # ohitetaan koko tiedostonhaku
-    monkeypatch.setattr(nd, "_load_json", lambda: data)
-
-    # stubataan päiväksi 11.11.
-    monkeypatch.setattr(nd, "date", lambda: None)  # pitää olla olemassa mutta sitä ei käytetä
-
-    # helpoin tapa: patchataan date.today-kutsu moduulin sisällä
-    class _D(dt.date):
-        @classmethod
-        def today(cls):
-            return cls(2025, 11, 11)
-
-    monkeypatch.setattr(nd, "date", _D)
+    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
+    _clear_calendar_caches()
 
     out = nd.fetch_nameday_today()
     assert out == "Panu"
+
+
+# --- pyhä- ja liputuspäivät ----------------------------------------
+
+
+def test_fetch_holiday_today_with_dict(monkeypatch, tmp_path):
+    """Dict-muotoinen JSON palauttaa odotetun rakenteen."""
+    data = {"11-11": {"name": "Isänpäivä", "flag": True, "is_holiday": True}}
+    f = tmp_path / "holidays.json"
+    f.write_text(json.dumps(data), encoding="utf-8")
+
+    monkeypatch.setattr(caln, "_resolve_first_existing", lambda _: f)
+    _clear_calendar_caches()
+
+    out = caln.fetch_holiday_today(_cache_buster=11)
+    assert out["holiday"] == "Isänpäivä"
+    assert out["is_flag_day"] is True
+    assert out["is_holiday"] is True
+
+
+def test_fetch_holiday_today_with_list(monkeypatch, tmp_path):
+    """List-muotoinen JSON toimii myös."""
+    data = [{"date": "2025-11-11", "name": "Testipäivä", "flag": False, "is_holiday": True}]
+    f = tmp_path / "holidays.json"
+    f.write_text(json.dumps(data), encoding="utf-8")
+
+    monkeypatch.setattr(caln, "_resolve_first_existing", lambda _: f)
+    _clear_calendar_caches()
+
+    out = caln.fetch_holiday_today(_cache_buster=12)
+    assert out["holiday"] == "Testipäivä"
+    assert out["is_holiday"] is True
+
+
+def test_fetch_holiday_today_missing_file(monkeypatch, tmp_path):
+    """Jos tiedostoa ei ole, palauttaa oletusrakenteen."""
+    f = tmp_path / "missing.json"
+    monkeypatch.setattr(caln, "_resolve_first_existing", lambda _: f)
+    _clear_calendar_caches()
+
+    out = caln.fetch_holiday_today(_cache_buster=13)
+    assert out == {"holiday": None, "is_flag_day": False, "is_holiday": False}
