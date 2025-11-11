@@ -38,13 +38,13 @@ Alla ovat ne kohdat, jotka Radon nosti vielä esiin (C/D), ja mitä niille pitä
      - `_load_nameday_data()` – vain tiedoston/lähteiden avaus
      - `_pick_today_name(data, today)` – logiikka, joka valitsee nimen myös sisäkkäisestä rakenteesta
      - `fetch_nameday_today()` – ohut julkinen funktio
-  2. Siirrä datalähteiden hallinta selkeästi yhteen tiedostoon (esim. `calendar_nameday.py`), jotta UI käyttää vain public-funktiota.
+  2. Siirrä datalähteiden hallinta selkeästi yhteen tiedostoon (esim. `calendar_nameday.py`), jotta UI käyttää vain public-funktiota. DONE
   3. Pilko `src/ui/card_nameday.py` siten, että:
      - datan haku → `get_nameday_vm()`
      - taustakuvan ja lipputiedon valinta → erilliset funktiot (`get_flag_info`, `get_background_image` ovat jo olemassa)
      - varsinainen Streamlit-renderöinti → `render_nameday_card(vm)`
 
-**Tavoite**: D (23) → B (7–9), UI-kortti C → B.
+**Tavoite**: D (23) → B (7–9), UI-kortti C → B. DONE
 
 ---
 
