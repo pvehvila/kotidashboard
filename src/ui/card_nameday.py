@@ -101,9 +101,21 @@ def card_nameday() -> None:
     if callable(fetch_sun_times):
         try:
             tz_key = TZ.key if hasattr(TZ, "key") else str(TZ)
-            sunrise, sunset = fetch_sun_times(LAT, LON, tz_key)
+            sun_data = fetch_sun_times(LAT, LON, tz_key)
+
+            # 1) vanha malli: palautti (sunrise, sunset)
+            if isinstance(sun_data, tuple) and len(sun_data) == 2:
+                sunrise, sunset = sun_data
+
+            # 2) uusi malli: palauttaa dictin
+            elif isinstance(sun_data, dict):
+                sunrise = sun_data.get("sunrise")
+                sunset = sun_data.get("sunset")
+
+            # muut muodot ohitetaan siististi
         except Exception:
             pass
+
 
     # päivämäärä
     try:
