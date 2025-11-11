@@ -6,5 +6,3 @@ Old cards imported:
 
 New code lives in src/api/nameday.py, so we just re-export it here.
 """
-
-from .nameday import fetch_nameday_today  # re-export
