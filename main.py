@@ -13,12 +13,12 @@ from src.ui import (
     card_bitcoin,
     card_heos,
     card_nameday,
-    card_prices,
     card_system,
     card_weather,
     card_zen,
-    load_css,
 )
+
+from src.ui.common import load_css
 
 ensure_dirs()
 
@@ -68,7 +68,7 @@ def main() -> None:
         card_weather()
 
         # Row 3: Electricity prices
-        card_prices()
+        # card_prices()
 
         # Row 4: Bitcoin
         card_bitcoin()

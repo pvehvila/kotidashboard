@@ -157,13 +157,7 @@ def card_nameday() -> None:
             "border-radius:999px;font-size:.75rem;margin-bottom:4px;\">"
             f"{fi_flag_svg}<span>{flag_txt}</span></div>"
         )
-    elif flag_debug:
-        html.append(
-            "<div style=\"font-size:.6rem;opacity:.7;background:rgba(0,0,0,.35);"
-            "padding:3px 6px;border-radius:6px;\">"
-            f"{flag_debug}</div>"
-        )
-
+    
     # Nimipäivä ja nimet
     html.append(
         f'<div style="font-size:.8rem; opacity:.9; margin-bottom:2px;">'
