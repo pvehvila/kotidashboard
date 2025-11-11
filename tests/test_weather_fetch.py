@@ -14,7 +14,7 @@ class DummyDT(datetime):
 
 
 def _fake_hourly_payload():
-    # luodaan tunnit: 10, 13, 16, 19, 22
+    # tehdään tunnit: 10, 13, 16, 19, 22
     base = "2025-11-11T"
     times = [f"{base}{h:02d}:00" for h in (10, 13, 16, 19, 22)]
     return {
@@ -30,52 +30,54 @@ def _fake_hourly_payload():
 
 
 def test_fetch_weather_points_happy_path(monkeypatch):
-    # 1) mokataan aika
+    # 1) pakotetaan aika
     monkeypatch.setattr(wf, "datetime", DummyDT)
-
-    # 2) mokataan http_get_json
+    # 2) pakotetaan HTTP-paluuarvo
     monkeypatch.setattr(wf, "http_get_json", lambda url: _fake_hourly_payload())
-
-    # 3) mokataan wmo → foreca ikonin koodi, koska emme halua oikeaa Excel-lukua tähän testiin
+    # 3) ei haluta oikeaa ikonimappia
     monkeypatch.setattr(wf, "wmo_to_foreca_code", lambda *a, **k: "d000")
 
     out = wf.fetch_weather_points(
-        lat=60.733,  # ei väliä
+        lat=60.733,
         lon=24.77,
         tz_name="Europe/Helsinki",
     )
 
     assert "points" in out
     points = out["points"]
-    # viiden offsetin pitäisi löytyä
+
+    # pitäisi tulla viisi offsetia
     assert len(points) == 5
-    # ensimmäinen on "Nyt"
+    # ensimmäinen on "Nyt" ja klo 10
     assert points[0]["label"] == "Nyt"
     assert points[0]["hour"] == 10
-    # ja kaikille tehtiin avaimet
+    # kaikille tuli key
     assert all("key" in p for p in points)
 
-    # min/max pitäisi laskea samasta päivästä
-    assert out["min_temp"] == 3.0  # alin listassa
-    assert out["max_temp"] == 7.0  # ylin listassa
+    # päivälle lasketut min/max pitää tulla samasta listasta
+    assert out["min_temp"] == 3.0
+    assert out["max_temp"] == 7.0
 
 
 def test_fetch_weather_points_skips_missing_hours(monkeypatch):
     monkeypatch.setattr(wf, "datetime", DummyDT)
 
     payload = _fake_hourly_payload()
-    # poistetaan viimeinen tunti, niin viimeinen offset ei löydy
-    payload["hourly"]["time"].pop()
-    payload["hourly"]["temperature_2m"].pop()
-    payload["hourly"]["precipitation_probability"].pop()
-    payload["hourly"]["weathercode"].pop()
-    payload["hourly"]["cloudcover"].pop()
-    payload["hourly"]["is_day"].pop()
+    # poistetaan viimeinen tunti -> viimeinen offset ei löydy
+    for key in (
+        "time",
+        "temperature_2m",
+        "precipitation_probability",
+        "weathercode",
+        "cloudcover",
+        "is_day",
+    ):
+        payload["hourly"][key].pop()
 
     monkeypatch.setattr(wf, "http_get_json", lambda url: payload)
     monkeypatch.setattr(wf, "wmo_to_foreca_code", lambda *a, **k: "d000")
 
     out = wf.fetch_weather_points(60.7, 24.7, "Europe/Helsinki")
-    points = out["points"]
-    # nyt 22:00 puuttuu, joten 5 → 4
-    assert len(points) == 4
+
+    # nyt 5 → 4
+    assert len(out["points"]) == 4

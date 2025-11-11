@@ -10,6 +10,37 @@ from src.api.weather_utils import as_bool, as_float, as_int
 from src.config import TZ
 
 
+# --- uudet pienet hakufunktiot -------------------------------------------------
+def fetch_forecast(lat: float, lon: float, tz_name: str) -> dict[str, Any]:
+    """Hakee Open-Meteosta tuntiennusteen raakana."""
+    url = (
+        "https://api.open-meteo.com/v1/forecast?"
+        f"latitude={lat}&longitude={lon}"
+        "&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover,is_day"
+        f"&timezone={quote(tz_name)}"
+    )
+    return http_get_json(url)
+
+
+def fetch_current(lat: float, lon: float, tz_name: str) -> dict[str, Any]:
+    """
+    Oma paikka nykytilalle.
+    Jos haluat myöhemmin hakea esim. https://api.open-meteo.com/v1/forecast?current=...
+    -endpointin, tee se tänne.
+    Nyt palautetaan vain tyhjä dict, jotta rajapinta on olemassa.
+    """
+    return {}
+
+
+def fetch_alerts(lat: float, lon: float, tz_name: str) -> dict[str, Any]:
+    """
+    Oma paikka säähälytyksille.
+    Open-Meteolla on erillinen weather alerts -kysely, jonka voi myöhemmin lisätä tähän.
+    """
+    return {}
+
+
+# --- vanha dashboard-funktio, nyt käyttäen forecast-dataa ----------------------
 def fetch_weather_points(
     lat: float,
     lon: float,
@@ -17,16 +48,10 @@ def fetch_weather_points(
     offsets: tuple[int, ...] = (0, 3, 6, 9, 12),
 ) -> dict[str, Any]:
     """
-    Hakee Open-Meteosta tuntiennusteen ja palauttaa dashboardin käyttämän rakenteen.
-    Tämä on käytännössä vanha versio, mutta siivottuna.
+    Hakee tuntiennusteen ja palauttaa dashboardin käyttämän rakenteen.
+    Säilytetty vanha paluumuoto, jotta UI ei hajoa.
     """
-    url = (
-        "https://api.open-meteo.com/v1/forecast?"
-        f"latitude={lat}&longitude={lon}"
-        "&hourly=temperature_2m,precipitation_probability,weathercode,cloudcover,is_day"
-        f"&timezone={quote(tz_name)}"
-    )
-    data = http_get_json(url)
+    data = fetch_forecast(lat, lon, tz_name)
     hourly = data.get("hourly", {})
 
     times: list[str] = hourly.get("time", [])
@@ -78,7 +103,7 @@ def fetch_weather_points(
             }
         )
 
-    # päivän min/max (sama logiikka kuin alkuperäisessä)
+    # päivän min/max kuten ennen
     min_temp = max_temp = None
     try:
         day_str = now.strftime("%Y-%m-%d")
@@ -87,6 +112,7 @@ def fetch_weather_points(
         if vals:
             min_temp, max_temp = min(vals), max(vals)
     except Exception:
+        # ei kaadeta dashboardia tämän takia
         pass
 
     return {
