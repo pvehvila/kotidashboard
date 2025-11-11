@@ -1,142 +1,181 @@
-# src/ui/card_nameday.py
 from __future__ import annotations
 
 import base64
+import json
 from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
 
-from src.api import fetch_holiday_today, fetch_nameday_today
-from src.config import HOLIDAY_PATHS, LAT, LON, NAMEDAY_PATHS, TZ
+from src.api.calendar_nameday import fetch_nameday_today
+from src.config import LAT, LON, TZ
 from src.paths import asset_path
-from src.ui.common import card
-from src.utils import _sun_icon, fetch_sun_times
+
+# aurinko
+try:
+    from src.utils_sun import fetch_sun_times, _sun_icon  # type: ignore
+except Exception:
+    try:
+        from src.utils import fetch_sun_times  # type: ignore
+
+        def _sun_icon(kind: str, size: int = 18) -> str:
+            return "🌅" if kind == "rise" else "🌇"
+    except Exception:
+        fetch_sun_times = None  # type: ignore
+
+        def _sun_icon(kind: str, size: int = 18) -> str:
+            return "🌅" if kind == "rise" else "🌇"
+
+
+def _weekday_fi(dt: datetime) -> str:
+    weekdays = [
+        "maanantaina",
+        "tiistaina",
+        "keskiviikkona",
+        "torstaina",
+        "perjantaina",
+        "lauantaina",
+        "sunnuntaina",
+    ]
+    return weekdays[dt.weekday()]
+
+
+def _butterfly_bg() -> str:
+    for name in ("butterfly-bg.png", "butterfly-bg.webp", "butterfly-bg.jpg"):
+        p = asset_path(name)
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+            ext = p.suffix.lstrip(".").lower()
+            mime = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg"}[ext]
+            return f"data:{mime};base64,{b64}"
+    return ""
+
+
+def _find_pyhat() -> Path | None:
+    # etsi ylöspäin nykyisestä hakemistosta
+    cwd = Path.cwd().resolve()
+    for parent in (cwd, *cwd.parents):
+        cand = parent / "data" / "pyhat_fi.json"
+        if cand.exists():
+            return cand
+
+    # varmuudeksi tämän tiedoston sijainnista myös ylöspäin
+    here = Path(__file__).resolve()
+    for parent in (here.parent, *here.parents):
+        cand = parent / "data" / "pyhat_fi.json"
+        if cand.exists():
+            return cand
+
+    return None
+
+
+def _get_flag(today: datetime) -> tuple[str | None, str | None]:
+    """Palauta (lipputeksti, debug)"""
+    key = today.strftime("%Y-%m-%d")
+    path = _find_pyhat()
+    if path is None:
+        return None, "data/pyhat_fi.json ei löytynyt mistään yläkansiosta"
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return None, f"pyhat_fi.json löytyi ({path}), mutta sitä ei voitu lukea: {e}"
+
+    info = data.get(key)
+    if info and info.get("flag"):
+        return info.get("name") or "Liputuspäivä", None
+    else:
+        # näytä vähän mitä siellä on
+        some_keys = ", ".join(list(data.keys())[:8])
+        return None, f"pyhat_fi.json löytyi ({path}), mutta avainta {key} ei ollut. Avaimet: {some_keys}"
 
 
 def card_nameday() -> None:
-    """Render a card displaying today's Finnish namedays (liputuspäivä, nimipäivät, aurinko, mahdollinen juhla)."""
+    today = datetime.now(TZ)
+
+    names = fetch_nameday_today() or "—"
+    flag_txt, flag_debug = _get_flag(today)
+
+    # aurinko
+    sunrise = sunset = None
+    if callable(fetch_sun_times):
+        try:
+            tz_key = TZ.key if hasattr(TZ, "key") else str(TZ)
+            sunrise, sunset = fetch_sun_times(LAT, LON, tz_key)
+        except Exception:
+            pass
+
+    # päivämäärä
     try:
-        # --- cache-busterit mtime:stä ---
-        p_names = next((p for p in NAMEDAY_PATHS if Path(p).exists()), None)
-        mtime_names = Path(p_names).stat().st_mtime_ns if p_names else 0
-        p_holidays = next((p for p in HOLIDAY_PATHS if Path(p).exists()), None)
-        mtime_holidays = Path(p_holidays).stat().st_mtime_ns if p_holidays else 0
+        day_str = today.strftime("%-d.%m.")
+    except ValueError:
+        day_str = today.strftime("%#d.%m.")
 
-        names = fetch_nameday_today(_cache_buster=mtime_names) or "—"
-        hol = fetch_holiday_today(_cache_buster=max(mtime_names, mtime_holidays)) or {}
+    # tausta
+    bg = _butterfly_bg()
+    overlay = "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.00) 72%)"
+    bg_layer = f"{overlay}, url('{bg}')" if bg else overlay
 
-        # --- otsikkoteksti ---
-        now = datetime.now(TZ)
-        weekdays_fi = [
-            "maanantaina",
-            "tiistaina",
-            "keskiviikkona",
-            "torstaina",
-            "perjantaina",
-            "lauantaina",
-            "sunnuntaina",
-        ]
-        title_text = f"Nimipäivät<br>{weekdays_fi[now.weekday()]} {now.day}.{now.month}."
+    # pieni valkoinen Suomen lippu (SVG, näkyy tummalla taustalla)
+    fi_flag_svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6' width='14' height='10'>"
+        "<rect width='9' height='6' fill='white'/>"
+        "<rect y='2' width='9' height='2' fill='#003580'/>"
+        "<rect x='2' width='2' height='6' fill='#003580'/>"
+        "</svg>"
+    )
 
-        # --- tausta suoraan kortin backgroundiksi ---
-        bg_dataurl = None
-        for fname in ("butterfly-bg.png", "butterfly-bg.webp", "butterfly-bg.jpg"):
-            path = asset_path(fname)
-            if path.exists():
-                mime = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg"}[
-                    path.suffix.lstrip(".")
-                ]
-                bg_dataurl = f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode(
-                    "ascii"
-                )
-                break
+    html = []
+    html.append(
+        f'<section class="card card-top-equal" '
+        f'style="height:180px; position:relative; overflow:hidden; '
+        f'background-image:{bg_layer}; background-size:cover; background-position:center;">'
+    )
+    html.append(
+        '<div class="card-body" '
+        'style="display:flex; flex-direction:column; gap:6px; text-align:left; '
+        'padding:12px 16px; color:#fff;">'
+    )
 
-        overlay_css = "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.25) 45%, rgba(11,15,20,0.00) 70%)"
-        bg_css = overlay_css + (f", url({bg_dataurl})" if bg_dataurl else "")
-
-        # --- statusrivi (vain jos flag/loma) ---
-        is_flag = bool(hol.get("is_flag_day"))
-        is_hday = bool(hol.get("is_holiday"))
-        holiday_name = (hol.get("holiday") or "").strip()
-        has_status = is_flag or is_hday
-
-        status_html = ""
-        if is_flag or is_hday:
-            flag_svg = (
-                "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='16' viewBox='0 0 22 16' aria-label='Suomen lippu' style='flex:0 0 auto;'>"
-                "<rect width='22' height='16' fill='#ffffff'/>"
-                "<rect x='0' y='6' width='22' height='4' fill='#003580'/>"
-                "<rect x='6' y='0' width='4' height='16' fill='#003580'/>"
-                "</svg>"
-            )
-            if is_flag and is_hday:
-                label_html = f"{flag_svg}<strong>Liputus- ja lomapäivä:</strong> {holiday_name}"
-            elif is_flag:
-                label_html = f"{flag_svg}<strong>Liputuspäivä:</strong> {holiday_name}"
-            else:
-                label_html = f"<strong>Lomapäivä:</strong> {holiday_name}"
-
-            status_html = (
-                "<div style='display:flex; align-items:center; gap:8px; "
-                "padding:6px 10px; border-radius:999px; width:max-content; "
-                "background:rgba(255,255,255,.12); backdrop-filter:blur(2px); "
-                "margin:4px 0 6px 0; font-size:.95rem; line-height:1;'>"
-                f"{label_html}</div>"
-            )
-
-        names_html = (
-            "<div style='font-size:1.35rem; font-weight:800; "
-            f"margin:{'4px 0 6px 0' if has_status else '0 0 6px 0'}; "
-            "color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,.45);'>"
-            f"{names}</div>"
+    # LIPUTUS tai DEBUG ENSIMMÄISENÄ
+    if flag_txt:
+        html.append(
+            "<div style=\"display:inline-flex;align-items:center;gap:6px;"
+            "background:rgba(255,255,255,.12);padding:4px 10px;"
+            "border-radius:999px;font-size:.75rem;margin-bottom:4px;\">"
+            f"{fi_flag_svg}<span>{flag_txt}</span></div>"
+        )
+    elif flag_debug:
+        html.append(
+            "<div style=\"font-size:.6rem;opacity:.7;background:rgba(0,0,0,.35);"
+            "padding:3px 6px;border-radius:6px;\">"
+            f"{flag_debug}</div>"
         )
 
-        # --- Auringon nousu/lasku: pillerit ---
-        sr, ss = fetch_sun_times(LAT, LON, TZ.key)
-        sun_html = ""
-        if sr or ss:
-            style_pill = (
-                "display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;"
-                "background:rgba(255,255,255,.12);backdrop-filter:blur(2px);margin-right:8px;"
-                "font-size:.95rem;line-height:1;color:#fff;"
-            )
-            rise = f"<span style='{style_pill}'>{_sun_icon('rise', 18)}<strong>{sr or '—'}</strong></span>"
-            sett = f"<span style='{style_pill}'>{_sun_icon('set', 18)}<strong>{ss or '—'}</strong></span>"
-            sun_html = f"<div style='margin:2px 0 6px 0;'>{rise}{sett}</div>"
+    # Nimipäivä ja nimet
+    html.append(
+        f'<div style="font-size:.8rem; opacity:.9; margin-bottom:2px;">'
+        f'Nimipäivät {_weekday_fi(today)} {day_str}</div>'
+    )
+    html.append(
+        f'<div style="font-size:1.3rem; font-weight:700; '
+        f'text-shadow:0 1px 2px rgba(0,0,0,.35);">{names}</div>'
+    )
 
-        meta_html = ""
-        if (not is_flag and not is_hday) and holiday_name:
-            meta_html = (
-                "<div class='meta' style='margin-top:6px; font-size:.95rem; opacity:.95;'>"
-                "<span style='display:inline-block; padding:4px 8px; border-radius:999px; "
-                "background:rgba(255,255,255,.10); color:#fff;'>"
-                f"{holiday_name}</span></div>"
-            )
+    # Aurinko
+    html.append('<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">')
+    html.append(
+        "<div style=\"display:inline-flex;align-items:center;gap:6px;"
+        "background:rgba(0,0,0,.35);padding:4px 10px;"
+        "border-radius:999px;font-size:.75rem;\">"
+        f"{_sun_icon('rise', 16)} <strong>{sunrise or '—'}</strong></div>"
+    )
+    html.append(
+        "<div style=\"display:inline-flex;align-items:center;gap:6px;"
+        "background:rgba(0,0,0,.35);padding:4px 10px;"
+        "border-radius:999px;font-size:.75rem;\">"
+        f"{_sun_icon('set', 16)} <strong>{sunset or '—'}</strong></div>"
+    )
+    html.append("</div></div></section>")
 
-        html = f"""
-        <section class="card card-top-equal"
-         style="height:180px; position:relative; overflow:hidden;
-                background-image:{bg_css}; background-size:cover; background-position:center;">
-          <div class="card-body" style="display:flex; align-items:flex-start; text-align:left; padding:10px 16px 12px 16px;">
-            <div style="font-size:1.0rem; line-height:1.2; margin:0; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45); width:100%;">
-              {status_html}
-              <div class="card-title" style="margin:{'6px 0 0 0' if has_status else '0'}; color:#f2f4f7;">
-                {title_text}
-              </div>
-              {names_html}
-              {sun_html}
-              {meta_html}
-            </div>
-          </div>
-        </section>
-        """
-
-        st.markdown(html, unsafe_allow_html=True)
-
-    except Exception as e:
-        card(
-            "Nimipäivät",
-            f"<span class='hint'>Ei saatu tietoa: {e}</span>",
-            height_dvh=12,
-        )
+    st.markdown("".join(html), unsafe_allow_html=True)
