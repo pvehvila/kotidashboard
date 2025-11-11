@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import base64
-import json
 from datetime import datetime
-from pathlib import Path
 
 import streamlit as st
 
 from src.api.calendar_nameday import fetch_nameday_today
 from src.config import LAT, LON, TZ
-from src.paths import asset_path
+from src.ui.card_nameday_helpers import get_background_image, get_flag_info
 
 # aurinko
 try:
@@ -40,64 +37,11 @@ def _weekday_fi(dt: datetime) -> str:
     return weekdays[dt.weekday()]
 
 
-def _butterfly_bg() -> str:
-    for name in ("butterfly-bg.png", "butterfly-bg.webp", "butterfly-bg.jpg"):
-        p = asset_path(name)
-        if p.exists():
-            b64 = base64.b64encode(p.read_bytes()).decode("ascii")
-            ext = p.suffix.lstrip(".").lower()
-            mime = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg"}[ext]
-            return f"data:{mime};base64,{b64}"
-    return ""
-
-
-def _find_pyhat() -> Path | None:
-    # etsi ylöspäin nykyisestä hakemistosta
-    cwd = Path.cwd().resolve()
-    for parent in (cwd, *cwd.parents):
-        cand = parent / "data" / "pyhat_fi.json"
-        if cand.exists():
-            return cand
-
-    # varmuudeksi tämän tiedoston sijainnista myös ylöspäin
-    here = Path(__file__).resolve()
-    for parent in (here.parent, *here.parents):
-        cand = parent / "data" / "pyhat_fi.json"
-        if cand.exists():
-            return cand
-
-    return None
-
-
-def _get_flag(today: datetime) -> tuple[str | None, str | None]:
-    """Palauta (lipputeksti, debug)"""
-    key = today.strftime("%Y-%m-%d")
-    path = _find_pyhat()
-    if path is None:
-        return None, "data/pyhat_fi.json ei löytynyt mistään yläkansiosta"
-
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:
-        return None, f"pyhat_fi.json löytyi ({path}), mutta sitä ei voitu lukea: {e}"
-
-    info = data.get(key)
-    if info and info.get("flag"):
-        return info.get("name") or "Liputuspäivä", None
-    else:
-        # näytä vähän mitä siellä on
-        some_keys = ", ".join(list(data.keys())[:8])
-        return (
-            None,
-            f"pyhat_fi.json löytyi ({path}), mutta avainta {key} ei ollut. Avaimet: {some_keys}",
-        )
-
-
 def card_nameday() -> None:
     today = datetime.now(TZ)
 
     names = fetch_nameday_today() or "—"
-    flag_txt, flag_debug = _get_flag(today)
+    flag_txt, flag_debug = get_flag_info(today)
 
     # aurinko
     sunrise = sunset = None
@@ -126,7 +70,7 @@ def card_nameday() -> None:
         day_str = today.strftime("%#d.%m.")
 
     # tausta
-    bg = _butterfly_bg()
+    bg = get_background_image()
     overlay = "linear-gradient(90deg, rgba(11,15,20,0.65) 0%, rgba(11,15,20,0.00) 72%)"
     bg_layer = f"{overlay}, url('{bg}')" if bg else overlay
 
