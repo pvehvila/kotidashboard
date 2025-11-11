@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import date
+
 from src.paths import asset_path
 
 
@@ -28,7 +29,7 @@ def _find_existing_json() -> str:
 
 def _load_json() -> dict:
     path = _find_existing_json()
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -43,9 +44,18 @@ def fetch_nameday_today() -> str:
     # 1️⃣ Jos data on nimipaivat_fi.json-rakennetta
     if "nimipäivät" in data:
         months = [
-            "tammikuu", "helmikuu", "maaliskuu", "huhtikuu",
-            "toukokuu", "kesäkuu", "heinäkuu", "elokuu",
-            "syyskuu", "lokakuu", "marraskuu", "joulukuu",
+            "tammikuu",
+            "helmikuu",
+            "maaliskuu",
+            "huhtikuu",
+            "toukokuu",
+            "kesäkuu",
+            "heinäkuu",
+            "elokuu",
+            "syyskuu",
+            "lokakuu",
+            "marraskuu",
+            "joulukuu",
         ]
         month_name = months[today.month - 1]
         day_str = str(today.day)

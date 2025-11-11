@@ -10,13 +10,13 @@ Tämän dokumentin tarkoitus on pitää näkyvissä ne tiedostot ja funktiot, jo
 
 ## 0. Mitä juuri korjattiin (2025-11-11)
 
-- `src/ui/card_nameday.py` lakkasi toimimasta, koska aiempi koodi oletti moduulin `src.api.calendar_nameday`.  
-  **Korjaus:** lisättiin uusi tiedosto `src/api/calendar_nameday.py`, joka vain re-exporttaa `fetch_nameday_today`-funktion `src/api/nameday.py`:stä.  
-- Nimipäivädata ei löytynyt, koska projekti käyttää juurihakemiston tiedostoja `data/nimipaivat_fi.json` ja `data/pyhat_fi.json` (eri rakenne kuin aiemmin).  
-  **Korjaus:** uusi `src/api/nameday.py` tunnistaa suomalaisen kuukausirakenteen (`"marraskuu" -> "11" -> "Panu"`).  
-- UI-korttien export-lista ei vastannut enää todellista tilannetta.  
-  **Korjaus:** `src/ui/__init__.py` päivitettiin uudelleen.  
-- Sähkökortti poistui refaktoroinnin yhteydessä.  
+- `src/ui/card_nameday.py` lakkasi toimimasta, koska aiempi koodi oletti moduulin `src.api.calendar_nameday`.
+  **Korjaus:** lisättiin uusi tiedosto `src/api/calendar_nameday.py`, joka vain re-exporttaa `fetch_nameday_today`-funktion `src/api/nameday.py`:stä.
+- Nimipäivädata ei löytynyt, koska projekti käyttää juurihakemiston tiedostoja `data/nimipaivat_fi.json` ja `data/pyhat_fi.json` (eri rakenne kuin aiemmin).
+  **Korjaus:** uusi `src/api/nameday.py` tunnistaa suomalaisen kuukausirakenteen (`"marraskuu" -> "11" -> "Panu"`).
+- UI-korttien export-lista ei vastannut enää todellista tilannetta.
+  **Korjaus:** `src/ui/__init__.py` päivitettiin uudelleen.
+- Sähkökortti poistui refaktoroinnin yhteydessä.
   **Korjaus:** `src/ui/card_prices.py` palautettiin commitista `eda6fbbf`, koska se oli viimeinen varmuudella toimiva versio.
 
 ---

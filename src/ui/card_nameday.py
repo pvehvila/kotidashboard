@@ -13,7 +13,7 @@ from src.paths import asset_path
 
 # aurinko
 try:
-    from src.utils_sun import fetch_sun_times, _sun_icon  # type: ignore
+    from src.utils_sun import _sun_icon, fetch_sun_times  # type: ignore
 except Exception:
     try:
         from src.utils import fetch_sun_times  # type: ignore
@@ -87,7 +87,10 @@ def _get_flag(today: datetime) -> tuple[str | None, str | None]:
     else:
         # näytä vähän mitä siellä on
         some_keys = ", ".join(list(data.keys())[:8])
-        return None, f"pyhat_fi.json löytyi ({path}), mutta avainta {key} ei ollut. Avaimet: {some_keys}"
+        return (
+            None,
+            f"pyhat_fi.json löytyi ({path}), mutta avainta {key} ei ollut. Avaimet: {some_keys}",
+        )
 
 
 def card_nameday() -> None:
@@ -115,7 +118,6 @@ def card_nameday() -> None:
             # muut muodot ohitetaan siististi
         except Exception:
             pass
-
 
     # päivämäärä
     try:
@@ -152,16 +154,16 @@ def card_nameday() -> None:
     # LIPUTUS tai DEBUG ENSIMMÄISENÄ
     if flag_txt:
         html.append(
-            "<div style=\"display:inline-flex;align-items:center;gap:6px;"
+            '<div style="display:inline-flex;align-items:center;gap:6px;'
             "background:rgba(255,255,255,.12);padding:4px 10px;"
-            "border-radius:999px;font-size:.75rem;margin-bottom:4px;\">"
+            'border-radius:999px;font-size:.75rem;margin-bottom:4px;">'
             f"{fi_flag_svg}<span>{flag_txt}</span></div>"
         )
-    
+
     # Nimipäivä ja nimet
     html.append(
         f'<div style="font-size:.8rem; opacity:.9; margin-bottom:2px;">'
-        f'Nimipäivät {_weekday_fi(today)} {day_str}</div>'
+        f"Nimipäivät {_weekday_fi(today)} {day_str}</div>"
     )
     html.append(
         f'<div style="font-size:1.3rem; font-weight:700; '

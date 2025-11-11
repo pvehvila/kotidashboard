@@ -13,12 +13,11 @@ from src.ui import (
     card_bitcoin,
     card_heos,
     card_nameday,
+    card_prices,
     card_system,
     card_weather,
     card_zen,
-    card_prices
 )
-
 from src.ui.common import load_css
 
 ensure_dirs()

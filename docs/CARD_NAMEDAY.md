@@ -2,10 +2,10 @@
 
 Tämä kortti näyttää:
 
-1. **Liputus- / pyhäpäivän** (jos löytyy)  
-2. **Nimipäivät tänään** (päivä suomeksi + päivämäärä)  
-3. **Nimet isolla**  
-4. **Auringonnousu- ja laskuajan**  
+1. **Liputus- / pyhäpäivän** (jos löytyy)
+2. **Nimipäivät tänään** (päivä suomeksi + päivämäärä)
+3. **Nimet isolla**
+4. **Auringonnousu- ja laskuajan**
 5. **Taustakuvan** (perhonen)
 
 Kortti on rakennettu samaan korttityyliin kuin muut dashboardin kortit (sama 180px korkeus ja `section.card` -rakenne), joten se istuu riviin muiden kanssa.
@@ -15,7 +15,7 @@ Kortti on rakennettu samaan korttityyliin kuin muut dashboardin kortit (sama 180
 ## 1. Datalähteet
 
 ### 1.1 Nimipäivät
-- Haetaan funktiolla:  
+- Haetaan funktiolla:
   ```python
   from src.api.calendar_nameday import fetch_nameday_today
   ```
