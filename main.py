@@ -16,6 +16,7 @@ from src.ui import (
     card_system,
     card_weather,
     card_zen,
+    card_prices
 )
 
 from src.ui.common import load_css
@@ -68,7 +69,7 @@ def main() -> None:
         card_weather()
 
         # Row 3: Electricity prices
-        # card_prices()
+        card_prices()
 
         # Row 4: Bitcoin
         card_bitcoin()
