@@ -41,74 +41,146 @@ def fetch_alerts(lat: float, lon: float, tz_name: str) -> dict[str, Any]:
 
 
 # --- apufunktiot dashboard-mapitukseen -----------------------------------------
+def _build_time_axis(hourly_raw: dict[str, Any], tz_name: str) -> list[datetime]:
+    """
+    Parsii Open-Meteon "time"-listan datetime-olioiksi.
+
+    Tällä hetkellä tz_name ei ole kriittinen (ajat ovat jo oikeassa aikavyöhykkeessä),
+    mutta pidetään se rajapinnassa mahdollisia tulevia muutoksia varten.
+    """
+    raw_times: list[str] = hourly_raw.get("time", []) or []
+    axis: list[datetime] = []
+
+    for t in raw_times:
+        try:
+            dt = datetime.fromisoformat(t)
+        except ValueError:
+            # rikkinäinen aikaleima -> ohitetaan
+            continue
+
+        # jos aikaleima on naivi, sidotaan se dashboardin oletus-TZ:ään
+        if dt.tzinfo is None and TZ is not None:
+            dt = dt.replace(tzinfo=TZ)
+
+        axis.append(dt)
+
+    return axis
+
+
+def _extract_point_fields(
+    temps: list[Any],
+    pops: list[Any],
+    wmos: list[Any],
+    covers: list[Any],
+    isday: list[Any],
+    idx: int,
+) -> tuple[float | None, int | None, int | None, int | None, bool | None]:
+    """
+    Lukee yksittäisen ennusterivin raakakentät ja muuntaa ne turvallisesti perus­tyyppeihin.
+    """
+    raw_temp = temps[idx] if idx < len(temps) else None
+    raw_pop = pops[idx] if idx < len(pops) else None
+    raw_wmo = wmos[idx] if idx < len(wmos) else None
+    raw_ccov = covers[idx] if idx < len(covers) else None
+    raw_isday = isday[idx] if idx < len(isday) else None
+
+    temp = as_float(raw_temp)
+    pop = as_int(raw_pop)
+    wmo = as_int(raw_wmo)
+    ccov = as_int(raw_ccov)
+    is_day_flag = as_bool(raw_isday)
+
+    return temp, pop, wmo, ccov, is_day_flag
+
+
+def _build_point(
+    target_time: datetime,
+    offset: int,
+    temp: float | None,
+    pop: int | None,
+    wmo: int | None,
+    ccov: int | None,
+    is_day_flag: bool | None,
+) -> dict[str, Any]:
+    """
+    Rakentaa dashboardin käyttämän piste-dictin yhden tunnin datasta.
+    """
+    # fallback: päätellään päivä/yö kellonajasta jos api ei kerro
+    is_day = is_day_flag if is_day_flag is not None else (6 <= target_time.hour <= 20)
+
+    return {
+        "label": "Nyt" if offset == 0 else f"+{offset} h",
+        "hour": target_time.hour,
+        "temp": temp,
+        "pop": pop,
+        "key": wmo_to_foreca_code(
+            wmo,
+            is_day=is_day,
+            pop=pop,
+            temp_c=temp,
+            cloudcover=ccov,
+        ),
+    }
+
+
 def _map_hourly_to_dashboard(
     hourly: dict[str, Any],
     now: datetime,
     offsets: tuple[int, ...],
+    tz_name: str,
 ) -> dict[str, Any]:
     """
     Muuntaa Open-Meteon hourly-datan dashboardin käyttämään muotoon.
 
-    Parametrit:
-        hourly: Open-Meteon "hourly"-lohko.
-        now: "nyt"-aikaleima (pyöristetty tuntiin).
-        offsets: tunnit nyt-hetkestä (0, 3, 6, ...) joille pisteet lasketaan.
+    Vastuu on nyt:
+      * rakentaa aika-akseli (_build_time_axis)
+      * käydä läpi pyydetyt offsetit
+      * koota pisteet _extract_point_fields- ja _build_point-apufunktioilla
+      * laskea päivän min/max-lämpötilat
     """
-    times: list[str] = hourly.get("time", []) or []
     temps: list[Any] = hourly.get("temperature_2m", []) or []
     pops: list[Any] = hourly.get("precipitation_probability", []) or []
     wmos: list[Any] = hourly.get("weathercode", []) or []
     covers: list[Any] = hourly.get("cloudcover", []) or []
     isday: list[Any] = hourly.get("is_day", []) or []
 
+    time_axis: list[datetime] = _build_time_axis(hourly, tz_name)
     points: list[dict[str, Any]] = []
 
     for offset in offsets:
         target_time = now + timedelta(hours=offset)
-        ts = target_time.strftime("%Y-%m-%dT%H:00")
 
         try:
-            idx = times.index(ts)
+            idx = time_axis.index(target_time)
         except ValueError:
             # kyseistä tuntia ei tullut api:sta
             continue
 
-        raw_temp = temps[idx] if idx < len(temps) else None
-        raw_pop = pops[idx] if idx < len(pops) else None
-        raw_wmo = wmos[idx] if idx < len(wmos) else None
-        raw_ccov = covers[idx] if idx < len(covers) else None
-        raw_isday = isday[idx] if idx < len(isday) else None
-
-        temp = as_float(raw_temp)
-        pop = as_int(raw_pop)
-        wmo = as_int(raw_wmo)
-        ccov = as_int(raw_ccov)
-        is_day_flag = as_bool(raw_isday)
-
-        # fallback: päätellään päivä/yö kellonajasta jos api ei kerro
-        is_day = is_day_flag if is_day_flag is not None else (6 <= target_time.hour <= 20)
-
-        points.append(
-            {
-                "label": "Nyt" if offset == 0 else f"+{offset} h",
-                "hour": target_time.hour,
-                "temp": temp,
-                "pop": pop,
-                "key": wmo_to_foreca_code(
-                    wmo,
-                    is_day=is_day,
-                    pop=pop,
-                    temp_c=temp,
-                    cloudcover=ccov,
-                ),
-            }
+        temp, pop, wmo, ccov, is_day_flag = _extract_point_fields(
+            temps=temps,
+            pops=pops,
+            wmos=wmos,
+            covers=covers,
+            isday=isday,
+            idx=idx,
         )
 
-    # päivän min/max kuten ennen
+        points.append(
+            _build_point(
+                target_time=target_time,
+                offset=offset,
+                temp=temp,
+                pop=pop,
+                wmo=wmo,
+                ccov=ccov,
+                is_day_flag=is_day_flag,
+            )
+        )
+
+    # päivän min/max kuten ennen, mutta nyt aika-akselin avulla
     min_temp = max_temp = None
     try:
-        day_str = now.strftime("%Y-%m-%d")
-        idxs = [i for i, t in enumerate(times) if t.startswith(day_str)]
+        idxs = [i for i, t in enumerate(time_axis) if t.date() == now.date()]
         vals = [temps[i] for i in idxs if i < len(temps)]
         if vals:
             min_temp, max_temp = min(vals), max(vals)
@@ -144,4 +216,9 @@ def fetch_weather_points(
 
     now = datetime.now(TZ).replace(minute=0, second=0, microsecond=0)
 
-    return _map_hourly_to_dashboard(hourly=hourly, now=now, offsets=offsets)
+    return _map_hourly_to_dashboard(
+        hourly=hourly,
+        now=now,
+        offsets=offsets,
+        tz_name=tz_name,
+    )
