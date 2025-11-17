@@ -1,108 +1,59 @@
 # src/ui/card_prices.py
 from __future__ import annotations
 
-import math
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.api import try_fetch_prices_15min
+from src.api.prices_15min_vm import (  # noqa: F401 (backwards compat)
+    build_prices_15min_vm,
+    current_price_15min,
+    next_12h_15min,
+)
 from src.config import (
     COLOR_GRAY,
     COLOR_TEXT_GRAY,
     PLOTLY_CONFIG,
-    PRICE_Y_STEP_SNT,
     TZ,
 )
 from src.ui.common import card, section_title
-from src.utils import _color_by_thresholds, _color_for_value
+from src.utils import _color_for_value
+
+# ------------------------------------------------------------------
+# Takautuva yhteensopivuus vanhoihin testeihin:
+# näistä ohjataan uuteen viewmodel-implementaatioon.
+# ------------------------------------------------------------------
 
 
 def _current_price_15min(
-    prices_today: list[dict[str, datetime | float]] | None,
-    now_dt: datetime,
-) -> float | None:
-    if not prices_today:
-        return None
-    minute = (now_dt.minute // 15) * 15
-    slot = now_dt.replace(minute=minute, second=0, microsecond=0)
-    hit = next(
-        (p for p in prices_today if isinstance(p.get("ts"), datetime) and p["ts"] == slot),
-        None,
-    )
-    if not hit:
-        return None
-    cents_val = hit.get("cents")
-    if not isinstance(cents_val, (int | float)):
-        return None
-    return float(cents_val)
+    prices_today,
+    now_dt,
+):
+    """Wrapper: delegoi src.api.prices_15min_vm.current_price_15min-funktioon."""
+    return current_price_15min(prices_today, now_dt=now_dt)
 
 
 def _next_12h_15min(
-    prices_today: list[dict[str, datetime | float]] | None,
-    prices_tomorrow: list[dict[str, datetime | float]] | None,
-    now_dt: datetime,
-) -> list[dict[str, datetime | str | float | bool]]:
-    if not prices_today and not prices_tomorrow:
-        return []
-
-    rows: list[dict[str, datetime | str | float | bool]] = []
-    minute = (now_dt.minute // 15) * 15
-    base = now_dt.replace(minute=minute, second=0, microsecond=0)
-
-    for i in range(48):
-        ts = base + timedelta(minutes=15 * i)
-
-        src = prices_today if ts.date() == now_dt.date() else prices_tomorrow
-        if not src:
-            continue
-
-        hit = next(
-            (p for p in src if isinstance(p.get("ts"), datetime) and p["ts"] == ts),
-            None,
-        )
-
-        if not hit:
-            # etsi lähellä, joskus ts voi heittää vähän
-            for p in src:
-                ts_p = p.get("ts")
-                if not isinstance(ts_p, datetime):
-                    continue
-                if abs((ts_p - ts).total_seconds()) < 60:
-                    hit = p
-                    break
-
-        if not hit:
-            continue
-
-        cents_val = hit.get("cents")
-        if not isinstance(cents_val, (int | float)):
-            cents_val = 0.0
-
-        rows.append(
-            {
-                "ts": ts,
-                "label": ts.strftime("%H:%M"),
-                "cents": float(cents_val),
-                "is_now": i == 0,
-            }
-        )
-
-    return rows
+    prices_today,
+    prices_tomorrow,
+    now_dt,
+):
+    """Wrapper: delegoi src.api.prices_15min_vm.next_12h_15min-funktioon."""
+    return next_12h_15min(
+        prices_today=prices_today,
+        prices_tomorrow=prices_tomorrow,
+        now_dt=now_dt,
+    )
 
 
 def card_prices() -> None:
     """Render a card displaying electricity prices for the next 12 hours (15 min)."""
     try:
-        now_dt = datetime.now(TZ)
-        today = now_dt.date()
-        tomorrow = today + timedelta(days=1)
+        vm = build_prices_15min_vm(now_dt=datetime.now(TZ))
 
-        prices_today = try_fetch_prices_15min(today)
-        prices_tomorrow = try_fetch_prices_15min(tomorrow)
-
-        current_cents = _current_price_15min(prices_today, now_dt)
+        rows = vm["rows"]
+        current_cents = vm["current_cents"]
 
         title_html = (
             "⚡ Pörssisähkö " + "<span style='background:{0}; color:{1}; padding:2px 10px; "
@@ -118,7 +69,6 @@ def card_prices() -> None:
 
         section_title(title_html, mt=10, mb=4)
 
-        rows = _next_12h_15min(prices_today, prices_tomorrow, now_dt=now_dt)
         if not rows:
             card(
                 "Pörssisähkö",
@@ -127,28 +77,13 @@ def card_prices() -> None:
             )
             return
 
-        values: list[float] = []
-        for row in rows:
-            val = row.get("cents")
-            if isinstance(val, (int | float)):
-                values.append(float(val))
-            else:
-                values.append(0.0)
-
-        colors = _color_by_thresholds(list(values))
-        line_colors = [
-            "rgba(255,255,255,0.9)" if row["is_now"] else "rgba(0,0,0,0)" for row in rows
-        ]
-        line_widths = [1.5 if row["is_now"] else 0 for row in rows]
-
-        step = float(max(1, PRICE_Y_STEP_SNT))
-        y_min_src = min(values, default=0.0)
-        y_max_src = max(values, default=step)
-
-        y_min = float(math.floor(y_min_src / step) * step)
-        y_max = float(math.ceil(y_max_src / step) * step)
-        if y_max <= y_min:
-            y_max = y_min + step
+        values = vm["values"]
+        colors = vm["colors"]
+        line_colors = vm["line_colors"]
+        line_widths = vm["line_widths"]
+        y_min = vm["y_min"]
+        y_max = vm["y_max"]
+        step = vm["y_step"]
 
         fig = go.Figure(
             [

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import plotly.graph_objects as go
@@ -29,6 +30,55 @@ from src.config import (
 # ------------------------------------------------------------
 
 
+def _try_fetch_series_for_window(window: str) -> list[tuple[datetime, float]] | None:
+    """Hae BTC-sarja pyydetylle ikkunalle (24h, 7d, 30d)."""
+    if window == "24h":
+        s = fetch_btc_last_24h_eur()
+        if not s:
+            s = fetch_btc_eur_range(hours=24)
+        return s
+
+    if window == "7d":
+        s = fetch_btc_last_7d_eur()
+        if not s:
+            s = fetch_btc_eur_range(days=7)
+        return s
+
+    if window == "30d":
+        s = fetch_btc_last_30d_eur()
+        if not s:
+            s = fetch_btc_eur_range(days=30)
+        return s
+
+    return None
+
+
+def _build_24h_from_7d(
+    now: datetime,
+    series_7d: list[tuple[datetime, float]],
+) -> tuple[list[tuple[datetime, float]], bool]:
+    """
+    Viipaloi 24h sarja 7d-datasta.
+
+    Palauttaa (sarja, degraded):
+      - degraded = True jos jouduttiin näyttämään koko 7d, koska 24h-ikkunasta ei
+        saatu tarpeeksi pisteitä.
+    """
+    cutoff = now - timedelta(hours=24)
+    s24 = [(t, v) for (t, v) in series_7d if t >= cutoff]
+    if len(s24) >= 2:
+        return s24, False
+    return series_7d, True
+
+
+def _fallback_7d(window: str) -> tuple[list[tuple[datetime, float]], bool]:
+    """Viimesijainen fallback: hae 7d mihin tahansa ikkunaan."""
+    s7 = fetch_btc_last_7d_eur()
+    if s7:
+        return s7, (window != "7d")
+    raise ValueError("BTC-historiasarjaa ei saatu mistään lähteestä.")
+
+
 def get_btc_series_for_window(window: str) -> tuple[list[tuple[datetime, float]], bool]:
     """
     Palauttaa (sarja, degraded).
@@ -38,51 +88,35 @@ def get_btc_series_for_window(window: str) -> tuple[list[tuple[datetime, float]]
     """
     now = datetime.now(TZ)
 
-    # 24 h
+    # 24 h: ensin suoraan 24h-lähteet, sitten 7d->24h downsample
     if window == "24h":
-        s = fetch_btc_last_24h_eur()
+        s = _try_fetch_series_for_window("24h")
         if s:
             return s, False
 
-        s = fetch_btc_eur_range(hours=24)
-        if s:
-            return s, False
-
-        s7 = fetch_btc_last_7d_eur()
+        s7 = _try_fetch_series_for_window("7d")
         if s7:
-            cutoff = now - timedelta(hours=24)
-            s24 = [(t, v) for (t, v) in s7 if t >= cutoff]
-            return (s24 if len(s24) >= 2 else s7), (len(s24) < 2)
+            return _build_24h_from_7d(now, s7)
 
     # 7 d
     if window == "7d":
-        s = fetch_btc_last_7d_eur()
-        if s:
-            return s, False
-        s = fetch_btc_eur_range(days=7)
+        s = _try_fetch_series_for_window("7d")
         if s:
             return s, False
 
     # 30 d
     if window == "30d":
-        s = fetch_btc_last_30d_eur()
-        if s:
-            return s, False
-        s = fetch_btc_eur_range(days=30)
-        if s:
-            return s, False
+        s30 = _try_fetch_series_for_window("30d")
+        if s30:
+            return s30, False
 
         # fallback 7d
-        s7 = fetch_btc_last_7d_eur()
+        s7 = _try_fetch_series_for_window("7d")
         if s7:
             return s7, True
 
-    # viimesijainen fallback: 7d mihin tahansa ikkunaan
-    s7 = fetch_btc_last_7d_eur()
-    if s7:
-        return s7, (window != "7d")
-
-    raise ValueError("BTC-historiasarjaa ei saatu mistään lähteestä.")
+    # Viimesijainen fallback: 7d mihin tahansa ikkunaan
+    return _fallback_7d(window)
 
 
 # ------------------------------------------------------------
@@ -148,7 +182,9 @@ def build_footer_html(
     ath_date: str | None,
 ) -> str:
     ath_info = (
-        f" {ath_date[:10]}, {ath_eur:,.0f} €".replace(",", " ") if ath_eur and ath_date else ""
+        f" {ath_date[:10]}, {ath_eur:,.0f} €".replace(",", " ")
+        if ath_eur is not None and ath_date
+        else ""
     )
     extra = ""
     if window == "30d" and degraded:
@@ -190,12 +226,29 @@ def _y_axis_range(
     return y_min, y_max, step
 
 
-def build_btc_figure(
+@dataclass
+class BtcFigureVM:
+    xs: list[datetime]
+    ys: list[float]
+    name: str
+    hovertemplate: str
+    x_dtick: int | str
+    x_tickformat: str
+    y_min: float | None
+    y_max: float | None
+    y_step: float | None
+    ath_eur: float | None
+    ath_date: str | None
+    label_text: str | None
+
+
+def get_btc_figure_vm(
     series: list[tuple[datetime, float]],
     window: str,
     ath_eur: float | None,
     ath_date: str | None,
-) -> go.Figure:
+) -> BtcFigureVM:
+    """Viewmodel: kaikki datamuotoilu yhteen paikkaan."""
     xs = [t for t, _ in series]
     ys = [v for _, v in series]
 
@@ -215,48 +268,76 @@ def build_btc_figure(
         dtick = "D1"
         tickformat = "%d.%m"
 
+    y_min, y_max, step = _y_axis_range(ys, ath_eur)
+
+    label_text = None
+    if xs and ys:
+        label_text = f"{ys[-1]:,.0f}".replace(",", " ") + " €"
+
+    return BtcFigureVM(
+        xs=xs,
+        ys=ys,
+        name=name,
+        hovertemplate=hover,
+        x_dtick=dtick,
+        x_tickformat=tickformat,
+        y_min=y_min,
+        y_max=y_max,
+        y_step=step,
+        ath_eur=ath_eur,
+        ath_date=ath_date,
+        label_text=label_text,
+    )
+
+
+def build_btc_figure(
+    series: list[tuple[datetime, float]],
+    window: str,
+    ath_eur: float | None,
+    ath_date: str | None,
+) -> go.Figure:
+    vm = get_btc_figure_vm(series, window, ath_eur, ath_date)
+
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=xs,
-            y=ys,
+            x=vm.xs,
+            y=vm.ys,
             mode="lines",
-            name=name,
-            hovertemplate=hover + "<extra></extra>",
+            name=vm.name,
+            hovertemplate=vm.hovertemplate + "<extra></extra>",
         )
     )
 
     # ATH katkoviivana
-    if ath_eur:
-        x0 = xs[0] if xs else datetime.now(TZ)
-        x1 = xs[-1] if xs else datetime.now(TZ)
+    if vm.ath_eur:
+        x0 = vm.xs[0] if vm.xs else datetime.now(TZ)
+        x1 = vm.xs[-1] if vm.xs else datetime.now(TZ)
         fig.add_trace(
             go.Scatter(
                 x=[x0, x1],
-                y=[ath_eur, ath_eur],
+                y=[vm.ath_eur, vm.ath_eur],
                 mode="lines",
-                name=f"ATH {ath_eur:,.0f} €",
+                name=f"ATH {vm.ath_eur:,.0f} €",
                 line=dict(dash="dot"),
                 hovertemplate="ATH — %{y:.0f} € (%{x|%d.%m})<extra></extra>",
             )
         )
 
     # y-akseli
-    y_min, y_max, step = _y_axis_range(ys, ath_eur)
-    if y_min is not None:
-        fig.update_yaxes(range=[y_min, y_max], tick0=y_min, dtick=step)
+    if vm.y_min is not None and vm.y_max is not None and vm.y_step is not None:
+        fig.update_yaxes(range=[vm.y_min, vm.y_max], tick0=vm.y_min, dtick=vm.y_step)
     else:
         fig.update_yaxes(autorange=True)
 
     # hintalappu oikeaan laitaan
-    if xs and ys:
-        label_text = f"{ys[-1]:,.0f}".replace(",", " ") + " €"
+    if vm.xs and vm.ys and vm.label_text:
         fig.add_annotation(
-            x=xs[-1],
-            y=ys[-1],
+            x=vm.xs[-1],
+            y=vm.ys[-1],
             xref="x",
             yref="y",
-            text=label_text,
+            text=vm.label_text,
             showarrow=False,
             xanchor="right",
             align="right",
@@ -275,8 +356,8 @@ def build_btc_figure(
             type="date",
             title=None,
             gridcolor="rgba(255,255,255,0.28)",
-            tickformat=tickformat,
-            dtick=dtick,
+            tickformat=vm.x_tickformat,
+            dtick=vm.x_dtick,
             tickfont=dict(size=11, color="#cfd3d8"),
             automargin=True,
         ),
