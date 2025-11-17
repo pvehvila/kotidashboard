@@ -40,28 +40,27 @@ def fetch_alerts(lat: float, lon: float, tz_name: str) -> dict[str, Any]:
     return {}
 
 
-# --- vanha dashboard-funktio, nyt käyttäen forecast-dataa ----------------------
-def fetch_weather_points(
-    lat: float,
-    lon: float,
-    tz_name: str,
-    offsets: tuple[int, ...] = (0, 3, 6, 9, 12),
+# --- apufunktiot dashboard-mapitukseen -----------------------------------------
+def _map_hourly_to_dashboard(
+    hourly: dict[str, Any],
+    now: datetime,
+    offsets: tuple[int, ...],
 ) -> dict[str, Any]:
     """
-    Hakee tuntiennusteen ja palauttaa dashboardin käyttämän rakenteen.
-    Säilytetty vanha paluumuoto, jotta UI ei hajoa.
+    Muuntaa Open-Meteon hourly-datan dashboardin käyttämään muotoon.
+
+    Parametrit:
+        hourly: Open-Meteon "hourly"-lohko.
+        now: "nyt"-aikaleima (pyöristetty tuntiin).
+        offsets: tunnit nyt-hetkestä (0, 3, 6, ...) joille pisteet lasketaan.
     """
-    data = fetch_forecast(lat, lon, tz_name)
-    hourly = data.get("hourly", {})
+    times: list[str] = hourly.get("time", []) or []
+    temps: list[Any] = hourly.get("temperature_2m", []) or []
+    pops: list[Any] = hourly.get("precipitation_probability", []) or []
+    wmos: list[Any] = hourly.get("weathercode", []) or []
+    covers: list[Any] = hourly.get("cloudcover", []) or []
+    isday: list[Any] = hourly.get("is_day", []) or []
 
-    times: list[str] = hourly.get("time", [])
-    temps = hourly.get("temperature_2m", [])
-    pops = hourly.get("precipitation_probability", [])
-    wmos = hourly.get("weathercode", [])
-    covers = hourly.get("cloudcover", [])
-    isday = hourly.get("is_day", [])
-
-    now = datetime.now(TZ).replace(minute=0, second=0, microsecond=0)
     points: list[dict[str, Any]] = []
 
     for offset in offsets:
@@ -85,6 +84,8 @@ def fetch_weather_points(
         wmo = as_int(raw_wmo)
         ccov = as_int(raw_ccov)
         is_day_flag = as_bool(raw_isday)
+
+        # fallback: päätellään päivä/yö kellonajasta jos api ei kerro
         is_day = is_day_flag if is_day_flag is not None else (6 <= target_time.hour <= 20)
 
         points.append(
@@ -120,3 +121,27 @@ def fetch_weather_points(
         "min_temp": min_temp,
         "max_temp": max_temp,
     }
+
+
+# --- vanha dashboard-funktio, nyt vain valitsee lähteen ------------------------
+def fetch_weather_points(
+    lat: float,
+    lon: float,
+    tz_name: str,
+    offsets: tuple[int, ...] = (0, 3, 6, 9, 12),
+) -> dict[str, Any]:
+    """
+    Hakee tuntiennusteen ja palauttaa dashboardin käyttämän rakenteen.
+
+    Päävastuu:
+      * valita/hauttaa datalähteen (nyt: fetch_forecast)
+      * antaa raakadatan _map_hourly_to_dashboard-apufunktiolle
+
+    Paluuarvo on pidetty entisellään, jotta UI ei hajoa.
+    """
+    data = fetch_forecast(lat, lon, tz_name)
+    hourly = data.get("hourly") or {}
+
+    now = datetime.now(TZ).replace(minute=0, second=0, microsecond=0)
+
+    return _map_hourly_to_dashboard(hourly=hourly, now=now, offsets=offsets)
