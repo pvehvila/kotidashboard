@@ -6,12 +6,19 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 ---
 
 ## [Unreleased]
+### Changed
+- 📅 Moved the nameday logic into a dedicated `src/api/calendar_nameday.py` module and split it into smaller helper functions so data loading, date selection and name picking are clearly separated. `fetch_nameday_today()` now acts as a thin public wrapper.
+- 📅 Refactored `card_nameday()` to use the new `calendar_nameday` API and a viewmodel layer, keeping the card focused purely on rendering the nameday/holiday data.
+- ₿ Cleaned up the Bitcoin card (`card_bitcoin`) to use a dedicated viewmodel that encapsulates price, percentage change and error messages for the UI.
+
 ### Fixed
-- 📅 Restored the `card_nameday()` functionality after UI refactoring: the card now reads from `data/nimipaivat_fi.json` (Finnish month/day structure) and is wrapped with `src/api/calendar_nameday.py` for backward compatibility.
-- ⚡ Restored the electricity price card (`card_prices()`) from the previously working commit (`eda6fbbf Revert "Sähkökortin refaktorointi"`) so the dashboard shows spot prices again.
-- 🧱 Updated `src/ui/__init__.py` to export the currently available cards so `main.py` imports no longer fail.
+- 📅 Regressions in nameday and holiday lookups after the refactor: `calendar_nameday` now returns the expected names from both flat and nested JSON structures, and the tests (including `test_fetch_nameday_today_*`, `test_fetch_holiday_today_*` and wrapper tests) are passing again.
+- ⚡ Restored the electricity price card (`card_prices()`) to a working state and aligned it with the current card/viewmodel structure so spot prices are displayed correctly and the UI no longer depends on legacy helper functions.
+- 🧱 Updated `src/ui/__init__.py` to match the current set of cards, so `main.py` imports no longer fail after UI refactors.
 
 ### Added
+- 🧪 New unit tests for the nameday module (`calendar_nameday`) and the nameday card, covering both list- and dict-shaped JSON data sources for namedays and holidays and guarding against regressions after refactoring.
+- 🧪 Unit tests for the Bitcoin card, including error paths where the API returns missing or otherwise invalid data.
 - 📄 `docs/CARD_NAMEDAY.md` to document how the nameday card picks its data sources.
 
 ---
