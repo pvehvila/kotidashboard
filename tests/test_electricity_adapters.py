@@ -1,7 +1,10 @@
 import datetime as dt
+import types
 
 import pytest
+import requests
 
+import src.api.electricity_adapters as ea
 from src.api import electricity_adapters as adapters
 
 TODAY = dt.date(2025, 11, 11)
@@ -91,3 +94,99 @@ def test_electricity_adapters_handle_weird_data(monkeypatch, func_name, scenario
 
     # 3) tarkistus
     assert isinstance(result, expected_type)
+
+
+def _make_http_error(status_code: int) -> requests.HTTPError:
+    err = requests.HTTPError("boom")
+    err.response = types.SimpleNamespace(status_code=status_code)
+    return err
+
+
+def test_get_hourly_from_porssisahko_http_400_returns_none_and_no_report(monkeypatch):
+    def fake_latest():
+        raise _make_http_error(400)
+
+    report_called = False
+
+    def fake_report_error(msg, exc):
+        nonlocal report_called
+        report_called = True
+
+    monkeypatch.setattr(ea, "fetch_from_porssisahko_latest", fake_latest)
+    monkeypatch.setattr(ea, "report_error", fake_report_error)
+
+    out = ea.get_hourly_from_porssisahko(dt.date(2023, 1, 1))
+    assert out is None
+    assert report_called is False
+
+
+def test_get_hourly_from_porssisahko_http_500_reports_error(monkeypatch):
+    def fake_latest():
+        raise _make_http_error(500)
+
+    calls: list[tuple[str, BaseException]] = []
+
+    def fake_report_error(msg, exc):
+        calls.append((msg, exc))
+
+    monkeypatch.setattr(ea, "fetch_from_porssisahko_latest", fake_latest)
+    monkeypatch.setattr(ea, "report_error", fake_report_error)
+
+    out = ea.get_hourly_from_porssisahko(dt.date(2023, 1, 1))
+    assert out is None
+    assert len(calls) == 1
+    assert "porssisahko" in calls[0][0]
+
+
+def test_get_hourly_from_sahkonhintatanaan_http_404_returns_none_and_no_report(monkeypatch):
+    def fake_fetch(_date):
+        raise _make_http_error(404)
+
+    report_called = False
+
+    def fake_report_error(msg, exc):
+        nonlocal report_called
+        report_called = True
+
+    monkeypatch.setattr(ea, "fetch_from_sahkonhintatanaan", fake_fetch)
+    monkeypatch.setattr(ea, "report_error", fake_report_error)
+
+    out = ea.get_hourly_from_sahkonhintatanaan(dt.date(2023, 1, 1))
+    assert out is None
+    assert report_called is False
+
+
+def test_get_hourly_from_sahkonhintatanaan_http_500_reports_error(monkeypatch):
+    def fake_fetch(_date):
+        raise _make_http_error(500)
+
+    calls: list[tuple[str, BaseException]] = []
+
+    def fake_report_error(msg, exc):
+        calls.append((msg, exc))
+
+    monkeypatch.setattr(ea, "fetch_from_sahkonhintatanaan", fake_fetch)
+    monkeypatch.setattr(ea, "report_error", fake_report_error)
+
+    out = ea.get_hourly_from_sahkonhintatanaan(dt.date(2023, 1, 1))
+    assert out is None
+    assert len(calls) == 1
+    assert "sahkonhintatanaan" in calls[0][0]
+
+
+def test_get_15min_from_porssisahko_generic_exception_reports_error(monkeypatch):
+    def fake_latest():
+        raise ValueError("some parsing problem")
+
+    calls: list[tuple[str, BaseException]] = []
+
+    def fake_report_error(msg, exc):
+        calls.append((msg, exc))
+
+    monkeypatch.setattr(ea, "fetch_from_porssisahko_latest", fake_latest)
+    monkeypatch.setattr(ea, "report_error", fake_report_error)
+
+    out = ea.get_15min_from_porssisahko(dt.date(2023, 1, 1))
+    assert out is None
+    assert len(calls) == 1
+    assert "v2 15min" in calls[0][0]

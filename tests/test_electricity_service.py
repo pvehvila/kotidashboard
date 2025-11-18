@@ -1,6 +1,7 @@
 # tests/test_electricity_service.py
 import datetime as dt
 
+import src.api.electricity_service as es
 import src.api.electricity_service as svc
 
 
@@ -94,3 +95,59 @@ def test_try_fetch_prices_15min_expands_hourly_when_no_ts(monkeypatch):
     assert out[0]["cents"] == 5.0
     # 5) ja listassa on vähintään yksi rivi
     assert len(out) >= 1
+
+
+def test_try_fetch_prices_returns_none_when_no_prices(monkeypatch):
+    def fake_fetch(_date):
+        return []
+
+    monkeypatch.setattr(es, "fetch_prices_for", fake_fetch)
+
+    out = es.try_fetch_prices(dt.date(2023, 1, 1))
+    assert out is None
+
+
+def test_try_fetch_prices_15min_returns_none_when_no_sources(monkeypatch):
+    def fake_get_15min(_date):
+        return None
+
+    def fake_fetch_prices_for(_date):
+        return []
+
+    monkeypatch.setattr(es, "get_15min_from_porssisahko", fake_get_15min)
+    monkeypatch.setattr(es, "fetch_prices_for", fake_fetch_prices_for)
+
+    out = es.try_fetch_prices_15min(dt.date(2023, 1, 1))
+    assert out is None
+
+
+# tests/test_electricity_service.py
+
+
+def test_try_fetch_prices_15min_when_only_hourly_returns_none(monkeypatch):
+    def fake_get_15min(_date):
+        # pakotetaan fallback-haara
+        return None
+
+    base_items = [
+        {"timestamp": dt.datetime(2023, 1, 1, 0, 0), "price": 1.0},
+        {"timestamp": dt.datetime(2023, 1, 1, 0, 15), "price": 2.0},
+    ]
+
+    def fake_fetch_prices_for(_date):
+        return base_items
+
+    # varmistetaan vain, ettei normalizea kutsuta vahingossa;
+    # jos kutsutaan, tämä kaataa testin → havaitsemme muutoksen
+    def fake_normalize(items, date):  # pragma: no cover - ei pitäisi kutsua nykykoodilla
+        raise AssertionError(
+            "normalize_prices_list_15min should not be called in current implementation"
+        )
+
+    monkeypatch.setattr(es, "get_15min_from_porssisahko", fake_get_15min)
+    monkeypatch.setattr(es, "fetch_prices_for", fake_fetch_prices_for)
+    monkeypatch.setattr(es, "normalize_prices_list_15min", fake_normalize)
+
+    out = es.try_fetch_prices_15min(dt.date(2023, 1, 1))
+    # NYKYKÄYTTÄYTYMINEN: palauttaa None
+    assert out is None
