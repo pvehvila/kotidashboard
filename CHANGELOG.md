@@ -6,12 +6,19 @@ Tiedosto noudattaa [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) -per
 ---
 
 ## [Unreleased]
+### Muutettu
+- 📅 Nimipäivälogiikka on siirretty erilliseen `src/api/calendar_nameday.py` -moduuliin ja pilkottu pienempiin apufunktioihin, jotta datan luku, päivämäärävalinta ja nimen poiminta ovat selkeästi erillään. `fetch_nameday_today()` toimii nyt ohuena julkisena rajapintana.
+- 📅 `card_nameday()` on refaktoroitu käyttämään uutta `calendar_nameday`-rajapintaa ja viewmodel-kerrosta, jolloin kortin vastuualue rajoittuu nimipäivä- ja pyhäpäivädatan esittämiseen.
+- ₿ Bitcoin-kortin (`card_bitcoin`) sisäinen logiikka on siivottu käyttämään erillistä viewmodelia, joka kapseloi hinnan, prosenttimuutoksen ja virheviestit korttia varten.
+
 ### Korjattu
-- 📅 `card_nameday()` rikkoutuminen refaktoroinnin jälkeen: palautettu toiminnallinen versio, joka lukee datan ensisijaisesti `data/nimipaivat_fi.json` -tiedostosta ja käyttää `src/api/calendar_nameday.py` -yhteensopivuuskerrosta.
-- ⚡ Sähkön hintakortti (`card_prices()`) palautettu aiemmasta toimivasta commitista (`eda6fbbf Revert "Sähkökortin refaktorointi"`), jotta UI vastaa ennen refaktorointia toiminutta versiota.
-- 🧱 `src/ui/__init__.py` päivitetty vastaamaan nykyistä korttivalikoimaa (nimipäivä + sähkön hinta + muut kortit), jotta `main.py` importit eivät enää kaadu.
+- 📅 Nimipäivä- ja pyhäpäivähaun regressiot refaktoroinnin jälkeen: `calendar_nameday` palauttaa nyt odotetut nimet sekä “flat” että sisäkkäisistä JSON-rakenteista ja nimipäiväkortin testit (mm. `test_fetch_nameday_today_*`, `test_fetch_holiday_today_*` sekä wrapper-testit) menevät läpi.
+- ⚡ Sähkön hintakortti (`card_prices()`) on palautettu toimivaan tilaan ja sovitettu nykyiseen kortti-/viewmodel-rakenteeseen, jotta spot-hinnat näkyvät taas oikein eikä UI riipu enää vanhoista apufunktioista.
+- 🧱 `src/ui/__init__.py` on päivitetty vastaamaan nykyistä korttivalikoimaa, joten `main.py`-importit eivät enää kaadu UI-refaktorointien seurauksena.
 
 ### Lisätty
+- 🧪 Uusia yksikkötestejä nimipäivämoduulille (`calendar_nameday`) ja nimipäiväkortille; testit kattavat sekä JSON-lista- että dict-muotoiset nimipäivä- ja pyhäpäivälähteet ja varmistavat vakauden refaktoroinnin jälkeen.
+- 🧪 Yksikkötestit Bitcoin-kortille, mukaan lukien virhepolut (esimerkiksi tilanteet, joissa API palauttaa puuttuvan hinnan tai muuten virheellistä dataa).
 - 📄 `docs/CARD_NAMEDAY.md` dokumentoimaan nimipäiväkortin datalähteen ja polut.
 
 ---
