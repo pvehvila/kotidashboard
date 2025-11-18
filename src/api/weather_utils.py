@@ -12,6 +12,53 @@ from src.config import (
 )
 
 
+def _cast_to_bool(value: Any) -> bool | None:
+    """Muunna annettu arvo bool-tyypiksi, tai palauta None jos ei järkevää tulkintaa."""
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, int | float):
+        return bool(int(value))
+
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("true", "1", "yes"):
+            return True
+        if s in ("false", "0", "no", ""):
+            return False
+
+        # yritetään vielä tulkita numeerisena
+        try:
+            return bool(int(float(s)))
+        except (ValueError, TypeError):
+            return None
+
+    # viimeinen fallback: Pythonin oma bool-tulkinta
+    return bool(value)
+
+
+def _cast_to_float(value: Any) -> float | None:
+    """Muunna annettu arvo float-tyypiksi, tai palauta None jos muunnos epäonnistuu."""
+    if isinstance(value, str):
+        value = value.strip().replace(",", ".")
+
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
+def _cast_to_int(value: Any) -> int | None:
+    """Muunna annettu arvo int-tyypiksi, tai palauta None jos muunnos epäonnistuu."""
+    if isinstance(value, str):
+        value = value.strip().replace(",", ".")
+
+    try:
+        return int(float(value))  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
 def safe_cast(value: Any, type_: type) -> Any | None:
     """
     Turvallinen muunnos annetuksi tyypiksi (bool, int, float).
@@ -32,41 +79,20 @@ def safe_cast(value: Any, type_: type) -> Any | None:
             if pd.isna(value):
                 return None
         except Exception:
+            # jos pd.isna ei osaa käsitellä tyyppiä, jatketaan ilman tätä tarkistusta
             pass
 
         # numpy-scalar tms.
         if hasattr(value, "item"):
             value = value.item()  # type: ignore[assignment]
 
-        # ---- bool ----
+        # Tyyppikohtaiset casterit
         if type_ is bool:
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, int | float):
-                return bool(int(value))
-            if isinstance(value, str):
-                s = value.strip().lower()
-                if s in ("true", "1", "yes"):
-                    return True
-                if s in ("false", "0", "no", ""):
-                    return False
-                try:
-                    return bool(int(float(s)))
-                except (ValueError, TypeError):
-                    return None
-            return bool(value)
-
-        # ---- float ----
+            return _cast_to_bool(value)
         if type_ is float:
-            if isinstance(value, str):
-                value = value.strip().replace(",", ".")
-            return float(value)
-
-        # ---- int ----
+            return _cast_to_float(value)
         if type_ is int:
-            if isinstance(value, str):
-                value = value.strip().replace(",", ".")
-            return int(float(value))
+            return _cast_to_int(value)
 
         # ---- muu tyyppi ----
         return type_(value)
