@@ -1,39 +1,28 @@
 # 🧩 REFACTORING.md – HomeDashboard
 
-Tämä dokumentti pitää kasassa ne kohdat, joissa koodi vielä rikkoo meidän tavoitetta “A/B-taso mahdollisimman monessa paikassa”. Alla on uusin Radon-ajon yhteenveto (**2025-11-17**) ja siitä johdettu refaktorointijono.
+Tämä dokumentti pitää kasassa ne kohdat, joissa koodi vielä rikkoo meidän tavoitetta “A/B-taso mahdollisimman monessa paikassa”. Alla on uusin Radon-ajon yhteenveto (**2025-11-18**) ja siitä johdettu refaktorointijono.
 
 Komento:
 
 ```bash
-radon cc -s \src .
+radon cc -s \\src .
 ```
 
 ---
 
-## 1. Uusin Radon-löydös (2025-11-17)
+## 1. Uusin Radon-löydös (2025-11-18)
 
 ### 1.1 Aktiivinen refaktorointilista (C-taso, joita halutaan vielä keventää)
 
-Nämä ovat ne, joita kannattaa vielä pilkkoa tai selkeyttää. Kaikki D-tason funktiot on jo saatu pois; jäljellä on vain C-tason kohtia.
-
-- **src/api/calendar_nameday.py**
-  - `_pick_today_name` – **C (20)**
-  - `fetch_holiday_today` – **C (12)**
-
-- **src/api/weather_fetch.py**
-  - `_map_hourly_to_dashboard` – **C (14)**
-    (aiemmin D-tasoa, nyt jo selvästi parempi, mutta yhä pitkä orkestrointifunktio)
+Kaikki vanhat D-tason funktiot on saatu pois ja suurin osa aiemmista C-tason kohteista on nyt A/B-tasolla (nimipäivät, säät, WMO-icon-key). Jäljellä olevat “oikeat” refaktorointikohteet:
 
 - **src/api/weather_utils.py**
-  - `safe_cast` – **C (19)**
-
-- **src/api/wmo_icon_map.py**
-  - `wmo_to_icon_key` – **C (13)**
+  - `safe_cast` – **C (11)**
 
 - **src/api/wmo_map_loader.py**
   - `load_wmo_foreca_map` – **C (11)**
 
-Näihin kannattaa kohdistaa seuraavat refaktorointikierrokset.
+Näihin kohdistetaan seuraavat refaktorointikierrokset.
 
 ---
 
@@ -79,8 +68,8 @@ Nämä ovat funktioita, joissa C-taso on toistaiseksi hyväksytty, kunhan koodi 
 
 - **Viewmodel:** `src/api/prices_15min_vm.py`
   - `current_price_15min` – B
-  - `next_12h_15min` – C
-  - `build_prices_15min_vm` – C
+  - `next_12h_15min` – C (hyväksytty, kunhan kommentit kunnossa)
+  - `build_prices_15min_vm` – C (hyväksytty, kunhan kommentit kunnossa)
 
 - **UI:** `src/ui/card_prices.py`
   - Wrapperit testien yhteensopivuuteen
@@ -99,10 +88,55 @@ Nämä ovat funktioita, joissa C-taso on toistaiseksi hyväksytty, kunhan koodi 
 
 ### 2.4 Sää (forecast → dashboard)
 
-- **fetch_forecast/fetch_current/fetch_alerts**: A-tasoa
-- **fetch_weather_points**: A-tasoa
-- **_map_hourly_to_dashboard**: C (aktiivinen refaktorointikohde)
-- **build_weather_view**: A
+- `fetch_forecast` / `fetch_current` / `fetch_alerts` – A-tasoa
+- `fetch_weather_points` – A-tasoa
+- `_map_hourly_to_dashboard` – **nyt B (8)**, aiempi C-tason orkestrointifunktio on pilkottu:
+  - aikajanan rakennus → `_build_time_axis` (B)
+  - indeksin rakennus → `_build_time_index` (A)
+  - yksittäisen rivin muunnos → `_extract_point_fields` (B)
+  - pisteen dict-rakenne → `_build_point` (A)
+
+Refaktorointitavoite (C → B) saavutettu.
+
+---
+
+### 2.5 Nimipäivät
+
+**Tavoite oli** purkaa monoliittinen nimipäivälogiikka erillisiksi vaiheiksi (datan lataus, arvon normalisointi, flat/nested-haut, pyhät).
+
+Uusin Radon:
+
+- **src/api/calendar_nameday.py**
+  - `_normalize_nameday_value` – B (7)
+  - `_pick_today_name_nested` – B (7)
+  - `_parse_holiday_entry` – B (9)
+  - `_pick_holiday_entry_for_today` – B (9)
+  - `_pick_today_name_flat` – A (3)
+  - `_pick_today_name` – A (3)
+  - `fetch_nameday_today` – A (3)
+  - `fetch_holiday_today` – A (5)
+  - `_resolve_nameday_file`, `_resolve_first_existing`, `_load_nameday_data`, `_default_holiday_result` – A
+
+**Refaktorointitavoite saavutettu:** Ei enää C-tason funktioita nimipäivämoduulissa.
+
+---
+
+### 2.6 WMO-mappaus
+
+**Aiempi tavoite:** erottaa tiedostonluku, validointi ja transformaatio, sekä yksinkertaistaa WMO → ikonitunnus -logiikka.
+
+Tilanne nyt:
+
+- **src/api/wmo_icon_map.py**
+  - `wmo_to_icon_key` – **A (4)**
+    → Numerologinen käsittely siirretty selkeämpään map/dict-rakenteeseen; Radon-taso parantunut C → A.
+
+- **src/api/wmo_map_loader.py**
+  - `_read_wmo_mapping` – B (7)
+  - `_scalar` – A (5)
+  - `_prep` – A (3)
+  - `load_wmo_foreca_map` – **C (11)**
+    → Tämä on enää ainoa selkeä refaktorointikohde WMO-puolella.
 
 ---
 
@@ -110,49 +144,39 @@ Nämä ovat funktioita, joissa C-taso on toistaiseksi hyväksytty, kunhan koodi 
 
 ### 3.1 Nimipäivät
 
-- Pilko `_pick_today_name` kahteen apufunktioon (flat/nested).
-- Pilko `fetch_holiday_today` päivämäärävalintaan ja datarakenteen erottamiseen.
+**Tila:** ✅ **Valmis Radonin näkökulmasta** (ei C/D-tason funktioita).
 
-Tavoite: B-tasolle.
+- Mahdolliset jatkokehitykset koskevat lähinnä domain-logiikan jalostamista (esim. konfiguroitavat nimipäivälähteet, fallback-strategiat), eivät kompleksisuuden purkua.
 
 ---
 
 ### 3.2 Sää: `_map_hourly_to_dashboard`
 
-- Erottele ajan muodostus (`_build_time_axis`).
-- Erottele yksittäisen rivin muunnos (`_extract_point_fields`).
-- Tee pääfunktiosta vain orkestroija.
+**Tila:** ✅ **Valmis** – funktio on nyt B (8) ja vastaa puhdasta orkestrointia.
 
-Tavoite: B-taso.
+- Aikajanan muodostus: `_build_time_axis`
+- Indeksit ja pisteet: `_build_time_index`, `_extract_point_fields`, `_build_point`
+- Päiväkohtaisten min/max-arvojen laskenta: `_compute_day_minmax` – B (6)
 
----
-
-### 3.3 `safe_cast`
-
-- Pilko `_cast_to_bool`, `_cast_to_int`, `_cast_to_float`.
-- Tee `safe_cast` pelkäksi dispatcheriksi.
+Ei uutta refaktorointitarvetta, kunhan rakenne pidetään ennallaan.
 
 ---
 
-### 3.4 WMO-mappaus
+### 3.3 `safe_cast` (TODO)
 
-- `wmo_to_icon_key`: siirrä tunnistenumeroiden käsittely map/dict-rakenteeseen.
-- `load_wmo_foreca_map`: erota tiedostonluku / validointi / transformaatio.
+**Tila:** 🔧 **Aktiivinen refaktorointikohde**
 
----
+- **Moduuli:** `src/api/weather_utils.py`
+  - `safe_cast` – C (11)
+  - `_cast_to_bool` – B (7)
+  - `_cast_to_float` – A (3)
+  - `_cast_to_int` – A (3)
 
-## 4. Seuranta
+**Tavoite:**
 
-1. Aja Radon säännöllisesti:
+- Pitää `safe_cast` mahdollisimman ohuena dispatcherina.
+- Pitää yksityiset `_cast_*`-funktiot selkeästi ja eriyttää eri tyyppien haarat, jotta `safe_cast` ei ala taas paisua.
 
-   ```bash
-   radon cc -s \src .
-   ```
+**Ehdotettu suunta:**
 
-2. Jos funktio heikkenee tasolle C/D, lisää se kohtaan **1.1**.
-3. Refaktoroinnin jälkeen päivitä dokumentti.
-
----
-
-**Viimeisin päivitys:** 2025-11-17
-**Päivittäjä:** ChatGPT
+- Varmista, että
