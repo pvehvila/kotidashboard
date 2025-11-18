@@ -59,40 +59,77 @@ def _cast_to_int(value: Any) -> int | None:
         return None
 
 
-def safe_cast(value: Any, type_: type) -> Any | None:
+def _normalize_scalar(value: Any) -> Any | None:
     """
-    Turvallinen muunnos annetuksi tyypiksi (bool, int, float).
-    Palauttaa None, jos arvoa ei voi järkevästi tulkita.
+    Yhtenäinen esikäsittely eri lähdetyypeille:
+    - None → None
+    - pandas Series/DataFrame → ensimmäinen alkio tai None jos tyhjä
+    - pandas NA → None
+    - numpy-scalar tms. → .item()
     """
-    try:
-        if value is None:
-            return None
+    if value is None:
+        return None
 
-        # pandas Series tms.
-        if hasattr(value, "iloc"):
+    # pandas Series tms.
+    if hasattr(value, "iloc"):
+        try:
             if len(value) == 0:  # type: ignore[arg-type]
                 return None
             value = value.iloc[0]  # type: ignore[index]
-
-        # pandas NA
-        try:
-            if pd.isna(value):
-                return None
         except Exception:
-            # jos pd.isna ei osaa käsitellä tyyppiä, jatketaan ilman tätä tarkistusta
+            # jos value ei käyttäydy odotetusti, jatketaan sellaisenaan
             pass
 
-        # numpy-scalar tms.
-        if hasattr(value, "item"):
-            value = value.item()  # type: ignore[assignment]
+    # pandas NA
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        # jos pd.isna ei osaa käsitellä tyyppiä, jatketaan ilman tätä tarkistusta
+        pass
 
-        # Tyyppikohtaiset casterit
-        if type_ is bool:
-            return _cast_to_bool(value)
-        if type_ is float:
-            return _cast_to_float(value)
-        if type_ is int:
-            return _cast_to_int(value)
+    # numpy-scalar tms.
+    if hasattr(value, "item"):
+        try:
+            value = value.item()  # type: ignore[assignment]
+        except Exception:
+            # jos item() ei toimi, käytetään alkuperäistä arvoa
+            pass
+
+    return value
+
+
+def safe_cast(value: Any, type_: type) -> Any | None:
+    """
+    Turvallinen muunnos annetuksi tyypiksi (bool, int, float, str, ...).
+
+    Vastuut:
+    - normalisoi arvon (_normalize_scalar)
+    - valitsee oikean _cast_* -funktion per primitiivityyppi
+    - fallback: type_(value) muille tyypeille
+    - palauttaa None, jos muunnos ei onnistu
+    """
+    try:
+        value = _normalize_scalar(value)
+        if value is None:
+            return None
+
+        dispatch = {
+            bool: _cast_to_bool,
+            int: _cast_to_int,
+            float: _cast_to_float,
+        }
+
+        caster = dispatch.get(type_)
+        if caster is not None:
+            return caster(value)
+
+        if type_ is str:
+            # eksplisiittinen haara, jos halutaan selkeyttä str-muunnokselle
+            try:
+                return str(value)
+            except Exception:
+                return None
 
         # ---- muu tyyppi ----
         return type_(value)
