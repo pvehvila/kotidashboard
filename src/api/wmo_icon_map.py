@@ -1,28 +1,49 @@
 from __future__ import annotations
 
+from typing import Final
+
+# WMO-koodi → (päiväikoni, yöikoni)
+_ICON_BY_WMO: Final[dict[int, tuple[str, str]]] = {
+    0: ("clear-day", "clear-night"),
+    1: ("partly-cloudy-day", "partly-cloudy-night"),
+    2: ("partly-cloudy-day", "partly-cloudy-night"),
+    3: ("cloudy", "cloudy"),
+    45: ("fog", "fog"),
+    48: ("fog", "fog"),
+    51: ("drizzle", "drizzle"),
+    53: ("drizzle", "drizzle"),
+    55: ("drizzle", "drizzle"),
+    56: ("drizzle", "drizzle"),
+    57: ("drizzle", "drizzle"),
+    61: ("rain", "rain"),
+    63: ("rain", "rain"),
+    65: ("rain", "rain"),
+    80: ("rain", "rain"),
+    81: ("rain", "rain"),
+    82: ("rain", "rain"),
+    66: ("freezing-rain", "freezing-rain"),
+    67: ("freezing-rain", "freezing-rain"),
+    71: ("snow", "snow"),
+    73: ("snow", "snow"),
+    75: ("snow", "snow"),
+    85: ("snow", "snow"),
+    86: ("snow", "snow"),
+    95: ("thunderstorm", "thunderstorm"),
+    96: ("thunderstorm", "thunderstorm"),
+    99: ("thunderstorm", "thunderstorm"),
+}
+
 
 def wmo_to_icon_key(code: int | None, is_day: bool) -> str:
     """
-    Yksinkertainen WMO → "sääikoniavain" -mäppäys
+    Yksinkertainen WMO → "sääikoniavain" -mäppäys.
     """
     if code is None:
         return "na"
-    if code == 0:
-        return "clear-day" if is_day else "clear-night"
-    if code in (1, 2):
-        return "partly-cloudy-day" if is_day else "partly-cloudy-night"
-    if code == 3:
-        return "cloudy"
-    if code in (45, 48):
-        return "fog"
-    if code in (51, 53, 55, 56, 57):
-        return "drizzle"
-    if code in (61, 63, 65, 80, 81, 82):
-        return "rain"
-    if code in (66, 67):
-        return "freezing-rain"
-    if code in (71, 73, 75, 85, 86):
-        return "snow"
-    if code in (95, 96, 99):
-        return "thunderstorm"
-    return "na"
+
+    icons = _ICON_BY_WMO.get(code)
+    if icons is None:
+        return "na"
+
+    day_icon, night_icon = icons
+    return day_icon if is_day else night_icon
