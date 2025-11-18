@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 
@@ -67,6 +67,11 @@ def _build_time_axis(hourly_raw: dict[str, Any], tz_name: str) -> list[datetime]
     return axis
 
 
+def _build_time_index(time_axis: list[datetime]) -> dict[datetime, int]:
+    """Rakentaa nopean aikaleima → indeksi -hakemiston ilman poikkeuspohjaista logiikkaa."""
+    return {ts: idx for idx, ts in enumerate(time_axis)}
+
+
 def _extract_point_fields(
     temps: list[Any],
     pops: list[Any],
@@ -123,6 +128,31 @@ def _build_point(
     }
 
 
+def _compute_day_minmax(
+    temps: list[Any],
+    time_axis: list[datetime],
+    target_date: date,
+) -> tuple[Any | None, Any | None]:
+    """
+    Laskee annetun päivän min/max-lämpötilan.
+    Pidetään logiikka erillisenä, jotta _map_hourly_to_dashboard pysyy ohuena.
+    """
+    indices: list[int] = []
+    for i, ts in enumerate(time_axis):
+        if ts.date() == target_date:
+            indices.append(i)
+
+    values: list[Any] = []
+    for i in indices:
+        if i < len(temps):
+            values.append(temps[i])
+
+    if not values:
+        return None, None
+
+    return min(values), max(values)
+
+
 def _map_hourly_to_dashboard(
     hourly: dict[str, Any],
     now: datetime,
@@ -133,10 +163,10 @@ def _map_hourly_to_dashboard(
     Muuntaa Open-Meteon hourly-datan dashboardin käyttämään muotoon.
 
     Vastuu on nyt:
-      * rakentaa aika-akseli (_build_time_axis)
+      * rakentaa aika-akseli ja hakemisto (_build_time_axis, _build_time_index)
       * käydä läpi pyydetyt offsetit
       * koota pisteet _extract_point_fields- ja _build_point-apufunktioilla
-      * laskea päivän min/max-lämpötilat
+      * pyytää päivän min/max-lämpötilat _compute_day_minmax-apufunktiolta
     """
     temps: list[Any] = hourly.get("temperature_2m", []) or []
     pops: list[Any] = hourly.get("precipitation_probability", []) or []
@@ -145,14 +175,15 @@ def _map_hourly_to_dashboard(
     isday: list[Any] = hourly.get("is_day", []) or []
 
     time_axis: list[datetime] = _build_time_axis(hourly, tz_name)
+    time_index = _build_time_index(time_axis)
+
     points: list[dict[str, Any]] = []
 
     for offset in offsets:
         target_time = now + timedelta(hours=offset)
+        idx = time_index.get(target_time)
 
-        try:
-            idx = time_axis.index(target_time)
-        except ValueError:
+        if idx is None:
             # kyseistä tuntia ei tullut api:sta
             continue
 
@@ -165,28 +196,22 @@ def _map_hourly_to_dashboard(
             idx=idx,
         )
 
-        points.append(
-            _build_point(
-                target_time=target_time,
-                offset=offset,
-                temp=temp,
-                pop=pop,
-                wmo=wmo,
-                ccov=ccov,
-                is_day_flag=is_day_flag,
-            )
+        point = _build_point(
+            target_time=target_time,
+            offset=offset,
+            temp=temp,
+            pop=pop,
+            wmo=wmo,
+            ccov=ccov,
+            is_day_flag=is_day_flag,
         )
+        points.append(point)
 
-    # päivän min/max kuten ennen, mutta nyt aika-akselin avulla
-    min_temp = max_temp = None
-    try:
-        idxs = [i for i, t in enumerate(time_axis) if t.date() == now.date()]
-        vals = [temps[i] for i in idxs if i < len(temps)]
-        if vals:
-            min_temp, max_temp = min(vals), max(vals)
-    except Exception:
-        # ei kaadeta dashboardia tämän takia
-        pass
+    min_temp, max_temp = _compute_day_minmax(
+        temps=temps,
+        time_axis=time_axis,
+        target_date=now.date(),
+    )
 
     return {
         "points": points,
