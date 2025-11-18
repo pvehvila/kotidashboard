@@ -67,6 +67,53 @@ _MONTHS_FI = [
 ]
 
 
+def _normalize_nameday_value(names) -> str:
+    """Normalisoi nimipäiväkentän muodosta riippumatta."""
+    if isinstance(names, list):
+        joined = ", ".join(n.strip() for n in names if str(n).strip())
+        return joined or "—"
+    if isinstance(names, str) and names.strip():
+        return names.strip()
+    return "—"
+
+
+def _pick_today_name_flat(data, today: dt.datetime) -> str:
+    """Poimii tämän päivän nimipäivän litteästä rakenteesta."""
+    if not isinstance(data, dict):
+        return "—"
+
+    key_md = today.strftime("%m-%d")
+    if key_md not in data:
+        return "—"
+
+    names = data[key_md]
+    return _normalize_nameday_value(names)
+
+
+def _pick_today_name_nested(data, today: dt.datetime) -> str:
+    """Poimii tämän päivän nimipäivän sisäkkäisestä rakenteesta."""
+    if not isinstance(data, dict):
+        return "—"
+
+    root = data.get("nimipäivät")
+    if not isinstance(root, dict):
+        return "—"
+
+    month_name = _MONTHS_FI[today.month - 1]
+    day_str = str(today.day)
+
+    # avaimet voivat olla eri kirjainkoossa
+    month_obj = next(
+        (v for k, v in root.items() if isinstance(k, str) and k.strip().lower() == month_name),
+        None,
+    )
+    if not isinstance(month_obj, dict):
+        return "—"
+
+    names = month_obj.get(day_str)
+    return _normalize_nameday_value(names)
+
+
 def _pick_today_name(data, today: dt.datetime) -> str:
     """
     Poimii tämän päivän nimipäivän kahdesta yleisestä rakenteesta:
@@ -80,37 +127,11 @@ def _pick_today_name(data, today: dt.datetime) -> str:
     if not isinstance(data, dict):
         return "—"
 
-    key_md = today.strftime("%m-%d")
-    day_str = str(today.day)
-    month_name = _MONTHS_FI[today.month - 1]
+    name = _pick_today_name_flat(data, today)
+    if name != "—":
+        return name
 
-    # 1) litteä muoto
-    if key_md in data:
-        names = data[key_md]
-        if isinstance(names, list):
-            joined = ", ".join(n.strip() for n in names if str(n).strip())
-            return joined or "—"
-        if isinstance(names, str) and names.strip():
-            return names.strip()
-        return "—"
-
-    # 2) sisäkkäinen muoto
-    root = data.get("nimipäivät")
-    if isinstance(root, dict):
-        # avaimet voivat olla eri kirjainkoossa
-        month_obj = next(
-            (v for k, v in root.items() if isinstance(k, str) and k.strip().lower() == month_name),
-            None,
-        )
-        if isinstance(month_obj, dict):
-            names = month_obj.get(day_str)
-            if isinstance(names, list):
-                joined = ", ".join(n.strip() for n in names if str(n).strip())
-                return joined or "—"
-            if isinstance(names, str) and names.strip():
-                return names.strip()
-
-    return "—"
+    return _pick_today_name_nested(data, today)
 
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
@@ -136,6 +157,54 @@ def fetch_nameday_today(_cache_buster: int | None = None) -> str:
 # --- pyhä-/liputuspäivät samaan moduuliin ---------------------------------
 
 
+def _default_holiday_result() -> dict:
+    return {"holiday": None, "is_flag_day": False, "is_holiday": False}
+
+
+def _parse_holiday_entry(entry: dict) -> dict:
+    """Muuntaa raakadatadictin normalisoiduksi holiday-dictiksi."""
+    name = entry.get("name")
+    hol_field = entry.get("holiday")
+
+    is_holiday = bool(entry.get("is_holiday")) or (
+        isinstance(hol_field, bool) and hol_field is True
+    )
+
+    # joskus nimi on vain "holiday"-kentässä
+    if not name and isinstance(hol_field, str) and hol_field.strip():
+        name = hol_field.strip()
+
+    is_flag = bool(entry.get("flag") or entry.get("is_flag_day"))
+
+    return {
+        "holiday": (name.strip() if isinstance(name, str) and name.strip() else None),
+        "is_flag_day": is_flag,
+        "is_holiday": is_holiday,
+    }
+
+
+def _pick_holiday_entry_for_today(data, today: dt.datetime) -> dict | None:
+    """Valitsee tälle päivälle sopivan holiday-entryn dict- tai lista-rakenteesta."""
+    key_md = today.strftime("%m-%d")
+    key_iso = today.strftime("%Y-%m-%d")
+
+    # dict-muoto
+    if isinstance(data, dict):
+        entry = data.get(key_md) or data.get(key_iso)
+        return entry if isinstance(entry, dict) else None
+
+    # lista-muoto
+    if isinstance(data, list):
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            d = str(item.get("date") or "").strip()
+            if d in (key_iso, key_md):
+                return item
+
+    return None
+
+
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
     """
@@ -146,7 +215,7 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
         "is_holiday": bool,
       }
     """
-    out = {"holiday": None, "is_flag_day": False, "is_holiday": False}
+    out = _default_holiday_result()
     try:
         p = _resolve_first_existing(HOLIDAY_PATHS)
         if not p or not p.exists():
@@ -156,45 +225,11 @@ def fetch_holiday_today(_cache_buster: int | None = None) -> dict:
             data = json.load(f)
 
         now = dt.datetime.now(TZ)
-        key_md = now.strftime("%m-%d")
-        key_iso = now.strftime("%Y-%m-%d")
-
-        def parse_entry(entry: dict) -> dict:
-            name = entry.get("name")
-            hol_field = entry.get("holiday")
-
-            is_holiday = bool(entry.get("is_holiday")) or (
-                isinstance(hol_field, bool) and hol_field is True
-            )
-
-            # joskus nimi on vain "holiday"-kentässä
-            if not name and isinstance(hol_field, str) and hol_field.strip():
-                name = hol_field.strip()
-
-            is_flag = bool(entry.get("flag") or entry.get("is_flag_day"))
-
-            return {
-                "holiday": (name.strip() if isinstance(name, str) and name.strip() else None),
-                "is_flag_day": is_flag,
-                "is_holiday": is_holiday,
-            }
-
-        # dict-muoto
-        if isinstance(data, dict):
-            entry = data.get(key_md) or data.get(key_iso)
-            if isinstance(entry, dict):
-                return parse_entry(entry)
+        entry = _pick_holiday_entry_for_today(data, now)
+        if not isinstance(entry, dict):
             return out
 
-        # lista-muoto
-        if isinstance(data, list):
-            for item in data:
-                if not isinstance(item, dict):
-                    continue
-                d = str(item.get("date") or "").strip()
-                if d in (key_iso, key_md):
-                    return parse_entry(item)
-        return out
+        return _parse_holiday_entry(entry)
     except Exception as e:
         report_error("holiday: local json", e)
         return out
