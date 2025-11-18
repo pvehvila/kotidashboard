@@ -258,3 +258,46 @@ def test_fetch_btc_ath_eur_uses_local_cache_on_http_error(monkeypatch, tmp_path)
     ath_val, ath_date = btc.fetch_btc_ath_eur()
     assert ath_val == 68000.0
     assert ath_date == "2021-11-09T13:00:00Z"
+
+
+# ---------------------------------------------------------------------------
+# Lisätestejä: market_chart-virhetilanteet ja wrapperit
+# ---------------------------------------------------------------------------
+
+
+def test_btc_market_chart_returns_empty_when_all_providers_fail(monkeypatch):
+    def fake_cg(days, vs):
+        raise RuntimeError("cg down")
+
+    def fake_cc(days, vs):
+        raise RuntimeError("cc down")
+
+    monkeypatch.setattr(btc, "_get_coingecko_market_chart", fake_cg)
+    monkeypatch.setattr(btc, "_get_cryptocompare_histohour", fake_cc)
+
+    out = btc._btc_market_chart(1, vs="eur")
+    assert out == []
+
+
+def test_fetch_btc_last_wrappers_use_market_chart(monkeypatch):
+    called = []
+
+    def fake_chart(days, vs="eur"):
+        called.append((days, vs))
+        # Palautetaan yksinkertainen dummy-data
+        return [("dummy-ts", 123.0)]
+
+    monkeypatch.setattr(btc, "_btc_market_chart", fake_chart)
+
+    d24 = btc.fetch_btc_last_24h_eur()
+    d7 = btc.fetch_btc_last_7d_eur()
+    d30 = btc.fetch_btc_last_30d_eur()
+
+    assert d24 == [("dummy-ts", 123.0)]
+    assert d7 == [("dummy-ts", 123.0)]
+    assert d30 == [("dummy-ts", 123.0)]
+
+    # Varmistetaan että päivät menevät oikein wrapperien läpi
+    assert (1, "eur") in called
+    assert (7, "eur") in called
+    assert (30, "eur") in called
