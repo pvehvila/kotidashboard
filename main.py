@@ -12,6 +12,7 @@ from src.paths import ensure_dirs
 from src.ui import (
     card_bitcoin,
     card_heos,
+    card_hue_motion,
     card_nameday,
     card_prices,
     card_system,
@@ -79,6 +80,9 @@ def main() -> None:
             card_system()
         with col2:
             card_heos()
+
+        # Row 6: Ovien liikesensorit (Philips Hue -liiketunnistimet)
+        card_hue_motion()
 
     except KeyboardInterrupt:
         logger.info("HomeDashboard shutdown requested")
