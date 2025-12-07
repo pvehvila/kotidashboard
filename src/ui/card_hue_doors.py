@@ -1,12 +1,12 @@
-# src/ui/card_hue_motion.py
 from __future__ import annotations
 
 import html
 
 import streamlit as st
 
+from src.api.hue_contacts_v2 import HueV2ConfigError
 from src.ui.common import section_title
-from src.viewmodels.hue_motion import WANTED_NAMES, MotionRow, load_hue_motion_viewmodel
+from src.viewmodels.hue_contacts import WANTED_DOORS, DoorRow, load_hue_contacts_viewmodel
 
 
 def _bg_color_for_role(role: str) -> str:
@@ -18,13 +18,13 @@ def _bg_color_for_role(role: str) -> str:
         # tumma keltainen / meripihka
         return "linear-gradient(135deg,#854d0e,#451a03)"
     if role == "stale":
-        # vähän varoitus-oranssi
+        # hieman varoitus-oranssi
         return "linear-gradient(135deg,#7c2d12,#431407)"
     # unknown
     return "var(--panel)"
 
 
-def _icon_for_row(row: MotionRow) -> str:
+def _icon_for_row(row: DoorRow) -> str:
     """Valitsee ovikohtaisen ikonin tilan mukaan."""
     if row.bg_role == "open":
         return "🚪🔓"
@@ -32,11 +32,10 @@ def _icon_for_row(row: MotionRow) -> str:
         return "🚪🔒"
     if row.bg_role == "stale":
         return "🚪⏳"
-    # unknown / muut
     return "🚪❔"
 
 
-def _render_door_card(row: MotionRow) -> None:
+def _render_door_card(row: DoorRow) -> None:
     """Piirtää yksittäisen oven kortin."""
     bg = _bg_color_for_role(row.bg_role)
     icon = _icon_for_row(row)
@@ -50,7 +49,7 @@ def _render_door_card(row: MotionRow) -> None:
           <div class="card-title">{icon} {title}</div>
           <div class="card-body">
             <p>{status}</p>
-            <p><small>Viimeisin tapahtuma: {idle}</small></p>
+            <p><small>Viimeisin muutos: {idle}</small></p>
           </div>
         </div>
         """,
@@ -58,38 +57,49 @@ def _render_door_card(row: MotionRow) -> None:
     )
 
 
-def card_hue_motion() -> None:
-    """Alarivi: ovien liikesensorit kolmena erillisenä korttina + Hue-bridge health."""
+def card_hue_doors() -> None:
+    """Alarivi: ovikontaktit kolmena erillisenä korttina + Hue Secure -health."""
 
     bridge_ok = True
     error_text = ""
 
     try:
-        rows = load_hue_motion_viewmodel()
-    except Exception as e:  # pragma: no cover (häiriötilanne)
+        rows = load_hue_contacts_viewmodel()
+    except HueV2ConfigError as e:  # konfiguraatio- / key-ongelma
         bridge_ok = False
         error_text = str(e)
-        # Luodaan placeholder-rivit
         rows = [
-            MotionRow(
+            DoorRow(
+                name=name,
+                status_label="Hue Secure -konfiguraatio puuttuu",
+                idle_for_str="ei dataa",
+                bg_role="unknown",
+            )
+            for name in WANTED_DOORS
+        ]
+    except Exception as e:  # pragma: no cover (yleinen häiriötilanne)
+        bridge_ok = False
+        error_text = str(e)
+        rows = [
+            DoorRow(
                 name=name,
                 status_label="Ei yhteyttä Hue Bridgeen",
                 idle_for_str="ei dataa",
                 bg_role="unknown",
             )
-            for name in WANTED_NAMES
+            for name in WANTED_DOORS
         ]
 
-    # Otsikko samalla tyylillä kuin muut kortit
-    section_title("🚪 Ovien liikesensorit", mt=14, mb=4)
+    # Otsikko samaan tyyliin kuin muut kortit
+    section_title("🚪 Ovien tila", mt=14, mb=4)
 
-    # Hue Bridge -health chip otsikon alle + pieni väli
+    # Hue Secure / v2 health chip
     if bridge_ok:
-        st.markdown('<div class="chip green">Hue Bridge: OK</div>', unsafe_allow_html=True)
+        st.markdown('<div class="chip green">Hue Secure: OK</div>', unsafe_allow_html=True)
     else:
         st.markdown(
             f"""
-            <div class="chip red">Hue Bridge: OFFLINE</div>
+            <div class="chip red">Hue Secure: OFFLINE</div>
             <p><small>{html.escape(error_text)}</small></p>
             """,
             unsafe_allow_html=True,
@@ -98,7 +108,7 @@ def card_hue_motion() -> None:
     # Pieni pystysuuntainen väli ennen korttiriviä
     st.markdown('<div class="rowgap"></div>', unsafe_allow_html=True)
 
-    # Kolme korttia rinnakkain
+    # Oletus: kolme ovea → kolme kolumnia; zip leikkaa ylimääräiset pois jos rivejä vähemmän
     col1, col2, col3 = st.columns(3, gap="small")
     cols = [col1, col2, col3]
 
@@ -106,5 +116,5 @@ def card_hue_motion() -> None:
         with col:
             _render_door_card(row)
 
-    # Ja lopuksi vielä pieni väli dashboardin alareunaan
+    # pieni väli dashboardin alareunaan
     st.markdown('<div class="rowgap"></div>', unsafe_allow_html=True)

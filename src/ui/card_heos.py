@@ -8,76 +8,73 @@ from src.heos_client import HeosClient
 from src.ui.common import section_title
 
 
+def _render_now_playing_box(track: str | None, artist: str | None, album: str | None) -> None:
+    """Yksi kompaktin kokoinen kortti nykyiselle biisille."""
+    box_html_start = """
+    <div class="card card-top-equal" style="
+        min-height:120px;
+    ">
+    """
+    box_html_end = "</div>"
+
+    if track:
+        html = box_html_start + f"<div class='card-title'>{track}</div>"
+        body_parts = []
+        if artist:
+            body_parts.append(f"<p>{artist}</p>")
+        if album:
+            body_parts.append(f"<p><small>{album}</small></p>")
+
+        body_html = "<div class='card-body'>" + "".join(body_parts) + "</div>"
+        html += body_html + box_html_end
+    else:
+        html = (
+            box_html_start + "<div class='card-body'><p>Ei HEOS-toistoa käynnissä.</p>"
+            "<p><small>Käynnistä Tidal HEOS-soittimeen, niin tiedot näkyvät tässä.</small></p></div>"
+            + box_html_end
+        )
+
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def card_heos() -> None:
     section_title("🎧 HEOS / Tidal", mt=10, mb=4)
 
     client = HeosClient(HEOS_HOST, username=HEOS_USERNAME, password=HEOS_PASSWORD)
     client.sign_in()
 
-    # ohjausnapit
-    c1, c2, c3 = st.columns(3)
-    if c1.button("⏮️", help="Edellinen kappale"):
-        client.play_previous(HEOS_PLAYER_ID)
-        try:
-            st.rerun()
-        except AttributeError:
-            st.experimental_rerun()
+    # Ohjauspainikkeet: keskitetty rivi
+    col_left, col_prev, col_play, col_next, col_right = st.columns([1, 1, 1, 1, 1])
 
-    if c2.button("⏯️", help="Mykistä / palauta ääni"):
-        paused_key = "heos_paused"
-        vol_key = "heos_prev_volume"
-        if not st.session_state.get(paused_key):
-            current_vol = client.get_volume(HEOS_PLAYER_ID)
-            st.session_state[vol_key] = current_vol
-            client.set_mute(HEOS_PLAYER_ID, "on")
-            st.session_state[paused_key] = True
-        else:
-            prev_vol = st.session_state.get(vol_key, 20)
-            client.set_mute(HEOS_PLAYER_ID, "off")
-            client.set_volume(HEOS_PLAYER_ID, prev_vol)
-            st.session_state[paused_key] = False
+    with col_prev:
+        if st.button("⏮", key="heos_prev"):
+            try:
+                client.play_previous(HEOS_PLAYER_ID)
+            except Exception:
+                pass  # ei kaadeta dashboardia
 
-    if c3.button("⏭️", help="Seuraava kappale"):
-        client.play_next(HEOS_PLAYER_ID)
-        try:
-            st.rerun()
-        except AttributeError:
-            st.experimental_rerun()
+    with col_play:
+        if st.button("⏯", key="heos_play_pause"):
+            try:
+                client.play_pause(HEOS_PLAYER_ID)
+            except Exception:
+                pass
 
-    # nyt soi
-    now = client.get_now_playing(HEOS_PLAYER_ID)
-    payload = now.get("payload", {})
-    track = payload.get("song")
+    with col_next:
+        if st.button("⏭", key="heos_next"):
+            try:
+                client.play_next(HEOS_PLAYER_ID)
+            except Exception:
+                pass
+
+    # Nykyinen kappale
+    try:
+        payload = client.get_now_playing(HEOS_PLAYER_ID)
+    except Exception:
+        payload = {}
+
+    track = payload.get("song") or payload.get("track") or payload.get("title") or None
     artist = payload.get("artist")
     album = payload.get("album")
 
-    box_html_start = """
-    <div style="
-        background:rgba(255,255,255,0.04);
-        border:1px solid rgba(255,255,255,0.08);
-        border-radius:14px;
-        padding:10px 12px;
-        min-height:120px;
-        display:flex;
-        flex-direction:column;
-        justify-content:center;
-    ">
-    """
-    box_html_end = "</div>"
-
-    if track:
-        st.markdown(
-            box_html_start
-            + f"<div style='font-size:1.05rem; font-weight:600;'>{track}</div>"
-            + (f"<div style='opacity:.85; margin-top:2px;'>{artist}</div>" if artist else "")
-            + (f"<div style='opacity:.6; margin-top:2px;'>{album}</div>" if album else "")
-            + box_html_end,
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            box_html_start
-            + "<div style='opacity:.8;'>Ei HEOS-toistoa käynnissä.<br>Käynnistä Tidal HEOSiin, niin tiedot näkyvät tässä.</div>"
-            + box_html_end,
-            unsafe_allow_html=True,
-        )
+    _render_now_playing_box(track, artist, album)

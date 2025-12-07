@@ -11,40 +11,40 @@ HUE_DEFAULT_TIMEOUT = 5
 
 
 @dataclass
-class HueMotionSensor:
-    """Yksinkertainen malli Hue-liikesensorista."""
+class HueDoorSensor:
+    """Malli Hue-ovesta / liikesensorista.
+
+    - is_open: True = ovi auki, False = ovi kiinni, None = ei kontaktitietoa
+    - presence: True/False jos anturi on liiketunnistin (ei välttämättä ovikytkin)
+    """
 
     id: str
     name: str
-    presence: bool
+    is_open: bool | None
+    presence: bool | None
     lastupdated: datetime | None
 
 
 def _parse_lastupdated(value: str | None) -> datetime | None:
-    """Parseeraa Hue:n lastupdated-kentän paikalliseen aikaan.
-
-    Hue palauttaa tyypillisesti UTC-aikaa muodossa 'YYYY-MM-DDTHH:MM:SS'.
-    """
+    """Parseeraa Hue:n lastupdated-kentän paikalliseen aikaan."""
     if not value or value in ("none", "1970-01-01T00:00:00"):
         return None
 
     try:
-        dt = datetime.fromisoformat(value)  # oletetaan UTC ilman tz:tä
+        dt = datetime.fromisoformat(value)  # usein ilman tz-infoa
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        # Muunnetaan koneen lokaaliaikavyöhykettä vastaavaksi
         return dt.astimezone()
     except Exception:
-        # Jos jotain outoa, ei kaadeta koko korttia
         return None
 
 
-def fetch_hue_motion_sensors(
+def fetch_hue_door_sensors(
     bridge_host: str | None = None,
     user: str | None = None,
     session: requests.Session | None = None,
-) -> list[HueMotionSensor]:
-    """Hakee kaikki Hue-sensorit ja suodattaa liikesensorit.
+) -> list[HueDoorSensor]:
+    """Hakee Hue-sensorit ja suodattaa ovikontaktit + liikesensorit.
 
     bridge_host ja user voidaan syöttää parametrina tai lukea
     ympäristömuuttujista HUE_BRIDGE_HOST ja HUE_BRIDGE_USER.
@@ -62,23 +62,45 @@ def fetch_hue_motion_sensors(
     resp.raise_for_status()
     raw = resp.json()
 
-    sensors: list[HueMotionSensor] = []
+    sensors: list[HueDoorSensor] = []
 
-    # Hue-sensorit tulevat dictinä: { "1": {...}, "2": {...}, ... }
+    # Hue-sensorit: { "1": {...}, "2": {...}, ... }
     for sensor_id, info in raw.items():
-        if info.get("type") not in ("ZLLMotion", "CLIPPresence"):
+        sensor_type = info.get("type")
+        # Ovi- / liikesensorityypit, joita meille kannattaa katsoa
+        if sensor_type not in (
+            "ZLLMotion",
+            "CLIPPresence",
+            "ZLLPresence",
+            "ZLLContact",
+            "ZigbeeContact",
+            "ZigbeeMotion",
+        ):
             continue
 
         state = info.get("state") or {}
-        presence = bool(state.get("presence"))
-        lastupdated = _parse_lastupdated(state.get("lastupdated"))
+        presence_raw = state.get("presence")
+        open_raw = state.get("open")
+
+        presence: bool | None
+        if presence_raw is None:
+            presence = None
+        else:
+            presence = bool(presence_raw)
+
+        is_open: bool | None
+        if open_raw is None:
+            is_open = None
+        else:
+            is_open = bool(open_raw)
 
         sensors.append(
-            HueMotionSensor(
+            HueDoorSensor(
                 id=str(sensor_id),
                 name=info.get("name") or "",
+                is_open=is_open,
                 presence=presence,
-                lastupdated=lastupdated,
+                lastupdated=_parse_lastupdated(state.get("lastupdated")),
             )
         )
 

@@ -2,6 +2,7 @@
 
 from .card_bitcoin import card_bitcoin
 from .card_heos import card_heos
+from .card_hue_doors import card_hue_doors
 from .card_hue_motion import card_hue_motion
 from .card_nameday import card_nameday
 from .card_prices import card_prices
@@ -18,4 +19,5 @@ __all__ = [
     "card_zen",
     "card_prices",
     "card_hue_motion",
+    "card_hue_doors",
 ]
