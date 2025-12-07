@@ -8,35 +8,51 @@ Kaikki merkittävät muutokset dokumentoidaan tähän.
 
 ## [Unreleased]
 
+_Ei julkaisemattomia muutoksia tällä hetkellä._
+
+---
+
+## [1.1.0] – 2025-12-07
+### 🚀 Vakaus- ja luotettavuuspäivitys
+
+Tämä julkaisu keskittyy vakauteen, testikattavuuteen, refaktorointiin ja sisäisen arkkitehtuurin selkeyttämiseen.
+
 ### Lisätty
-- 🧪 Uusia yksikkötestejä (nimipäivät, pyhäpäivät, HEOS, Hue Motion, Hue Secure):
-  - `fetch_nameday_today` testaa sekä flat- että nested-rakenteet.
-  - `fetch_holiday_today` testaa dict- ja listalähteet sekä virhepolut.
-  - `card_nameday` ja `card_nameday_helpers` testattu peruspoluilla.
-  - HEOS-kortille kattavat testit (soiva kappale, tyhjätila, ohjauspainikkeet).
-  - Hue Motion- ja Hue Secure -sensorikortit testattu läpi API → viewmodel → UI -ketjun.
+- 🧪 Laaja uusi testikattaus:
+  - Nimipäivä- ja pyhäpäivälogiikka (flat + nested JSON).
+  - `card_nameday` ja `card_nameday_helpers` peruspolut.
+  - HEOS-kortti: soitto, tyhjätila, ohjauspainikkeet.
+  - Hue Motion & Hue Secure -sensorit: API → viewmodel → UI.
+  - Bitcoin-kortin virhepolut.
+  - Parannettu Dummy Streamlit -mock (kolumnit, context manager -tuki).
 
 ### Muutettu
-- 📅 `calendar_nameday` kunnioittaa nyt `NAMEDAY_PATHS`-asetusta; ei enää hiljaista fallbackia oletuspolkuun.
-- 🧪 Testit käyttävät yhtenäistä patternia: jäädytetty `datetime.now()` ja välimuistin ohitus `.__wrapped__`-attribuutilla.
-- 🎧 HEOS-kortin logiikka yksinkertaistettu: UI käsittelee vain "soi / ei soi" -tilan.
-- 🚪 Hue Secure -kortti käyttää v2 APIa ja selkeää viewmodel-kerrosta.
+- 🧱 Suuret refaktoroinnit:
+  - Sähkönhinnan normalisointi (60 min ja 15 min).
+  - Säädatan muunnos dashboard-muotoon.
+  - Nimipäivä- ja pyhäpäivälogiikan erottelu ja selkeytys.
+  - Bitcoin-kortin uusi viewmodel.
+  - Hue Secure / Motion uudelleenviety v2 API -rakenteeseen.
+- 📅 `calendar_nameday` kunnioittaa nyt täysin `NAMEDAY_PATHS`-asetusta.
+- 🎧 HEOS-kortin logiikka yksinkertaistettu (vain "soi / ei soi").
+- 📚 Dokumentaatio päivitetty: README, README_en, QUALITY, REFACTORING, CHANGELOG.
 
 ### Korjattu
-- 📈 Regressiot nimipäivä- ja pyhäpäivähaussa korjattu; testit eivät enää käytä vahingossa oikeita datatiedostoja.
-- ⚡ `card_prices()` palautettu toimivaksi ja päivitetty nykyiseen viewmodel-rakenteeseen.
-- 🧱 `src/ui/__init__.py` päivitetty vastaamaan uusia kortteja.
-- 🟢 HEOS-, Hue Motion- ja Hue Doors -korttien kaikki testit läpäisevät.
+- ⚡ Sähkön hintakortin regressiot korjattu.
+- 🌤️ Sääkortin data-yhdistyslogiikan virheitä korjattu.
+- 🚪 Hue Secure -kortin stale-tilan ja aikaleimojen käsittely korjattu.
+- 🧱 `src/ui/__init__.py` päivitetty vastaamaan nykyisiä kortteja.
+- 🟢 Kaikki HEOS-, Hue Motion- ja Hue Doors -korttien testit läpäisevät.
+- 📈 Testikattavuus nostettu 85–90 % tasolle.
 
 ---
 
 ## [1.0.0] – 2025-11-06
-
 ### 🎉 Ensimmäinen julkinen julkaisu
 
 **Kotidashboard** julkaistu ensimmäistä kertaa avoimena projektina.
 
-#### Lisätty
+### Lisätty
 - ⚡ Sähkön hinta (porssisahko.net / sahkonhintatanaan.fi)
 - ☀️ Sää Open-Meteosta
 - ₿ Bitcoinin hinta CoinGeckosta
@@ -48,20 +64,11 @@ Kaikki merkittävät muutokset dokumentoidaan tähän.
 - 🎨 Tumma teema + taustakuvat
 - 🔄 Automaattinen päivitys ja välimuisti
 
-#### Teknologia & rakenne
+### Teknologia & rakenne
 - Python 3.13, Streamlit, Plotly, Mermaid
 - Uusi hakemistorakenne (`src/`, `assets/`, `data/`, `scripts/` ...)
 - Raspberry Pi 5 & Windows -yhteensopivuus
 - MIT-lisenssi
-
----
-
-## [Unreleased]
-### Tulevat suunnitelmat
-- 🌤️ Laajennettu kolmen vuorokauden sääennuste
-- 🏠 Oman sähkönkulutushistorian näyttö
-- 🪴 Home Assistant -integraatio
-- 🎨 Vaihdettava light/dark-teema
 
 ---
 

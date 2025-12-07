@@ -7,6 +7,38 @@ All notable changes are recorded here.
 
 ## [Unreleased]
 
+_No unreleased changes yet._
+
+---
+
+## [1.1.0] – 2025-12-07
+### 🚀 Vakaus- ja luotettavuuspäivitys
+
+### Lisätty
+- 🧪 Laajat uudet testipaketit (nimipäivät, pyhäpäivät, HEOS, Hue Motion, Hue Secure):
+  - Testit flat- ja nested-rakenteisille nimipäivä- ja pyhäpäivälähteille.
+  - HEOS-kortin täydet testit: soitto, tyhjätila, ohjauspainikkeet.
+  - Hue Motion & Hue Secure -korttien koko API → viewmodel → UI -ketju testattu.
+  - Bitcoin-kortin virhepolut kattavasti testattu.
+  - Dummy Streamlit -mock parannettu (kolumnit, context manager -tuki).
+
+### Muutettu
+- 🧱 Kriittiset moduulit refaktoroitu A/B-kompleksisuustasolle (Radon):
+  - Sähkön hinnan normalisointi 60 min → 15 min.
+  - Säädatan muunnos dashboard-muotoon.
+  - Nimipäivä- ja pyhäpäivälogiikan modernisointi.
+  - Bitcoin-kortin viewmodel ja datasarjalogiikka.
+  - Hue Secure / Motion -korttien rakenne (API v2, viewmodel-kerros).
+- 📚 Dokumentaatio kokonaisuudessaan päivitetty (README, QUALITY, REFACTORING, CHANGELOG).
+- 🎧 HEOS-kortin logiikka yksinkertaistettu: vain "soi / ei soi" -tila.
+
+### Korjattu
+- ⚡ Sähkön hintakortin regressiot korjattu ja kortti palautettu toimintaan.
+- 🌤️ Sääkortin tunnin/dyyn datan yhdistämisen virheet korjattu.
+- 🚪 Hue Secure -kortin stale-tila- ja aikaleimalogiikka korjattu.
+- 📈 Testikattavuus nostettu 85–90 % tasolle.
+- 🧱 `src/ui/__init__.py` päivitetty vastaamaan nykyistä korttikokoonpanoa.
+
 ### Added
 - 🧪 New unit tests across multiple modules:
   - `fetch_nameday_today` now tested for both flat and nested JSON formats.
