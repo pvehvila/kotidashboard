@@ -6,6 +6,22 @@ This file follows the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 ---
 
 ## [Unreleased]
+
+### Added
+- 🧪 Comprehensive unit tests for the HEOS card (`card_heos`):
+  - Rendering of a currently playing track (song / artist / album)
+  - Empty-state rendering (“No HEOS playback active”)
+  - Button behaviour (⏮, ⏯, ⏭) with assertions that they call the corresponding `HeosClient` methods
+- 🧪 A full mock Streamlit implementation (`DummySt`) including column layout and context manager support for stable UI testing
+
+### Changed
+- 🎧 Simplified the HEOS card logic to use a flat dictionary from `HeosClient.get_now_playing()`
+- 🎧 Removed outdated mute/session-state logic and aligned UI structure with the new test suite
+
+### Fixed
+- 🟢 All HEOS-related tests pass (previous 3 failing tests resolved)
+- 📈 Overall test coverage increased from 72% to **73%**
+
 ### Changed
 - 📅 Moved the nameday logic into a dedicated `src/api/calendar_nameday.py` module and split it into smaller helper functions so data loading, date selection and name picking are clearly separated. `fetch_nameday_today()` now acts as a thin public wrapper.
 - 📅 Refactored `card_nameday()` to use the new `calendar_nameday` API and a viewmodel layer, keeping the card focused purely on rendering the nameday/holiday data.

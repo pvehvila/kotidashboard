@@ -17,7 +17,8 @@ def test_card_heos_renders_now_playing(monkeypatch):
     # ei tarvita oikeaa section_titlea
     monkeypatch.setattr(card_mod, "section_title", lambda *a, **k: None)
 
-    # feikataan HeosClient
+    # feikataan HeosClient nykyisen card_heos-logiikan mukaan:
+    # get_now_playing palauttaa suoraan dictin, jossa on song/artist/album
     class FakeClient(HeosClient):
         def __init__(self, *a, **k):
             pass
@@ -27,11 +28,9 @@ def test_card_heos_renders_now_playing(monkeypatch):
 
         def get_now_playing(self, pid):
             return {
-                "payload": {
-                    "song": "Track",
-                    "artist": "Artist",
-                    "album": "Album",
-                }
+                "song": "Track",
+                "artist": "Artist",
+                "album": "Album",
             }
 
     monkeypatch.setattr(card_mod, "HeosClient", FakeClient)
@@ -40,10 +39,19 @@ def test_card_heos_renders_now_playing(monkeypatch):
     class DummySt:
         session_state: dict = {}
 
-        def columns(self, n):
-            return [self, self, self]
+        # Context manager -tuki, koska kortti tekee: with col_prev / col_play / col_next
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def columns(self, *args, **kwargs):
+            # Kortti pyytää 5 kolumnia (esim. [1,1,1,1,1])
+            return [self, self, self, self, self]
 
         def button(self, *a, **k):
+            # Tässä testissä ei paineta mitään nappia
             return False
 
         def markdown(self, html, unsafe_allow_html=False):
@@ -66,6 +74,7 @@ def test_card_heos_renders_empty(monkeypatch):
     card_mod = _get_card_module()
     monkeypatch.setattr(card_mod, "section_title", lambda *a, **k: None)
 
+    # ei kappaletta -> get_now_playing palauttaa tyhjän dictin
     class FakeClient(HeosClient):
         def __init__(self, *a, **k):
             pass
@@ -74,16 +83,21 @@ def test_card_heos_renders_empty(monkeypatch):
             pass
 
         def get_now_playing(self, pid):
-            # ei kappaletta
-            return {"payload": {}}
+            return {}
 
     monkeypatch.setattr(card_mod, "HeosClient", FakeClient)
 
     class DummySt:
         session_state: dict = {}
 
-        def columns(self, n):
-            return [self, self, self]
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def columns(self, *args, **kwargs):
+            return [self, self, self, self, self]
 
         def button(self, *a, **k):
             return False
@@ -97,46 +111,61 @@ def test_card_heos_renders_empty(monkeypatch):
     card_mod.card_heos()
 
     html = dummy_st.html
-    assert "Ei HEOS-toistoa" in html
+    assert "Ei HEOS-toistoa käynnissä." in html
+    assert "Track" not in html
+    assert "Artist" not in html
+    assert "Album" not in html
 
 
-def test_pause_and_resume(monkeypatch):
+def test_card_heos_buttons_call_client(monkeypatch):
+    """Varmistetaan, että ohjauspainikkeet kutsuvat HEOS-asiakkaan metodeja."""
     card_mod = _get_card_module()
     monkeypatch.setattr(card_mod, "section_title", lambda *a, **k: None)
 
-    calls = {}
+    calls: list[str] = []
 
     class FakeClient(HeosClient):
         def __init__(self, *a, **k):
             pass
 
         def sign_in(self):
-            pass
-
-        def get_volume(self, pid):
-            return 15
-
-        def set_mute(self, pid, state):
-            calls.setdefault("mute", []).append(state)
-
-        def set_volume(self, pid, level):
-            calls["volume"] = level
+            calls.append("sign_in")
 
         def get_now_playing(self, pid):
-            return {"payload": {}}
+            # ei väliä tämän testin kannalta, tyhjä dictriittää
+            return {}
+
+        def play_previous(self, pid):
+            calls.append("prev")
+
+        def play_pause(self, pid):
+            calls.append("play_pause")
+
+        def play_next(self, pid):
+            calls.append("next")
 
     monkeypatch.setattr(card_mod, "HeosClient", FakeClient)
 
     class DummySt:
         def __init__(self):
             self.session_state = {}
+            self.html = ""
 
-        def columns(self, n):
-            return [self, self, self]
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def columns(self, *args, **kwargs):
+            return [self, self, self, self, self]
 
         def button(self, label, **k):
-            # kortti tekee 3 nappia, haluamme että ⏯️ = True
-            return label == "⏯️"
+            # Palautetaan True kaikille kolmelle ohjauspainikkeelle,
+            # jotta kaikki metodit kutsutaan kerran.
+            if label in ("⏮", "⏯", "⏭"):
+                return True
+            return False
 
         def markdown(self, html, unsafe_allow_html=False):
             self.html = html
@@ -144,15 +173,11 @@ def test_pause_and_resume(monkeypatch):
     dummy_st = DummySt()
     monkeypatch.setattr(card_mod, "st", dummy_st)
 
-    # 1. painallus -> mute on
     card_mod.card_heos()
-    assert calls["mute"] == ["on"]
-    assert dummy_st.session_state["heos_paused"] is True
-    assert dummy_st.session_state["heos_prev_volume"] == 15
 
-    # 2. painallus -> mute off + volume back
-    dummy_st.session_state["heos_paused"] = True
-    dummy_st.session_state["heos_prev_volume"] = 42
-    card_mod.card_heos()
-    assert calls["mute"] == ["on", "off"]
-    assert calls["volume"] == 42
+    # sign_in kutsutaan kerran kortin alussa
+    assert "sign_in" in calls
+    # kaikki kolme ohjausmetodia kutsuttu
+    assert "prev" in calls
+    assert "play_pause" in calls
+    assert "next" in calls

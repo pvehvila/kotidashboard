@@ -18,6 +18,7 @@
 - 🖥️ Järjestelmän tila (CPU, RAM, levytila)
 - 💾 Lokitus `logs/homedashboard.log` -tiedostoon
 - 🔄 Automaattinen päivitys ja välimuisti
+- 🎧 HEOS / Tidal -integraatio (nykyinen kappale + ohjauspainikkeet)
 
 ---
 

@@ -18,6 +18,7 @@
 - 🖥️ System status (CPU, RAM, disk space)
 - 💾 Logging to `logs/homedashboard.log`
 - 🔄 Automatic refresh and caching
+- 🎧 HEOS / Tidal integration (now playing + playback controls)
 
 ---
 

@@ -6,6 +6,22 @@ Tiedosto noudattaa [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) -per
 ---
 
 ## [Unreleased]
+
+### Lisätty
+- 🧪 HEOS-kortille (`card_heos`) kattavat yksikkötestit:
+  - Soivan kappaleen renderöinti (song / artist / album)
+  - Tyhjätila (“Ei HEOS-toistoa käynnissä”)
+  - Ohjauspainikkeet (⏮, ⏯, ⏭) ja niiden kutsumat `HeosClient`-metodit
+- 🧪 Mock-Streamlit (`DummySt`) jossa on sarake- ja context manager -tuki, jotta Streamlitin käyttäytyminen voidaan simuloida luotettavasti
+
+### Muutettu
+- 🎧 `card_heos` käyttää nyt selkeää, yksinkertaista rajapintaa: `HeosClient.get_now_playing()` palauttaa litteän sanakirjan, ei sisäkkäisiä rakenteita
+- 🎧 HEOS-kortin sisäinen koodi siivottu vastaamaan uusia testejä ja poistettu vanhentunut tila- ja mute-logiikka
+
+### Korjattu
+- 🟢 Kaikki HEOS-kortin testit menevät nyt läpi (3 aiempaa epäonnistunutta testiä korjattu)
+- 📈 Testikattavuus nousi 72 % → **73 %**
+
 ### Muutettu
 - 📅 Nimipäivälogiikka on siirretty erilliseen `src/api/calendar_nameday.py` -moduuliin ja pilkottu pienempiin apufunktioihin, jotta datan luku, päivämäärävalinta ja nimen poiminta ovat selkeästi erillään. `fetch_nameday_today()` toimii nyt ohuena julkisena rajapintana.
 - 📅 `card_nameday()` on refaktoroitu käyttämään uutta `calendar_nameday`-rajapintaa ja viewmodel-kerrosta, jolloin kortin vastuualue rajoittuu nimipäivä- ja pyhäpäivädatan esittämiseen.

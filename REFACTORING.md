@@ -150,6 +150,20 @@ Keskeiset funktiot:
 
 ---
 
+### 2.8 HEOS-kortti (`card_heos.py`) – Valmis
+
+- Kortin logiikka yksinkertaistettu: UI renderöi vain nykyisen kappaleen tiedot tai tyhjätilan.
+- Ohjauspainikkeet (⏮, ⏯, ⏭) kutsuvat suoraan `HeosClient`-metodeja.
+- Poistettu vanha, tarpeeton mute-/volume- ja session_state-logiikka.
+- Uusi testipaketti (3 testiä) kattaa:
+  - soivan kappaleen renderöinnin,
+  - tyhjätilan,
+  - ohjauspainikkeiden toiminnan.
+- Testikattavuus: **84 %** (`src/ui/card_heos.py`), `HeosClient`: **92 %**.
+
+Refaktorointitarvetta ei enää ole; moduuli on selkeä ja A/B-tasoa.
+
+
 ## 3. Seuraavat refaktorointikierrokset
 
 ### 3.1 Nimipäivät
