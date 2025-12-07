@@ -1,82 +1,101 @@
-# 📘 QUALITY.md
-### Code Quality & Security Configuration – *HomeDashboard*
+# 📘 QUALITY.md — Code Quality & Security Standards
+
+This document defines the code quality, formatting, testing, and security practices used in the **HomeDashboard** project.
+All checks run automatically via **pre-commit hooks** and are validated continuously during development.
 
 ---
 
 ## 🔍 Overview
-This document describes the code quality, formatting, testing, and security configuration used in the **HomeDashboard** project.
-All quality checks are automated and executed through **pre-commit hooks** before each Git commit.
+The goal of the quality pipeline is to ensure:
+- Consistent, clean, auto-formatted code
+- High test coverage and predictable behaviour
+- Static analysis for catching logic and security issues early
+- Automated enforcement before each commit
+
+The tools used are:
+- **Ruff** (linting + formatting)
+- **Pytest** (+ Coverage)
+- **Bandit** (security)
+- **pre-commit** (automation)
 
 ---
 
-## 🧹 Ruff — Linter & Formatter
-**Purpose:** checks code style, import order, and common logic issues.
-**Config:** defined in `pyproject.toml`
-**Rules:** based on *PEP8* + plugin sets *(E, F, I, B, UP, N)*
-**Fix:** automatically formats and corrects minor issues
+## 🧹 Ruff — Linter & Auto-Formatter
+**Purpose:** Enforces code style, import order, and detects common Python issues.
 
-**Usage:**
+**Configuration:** `pyproject.toml`
+
+**Rule sets enabled:**
+- `E`, `F`, `I` — Standard PEP8 and import rules
+- `B` — Bugbear (logic/bug detection)
+- `UP` — Python upgrade rules
+- `N` — Naming conventions
+
+**Typical usage:**
 ```bash
-ruff check .        # find issues
-ruff check . --fix  # auto-fix
+ruff check .          # report issues
+ruff check . --fix    # auto-fix
 ```
 
-Ruff runs automatically via *pre-commit* hooks.
+Ruff is executed automatically on commit.
 
 ---
 
-## 🧪 Pytest — Unit Testing
-**Purpose:** executes functional and unit tests with coverage reporting.
-**Config:** `pyproject.toml`
-**Test folder:** `/tests`
-**Coverage:** automatically measured with `pytest-cov`
+## 🧪 Pytest — Unit Testing & Coverage
+**Purpose:** Executes unit tests and validates behaviour of API, UI viewmodels, and utility layers.
 
-**Usage:**
+**Configuration:** `pyproject.toml`
+
+**Test folder:** `tests/`
+
+**Coverage:** Generated with `pytest-cov` and reported in terminal.
+
+Example:
 ```bash
 pytest -v
 pytest --cov=src --cov-report=term-missing
 ```
 
-**Example output:**
-```
-Name                     Stmts   Miss  Cover
---------------------------------------------
-src/api/weather.py          80      2    97%
-```
+Test coverage in the project is typically **80–90%**, depending on feature set.
 
 ---
 
 ## 🛡️ Bandit — Security Scanning
-**Purpose:** static code analysis for common security issues.
-**Config file:** `bandit.yaml`
-**Disabled checks:**
-- **B110** – `try/except/pass` (accepted for data parsing loops)
-- **B112** – `try/except/continue` (accepted for data source fallbacks)
+**Purpose:** Performs static security analysis and flags high-risk patterns.
 
-**Special note:**
-`urllib.request.urlopen()` calls are explicitly validated for allowed schemes and marked with `# nosec B310`.
+**Configuration:** `bandit.yaml`
 
-**Manual run:**
+**Expected exceptions:**
+- `B110` — use of `try/except/pass` (allowed for controlled parsing logic)
+- `B112` — use of `try/except/continue` (allowed for fallback data sources)
+
+**Special handling:**
+All `urllib.request.urlopen()` calls are explicitly validated, and cases requiring exceptions are annotated with:
+```python
+# nosec B310
+```
+
+Manual run:
 ```bash
 bandit -r src -c bandit.yaml -f json
 ```
 
 ---
 
-## ⚙️ Pre-commit — Automation
-**Purpose:** automatically runs all quality checks before commits.
-**Config file:** `.pre-commit-config.yaml`
+## ⚙️ Pre-commit — Automated Quality Pipeline
+**Purpose:** Ensures that all code meets quality rules before commits are accepted.
+
+**Configuration file:** `.pre-commit-config.yaml`
 
 **Installed hooks:**
+| Hook | Function |
+|------|----------|
+| `ruff` | Lint & import order |
+| `ruff-format` | Formatting |
+| `bandit` | Security scan |
+| `end-of-file-fixer`, `trailing-whitespace` | Basic file hygiene |
 
-| Hook                                   | Function              |
-|---------------------------------------|------------------------|
-| `ruff`                                | Lint & fix imports     |
-| `ruff-format`                         | Auto-format code       |
-| `bandit`                              | Security scan          |
-| `end-of-file-fixer`, `trailing-whitespace` | Basic hygiene       |
-
-**Setup:**
+Setup:
 ```bash
 pip install pre-commit
 pre-commit install
@@ -85,40 +104,40 @@ pre-commit run --all-files
 
 ---
 
-## 🧾 Files Summary
-
-| File | Description |
-|:----------------------------|:----------------------------------------------|
-| `pyproject.toml`            | Central config for Ruff, Pytest, and Coverage |
-| `.pre-commit-config.yaml`   | Defines active pre-commit hooks               |
-| `bandit.yaml`               | Security rules and exceptions                 |
-| `scripts/SetupQuality.ps1`  | Automates setup on Windows                    |
-| `tests/`                    | Contains all unit tests                       |
-| `src/api/nameday.py`        | New: provides unified nameday/holiday lookup for UI cards |
-| `src/api/calendar_nameday.py` | New: backward compatibility shim so older cards keep working |
-| `pyproject.toml`            | Central config for Ruff, Pytest, and Coverage |
+## 🧾 Relevant Files
+| File | Purpose |
+|------|---------|
+| `pyproject.toml` | Central config for Ruff, Pytest, Coverage |
+| `.pre-commit-config.yaml` | Defines hooks |
+| `bandit.yaml` | Security rules & exceptions |
+| `scripts/SetupQuality.ps1` | Windows setup script |
+| `tests/` | Unit tests |
 
 ---
 
 ## ✅ Quality Pipeline Status
-All hooks currently pass successfully:
+Current status:
 
-| Tool        | Status |
-|--------------|:-------:|
-| **Ruff**     | ✅ |
-| **Bandit**   | ✅ |
-| **Pytest**   | ✅ |
+| Tool | Status |
+|-------|:------:|
+| **Ruff** | ✅ |
+| **Bandit** | ✅ |
+| **Pytest** | ✅ |
 | **Pre-commit** | ✅ |
+
+The project passes all checks.
 
 ---
 
 ## 🧰 Developer Tips
-
-- Run `pre-commit run --all-files` after large refactors.
-- To temporarily skip checks:
+- Run full pipeline after large refactors:
+  ```bash
+  pre-commit run --all-files
+  ```
+- To bypass checks temporarily:
   ```bash
   git commit --no-verify
   ```
-- In CI/CD, replicate these steps in `.github/workflows/test.yml`.
+- In CI/CD, replicate the same steps in `.github/workflows/test.yml`.
 
 ---

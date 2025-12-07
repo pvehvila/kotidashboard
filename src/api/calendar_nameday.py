@@ -20,13 +20,16 @@ from src.utils import report_error
 
 
 def _resolve_nameday_file() -> Path:
-    """Palauta ensimmäinen olemassa oleva nimipäiväpolku configista."""
-    for path in NAMEDAY_PATHS:
-        try:
-            if path and Path(path).exists():
-                return Path(path)
-        except Exception:
-            continue
+    """
+    Palauta nimipäivätiedoston polku.
+
+    - Jos NAMEDAY_PATHS ei ole tyhjä, käytetään *ainoastaan* sitä listaa.
+      Tällöin, jos mikään polku ei ole olemassa, palautetaan listan
+      ensimmäinen polku (joka voi olla olematon), eikä pudota oletukseen.
+    - Jos lista on tyhjä, käytetään NAMEDAY_FILE-oletusta.
+    """
+    if NAMEDAY_PATHS:
+        return _resolve_first_existing(NAMEDAY_PATHS)
     return Path(NAMEDAY_FILE)
 
 

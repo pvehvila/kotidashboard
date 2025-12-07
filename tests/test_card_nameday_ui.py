@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import importlib
 
 from src.ui.card_nameday import card_nameday
@@ -23,7 +21,6 @@ def test_card_nameday_renders_happy_path(monkeypatch):
         "holiday_info": None,
     }
 
-    # card_nameday() → get_nameday_vm() → render_nameday_card(vm)
     monkeypatch.setattr(card_nameday_module, "get_nameday_vm", lambda: vm)
 
     captured: dict[str, str] = {}
@@ -39,11 +36,23 @@ def test_card_nameday_renders_happy_path(monkeypatch):
 
     # assert
     html = captured["html"]
-    assert "Nimipäivät" in html
+
+    # otsikkotekstin muoto on yksi kokonaisrivi -> "Nimipäivät maanantaina 1.1."
+    assert "Nimipäivät maanantaina 1.1." in html
+
+    # nimet
     assert "Maija" in html
-    assert "maanantaina 1.1." in html
+
+    # liputuspäiväteksti
     assert "Itsenäisyyspäivä" in html
+
+    # aurinkoajat
     assert "08:00" in html
     assert "16:00" in html
+
+    # taustakuva on mukana osana background-image-riviä
     assert "background-image" in html
+    assert "https://example.test/bg.jpg" in html
+
+    # kortin pitää sallia HTML
     assert captured["unsafe"] == "true"
