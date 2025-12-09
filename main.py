@@ -65,24 +65,24 @@ def main() -> None:
         with col2:
             card_zen()
 
-        # Row 2: Weather
+        # Row 2: Ovien liikesensorit (Philips Hue -liiketunnistimet)
+        card_hue_doors()
+
+        # Row 3: Weather
         card_weather()
 
-        # Row 3: Electricity prices
+        # Row 4: Electricity prices
         card_prices()
 
-        # Row 4: Bitcoin
+        # Row 5: Bitcoin
         card_bitcoin()
 
-        # Row 5: System status + Tidal player
+        # Row 6: System status + Tidal player
         col1, col2 = st.columns(2, gap="small")
         with col1:
             card_system()
         with col2:
             card_heos()
-
-        # Row 6: Ovien liikesensorit (Philips Hue -liiketunnistimet)
-        card_hue_doors()
 
     except KeyboardInterrupt:
         logger.info("HomeDashboard shutdown requested")
