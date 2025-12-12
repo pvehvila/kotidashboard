@@ -34,8 +34,8 @@ def setup_logging(log_dir: str | None = None) -> logging.Logger:
     console.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 
-    # Lisää handlerit (jos ei jo lisätty)
-    if not logger.hasHandlers():
+    # Lisää handlerit (jos ei jo lisätty tälle loggerille)
+    if not logger.handlers:
         logger.addHandler(console)
         logger.addHandler(file_handler)
 
