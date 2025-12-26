@@ -86,22 +86,31 @@ class HeosClient:
         """
         Toglaa play/pause nykyisen toistotilan perusteella.
 
-        Fallback: jos tilaa ei saada luotettavasti (esim. standby → herätys),
-        oletetaan että käyttäjä haluaa käynnistää toiston.
+        Wake-safe:
+        - Jos now_playing ei anna tilaa luotettavasti (tyhjä/unknown), lähetetään ensin 'play'
+          (tämä herättää Denonin standby-tilasta).
+        - Jos tila kertoo selvästi että soi, lähetetään 'pause'.
         """
         now = self.get_now_playing(pid)
         payload = now.get("payload") or {}
-
         raw_state = (payload.get("state") or now.get("state") or "").strip().lower()
 
         playing_states = {"play", "playing"}
+        paused_states = {"pause", "paused", "stop", "stopped"}
 
         if raw_state in playing_states:
-            target = "pause"
-        else:
-            target = "play"
+            return self.set_play_state(pid, "pause")
 
-        return self.set_play_state(pid, target)
+        if raw_state in paused_states:
+            # Jos on selvästi pausella/stopissa, käynnistetään toisto
+            return self.set_play_state(pid, "play")
+
+        # Tuntematon/tyhjä tila (tyypillinen standby-herätyksessä): herätä aina playllä
+        resp = self.set_play_state(pid, "play")
+
+        # Pieni viive auttaa, että seuraava painallus saa jo järkevän state/payloadin
+        time.sleep(0.25)
+        return resp
 
     # --- Tidal-selaus ---
 
