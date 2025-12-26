@@ -29,11 +29,13 @@ class HeosClient:
     # --- perus I/O ---
 
     def _send_cmd(self, cmd: str) -> dict[str, Any]:
+        # Avataan lyhyt telnet-tyylinen yhteys jokaiselle komennolle.
         with socket.create_connection((self.host, self.port), self.timeout) as s:
             s.sendall(f"heos://{cmd}\r\n".encode())
             s.settimeout(self.timeout)
             data = s.recv(65535).decode("utf-8", errors="replace")
 
+        # HEOS voi joskus lähettää useamman JSON-rivin, otetaan eka kunnollinen
         for line in data.splitlines():
             line = line.strip()
             if not line:
@@ -71,6 +73,7 @@ class HeosClient:
         self._send_cmd(f"player/set_volume?pid={pid}&level={level}")
 
     def set_mute(self, pid: int, state: str) -> None:
+        # state: on/off/toggle
         self._send_cmd(f"player/set_mute?pid={pid}&state={state}")
 
     def set_play_state(self, pid: int, state: str) -> dict[str, Any]:
@@ -87,9 +90,9 @@ class HeosClient:
         Toglaa play/pause nykyisen toistotilan perusteella.
 
         Wake-safe:
-        - Jos now_playing ei anna tilaa luotettavasti (tyhjä/unknown), lähetetään ensin 'play'
-          (tämä herättää Denonin standby-tilasta).
-        - Jos tila kertoo selvästi että soi, lähetetään 'pause'.
+        - jos tila on selvästi play/playing -> pause
+        - jos tila on selvästi pause/stop/... -> play
+        - jos tila on tuntematon/tyhjä (tyypillinen standby/herätys) -> play (+ pieni viive)
         """
         now = self.get_now_playing(pid)
         payload = now.get("payload") or {}
@@ -102,13 +105,9 @@ class HeosClient:
             return self.set_play_state(pid, "pause")
 
         if raw_state in paused_states:
-            # Jos on selvästi pausella/stopissa, käynnistetään toisto
             return self.set_play_state(pid, "play")
 
-        # Tuntematon/tyhjä tila (tyypillinen standby-herätyksessä): herätä aina playllä
         resp = self.set_play_state(pid, "play")
-
-        # Pieni viive auttaa, että seuraava painallus saa jo järkevän state/payloadin
         time.sleep(0.25)
         return resp
 
@@ -125,6 +124,7 @@ class HeosClient:
         return None
 
     def search_tidal_by_name(self, name: str) -> dict[str, Any] | None:
+        """Etsii Tidalista playlistin nimellä ja palauttaa ekana osuneen kontainerin."""
         sid = self._get_tidal_sid()
         if not sid:
             return None
@@ -141,8 +141,38 @@ class HeosClient:
     def play_tidal_container(self, pid: int, container: dict[str, Any]) -> None:
         sid = container["sid"]
         cid = container["container_id"]
-
+        # aid=4 => replace and play
         self._send_cmd(
             f"browse/add_to_queue?pid={pid}&sid={sid}&cid={urllib.parse.quote(cid)}&aid=4"
         )
         time.sleep(0.2)
+
+    def search_heos_playlist_by_name(self, name: str) -> dict[str, Any] | None:
+        # HEOSin oma Playlists-palvelu on yleensä sid=1025
+        resp = self._send_cmd("browse/browse?sid=1025")
+        for item in resp.get("payload", []):
+            if item.get("name", "").lower() == name.lower():
+                item["sid"] = 1025
+                return item
+        return None
+
+    def play_tidal_known_container(self, pid: int) -> bool:
+        """
+        Yrittää muutamaa yleistä Tidal-kontaineria HEOSin kautta.
+        Palauttaa True jos jokin onnistui.
+        """
+        sid = self._get_tidal_sid()
+        if not sid:
+            return False
+
+        candidates = [
+            "my_music",
+            "my_collection",
+            "playlists",
+            "favorites",
+        ]
+        for cid in candidates:
+            resp = self._send_cmd(f"browse/add_to_queue?pid={pid}&sid={sid}&cid={cid}&aid=4")
+            if resp.get("heos", {}).get("result") == "success":
+                return True
+        return False

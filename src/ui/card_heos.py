@@ -43,9 +43,6 @@ def card_heos() -> None:
     )
     client.sign_in()
 
-    if "heos_last_toggle" not in st.session_state:
-        st.session_state.heos_last_toggle = None
-
     col_left, col_prev, col_play, col_next, col_right = st.columns([1, 1, 1, 1, 1])
 
     with col_prev:
@@ -58,14 +55,7 @@ def card_heos() -> None:
     with col_play:
         if st.button("⏯", key="heos_play_pause"):
             try:
-                # Jos edellinen toiminto oli "play", oletetaan seuraavaksi "pause"
-                # (auttaa, jos state ei päivity oikein)
-                if st.session_state.heos_last_toggle == "play":
-                    client.set_play_state(HEOS_PLAYER_ID, "pause")
-                    st.session_state.heos_last_toggle = "pause"
-                else:
-                    client.set_play_state(HEOS_PLAYER_ID, "play")
-                    st.session_state.heos_last_toggle = "play"
+                client.play_pause(HEOS_PLAYER_ID)
             except Exception:
                 pass
 
@@ -81,7 +71,11 @@ def card_heos() -> None:
     except Exception:
         resp = {}
 
-    np = resp.get("payload") or {}
+    # Testit voivat feikata get_now_playing():n palauttamaan song/artist/album suoraan juureen.
+    # Oikea HEOS palauttaa tyypillisesti ne resp["payload"]-sisällä.
+    np = resp.get("payload") if isinstance(resp, dict) else None
+    if not isinstance(np, dict):
+        np = resp if isinstance(resp, dict) else {}
 
     track = np.get("song") or np.get("track") or np.get("title")
     artist = np.get("artist")
