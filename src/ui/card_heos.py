@@ -36,6 +36,30 @@ def _render_now_playing_box(track: str | None, artist: str | None, album: str | 
 def card_heos() -> None:
     section_title("🎧 HEOS / Tidal", mt=10, mb=4)
 
+    st.markdown(
+        """
+    <style>
+    /* Keskitetään HEOS-nappien stButton-wrapperit sarakkeissaan */
+    .st-key-heos_prev div[data-testid="stButton"],
+    .st-key-heos_play_pause div[data-testid="stButton"],
+    .st-key-heos_next div[data-testid="stButton"] {
+    display:flex !important;
+    justify-content:center !important;
+    }
+
+    /* Now playing: varma keskitys ja max-leveys, ilman laatikkoa */
+    .heos-np {
+    text-align:center !important;
+    max-width: 520px;
+    margin: 10px auto 0 auto;
+    }
+    .heos-np .card-title,
+    .heos-np .card-body { text-align:center !important; }
+    </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     client = HeosClient(
         HEOS_HOST,
         username=HEOS_USERNAME,
@@ -85,28 +109,40 @@ def card_heos() -> None:
 .st-key-heos_next button:active {
   transform: translateY(1px);
 }
+
+/* HEOS now playing center */
+.heos-np .card-title,
+.heos-np .card-body {
+  text-align: center !important;
+}
+.heos-np .card-body p {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
 </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # Keskitetty ohjainrivi
-    c0, c1, c2, c3, c4 = st.columns([1, 1, 1, 1, 1])
-    with c1:
+    # Symmetriset reunasarakkeet -> nappiryhmä keskelle korttia
+    g0, c_prev, c_play, c_next, g1 = st.columns([2, 1, 1, 1, 2])
+
+    with c_prev:
         if st.button("⏮", key="heos_prev"):
             try:
                 client.play_previous(HEOS_PLAYER_ID)
             except Exception:
                 pass
 
-    with c2:
+    with c_play:
         if st.button("⏯", key="heos_play_pause"):
             try:
                 client.play_pause(HEOS_PLAYER_ID)
             except Exception:
                 pass
 
-    with c3:
+    with c_next:
         if st.button("⏭", key="heos_next"):
             try:
                 client.play_next(HEOS_PLAYER_ID)
@@ -156,4 +192,6 @@ def card_heos() -> None:
             "</div>"
         )
 
-    st.markdown(html, unsafe_allow_html=True)
+    g0, t_prev, t_play, t_next, g1 = st.columns([2, 1, 1, 1, 2])
+    with t_play:
+        st.markdown(f"<div class='heos-np'>{html}</div>", unsafe_allow_html=True)

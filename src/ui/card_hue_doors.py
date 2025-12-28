@@ -95,18 +95,20 @@ def card_hue_doors() -> None:
 
     # Hue Secure / v2 health chip
     if bridge_ok:
-        st.markdown('<div class="chip green">Hue Secure: OK</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="chip green" style="margin-bottom:10px;">Hue Secure: OK</div>',
+            unsafe_allow_html=True,
+        )
     else:
         st.markdown(
             f"""
-            <div class="chip red">Hue Secure: OFFLINE</div>
-            <p><small>{html.escape(error_text)}</small></p>
+            <div class="chip red" style="margin-bottom:10px;">Hue Secure: OFFLINE</div>
+            <p style="margin-top:-6px;"><small>{html.escape(error_text)}</small></p>
             """,
             unsafe_allow_html=True,
         )
 
-    # Pieni pystysuuntainen väli ennen korttiriviä
-    st.markdown('<div class="rowgap"></div>', unsafe_allow_html=True)
+    # (rowgap ei ole tässä välissä tarpeen, koska chipillä on nyt oma spacing)
 
     # Oletus: kolme ovea → kolme kolumnia; zip leikkaa ylimääräiset pois jos rivejä vähemmän
     col1, col2, col3 = st.columns(3, gap="small")
