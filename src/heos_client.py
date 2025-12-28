@@ -76,40 +76,94 @@ class HeosClient:
         # state: on/off/toggle
         self._send_cmd(f"player/set_mute?pid={pid}&state={state}")
 
+    # --- Play state (robust play/pause) ---
+
+    def get_play_state(self, pid: int) -> dict[str, Any]:
+        return self._send_cmd(f"player/get_play_state?pid={pid}")
+
     def set_play_state(self, pid: int, state: str) -> dict[str, Any]:
+        state = state.strip().lower()
         return self._send_cmd(f"player/set_play_state?pid={pid}&state={state}")
+
+    def _extract_state(self, resp: dict[str, Any]) -> str | None:
+        payload = resp.get("payload")
+        if isinstance(payload, dict):
+            state = payload.get("state")
+            if state:
+                return str(state).strip().lower()
+
+        heos = resp.get("heos")
+        if isinstance(heos, dict):
+            msg = heos.get("message")
+            # esim: "pid=1&state=play"
+            if isinstance(msg, str) and "state=" in msg:
+                for part in msg.split("&"):
+                    if part.startswith("state="):
+                        return part.split("=", 1)[1].strip("'\" ").lower()
+
+        return None
+
+    def _ensure_state(self, pid: int, target: str) -> tuple[dict[str, Any], str | None]:
+        """
+        Yritä asettaa tila ja varmistaa tila tarkistamalla uudelleen.
+        Palauttaa (viimeisin_responssi, luettu_state).
+        """
+        target = target.strip().lower()
+
+        # 1) ensisijainen yritys: set_play_state
+        resp = self.set_play_state(pid, target)
+
+        # pieni viive, jotta HEOS ehtii päivittää tilan
+        time.sleep(0.15)
+
+        st_resp = self.get_play_state(pid)
+        st = self._extract_state(st_resp)
+
+        # jos tavoite saavutettu, palauta
+        if st == target:
+            return resp, st
+
+        return resp, st
+
+    def pause(self, pid: int) -> dict[str, Any]:
+        resp, _ = self._ensure_state(pid, "pause")
+        return resp
+
+    def play(self, pid: int) -> dict[str, Any]:
+        """
+        Käynnistä toisto luotettavasti myös STOP-tilasta:
+        - pause -> set_play_state(play)
+        - stop  -> play_queue_item(qid) jos qid löytyy now_playingistä
+        """
+        st = self._extract_state(self.get_play_state(pid))
+
+        # jos paused, tavallinen play riittää
+        if st == "pause":
+            return self.set_play_state(pid, "play")
+
+        # jos stop, käynnistä nykyinen queue-item (qid)
+        if st == "stop" or st is None:
+            # jos qid puuttuu, viimeinen fallback: play_next (jos queue on olemassa)
+            return self.play_next(pid)
+
+        # jos jo play, palautetaan pelkkä state-komento
+        return {"heos": {"command": "noop", "result": "success", "message": "already playing"}}
+
+    def play_pause(self, pid: int) -> dict[str, Any]:
+        st_resp = self.get_play_state(pid)
+        st = self._extract_state(st_resp)
+
+        if st == "play":
+            return self.set_play_state(pid, "pause")
+
+        # pause/stop/None -> play
+        return self.set_play_state(pid, "play")
 
     def play_next(self, pid: int) -> dict[str, Any]:
         return self._send_cmd(f"player/play_next?pid={pid}")
 
     def play_previous(self, pid: int) -> dict[str, Any]:
         return self._send_cmd(f"player/play_previous?pid={pid}")
-
-    def play_pause(self, pid: int) -> dict[str, Any]:
-        """
-        Toglaa play/pause nykyisen toistotilan perusteella.
-
-        Wake-safe:
-        - jos tila on selvästi play/playing -> pause
-        - jos tila on selvästi pause/stop/... -> play
-        - jos tila on tuntematon/tyhjä (tyypillinen standby/herätys) -> play (+ pieni viive)
-        """
-        now = self.get_now_playing(pid)
-        payload = now.get("payload") or {}
-        raw_state = (payload.get("state") or now.get("state") or "").strip().lower()
-
-        playing_states = {"play", "playing"}
-        paused_states = {"pause", "paused", "stop", "stopped"}
-
-        if raw_state in playing_states:
-            return self.set_play_state(pid, "pause")
-
-        if raw_state in paused_states:
-            return self.set_play_state(pid, "play")
-
-        resp = self.set_play_state(pid, "play")
-        time.sleep(0.25)
-        return resp
 
     # --- Tidal-selaus ---
 
