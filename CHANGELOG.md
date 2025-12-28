@@ -12,6 +12,17 @@ _Ei julkaisemattomia muutoksia tällä hetkellä._
 
 ---
 
+## [1.1.1] – 2025-12-28
+### 🛠️ HEOS-kortin korjaus
+
+### Korjattu
+- 🎧 HEOS-kortin toiminta palautettu vakaaksi.
+
+### Dokumentaatio
+- 📚 Julkaisudokumentaatio päivitetty vastaamaan korjausta.
+
+---
+
 ## [1.1.0] – 2025-12-07
 ### 🚀 Vakaus- ja luotettavuuspäivitys
 

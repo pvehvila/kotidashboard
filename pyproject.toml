@@ -1,6 +1,6 @@
 [project]
 name = "homedashboard"
-version = "0.1.0"
+version = "1.1.1"
 description = "Kotidashboard – henkilökohtainen Streamlit-näkymä"
 requires-python = ">=3.10"
 dependencies = [
