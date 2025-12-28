@@ -120,6 +120,15 @@ def card_heos() -> None:
   margin-right: auto !important;
 }
 
+/* Tablet / kapeampi leveys: levitä now playing 3 sarakkeen yli (t_prev + t_play + t_next) */
+@media (max-width: 900px) {
+  .heos-np-span {
+    width: 300% !important;
+    margin-left: -100% !important;
+    max-width: none !important;
+  }
+}
+
 </style>
         """,
         unsafe_allow_html=True,
@@ -194,4 +203,4 @@ def card_heos() -> None:
 
     g0, t_prev, t_play, t_next, g1 = st.columns([2, 1, 1, 1, 2])
     with t_play:
-        st.markdown(f"<div class='heos-np'>{html}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='heos-np heos-np-span'>{html}</div>", unsafe_allow_html=True)
