@@ -11,6 +11,17 @@ _No unreleased changes yet._
 
 ---
 
+## [1.1.1] – 2025-12-28
+### 🛠️ HEOS card fix
+
+### Fixed
+- 🎧 Restored stable behavior for the HEOS card.
+
+### Documentation
+- 📚 Release documentation updated to reflect the fix.
+
+---
+
 ## [1.1.0] – 2025-12-07
 ### 🚀 Vakaus- ja luotettavuuspäivitys
 
@@ -84,15 +95,6 @@ _No unreleased changes yet._
 - New folder structure (`src/`, `assets/`, `data/`, `scripts/` ...)
 - Windows & Raspberry Pi 5 support
 - MIT License
-
----
-
-## [Unreleased]
-### Upcoming Features
-- 🌤️ Extended 3-day weather forecast
-- 🏠 Personal electricity usage history
-- 🪴 Home Assistant integration
-- 🎨 Optional light/dark theme
 
 ---
 
