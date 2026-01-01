@@ -67,10 +67,10 @@ def get_nameday_vm() -> dict:
     holiday_info = fetch_holiday_today()
 
     try:
-        day_str = today.strftime("%-d.%m.")
+        day_str = today.strftime("%-d.%-m.")
     except ValueError:
         # Windows
-        day_str = today.strftime("%#d.%m.")
+        day_str = today.strftime("%#d.%#m.")
 
     return {
         "today": today,

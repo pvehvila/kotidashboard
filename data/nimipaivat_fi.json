@@ -1,7 +1,7 @@
 {
   "nimipäivät": {
     "tammikuu": {
-      "1": "",
+      "1": "Ei nimipäivää.",
       "2": "Aapeli",
       "3": "Elmeri, Elmo",
       "4": "Ruut, Ruth",
@@ -62,7 +62,7 @@
       "26": "Nestori",
       "27": "Torsti",
       "28": "Onni ja Sisu",
-      "29": ""
+      "29": "Ei nimipäivää."
     },
     "maaliskuu": {
       "1": "Alpo, Alpi ja Alvi",
@@ -382,7 +382,7 @@
       "22": "Raafael",
       "23": "Senni ja Noel",
       "24": "Aatami, Eeva, Eevi ja Eveliina",
-      "25": "",
+      "25": "Ei nimipäivää.",
       "26": "Tapani, Teppo ja Tahvo",
       "27": "Hannu, Hannes ja Hans",
       "28": "Piia",
