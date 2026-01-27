@@ -6,11 +6,13 @@ import traceback
 from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
 
 from src.logger_config import setup_logging
 from src.paths import ensure_dirs
 from src.ui import (
     card_bitcoin,
+    card_eqe,
     card_heos,
     card_hue_doors,
     card_nameday,
@@ -25,6 +27,7 @@ ensure_dirs()
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.append(str(BASE_DIR / "src"))
+load_dotenv()
 
 # Setup logging
 logger = setup_logging()
@@ -71,8 +74,12 @@ def main() -> None:
         # Row 3: Weather
         card_weather()
 
-        # Row 4: Electricity prices
-        card_prices()
+        # Row 4: Mercedes EQE + Electricity prices
+        col1, col2 = st.columns(2, gap="small")
+        with col1:
+            card_eqe()
+        with col2:
+            card_prices()
 
         # Row 5: Bitcoin
         card_bitcoin()

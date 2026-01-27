@@ -138,6 +138,24 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
 .rowgap{ height:.5dvh; }
 
 /* =========================================================
+   Mercedes EQE
+   ========================================================= */
+.eqe-grid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:10px;
+}
+.eqe-item{
+  background:var(--panel-2);
+  border-radius:12px;
+  padding:8px 6px;
+  text-align:center;
+}
+.eqe-label{ font-size:.82rem; opacity:.75; margin-bottom:2px; }
+.eqe-value{ font-size:1.2rem; font-weight:700; }
+.eqe-unit{ font-size:.85rem; opacity:.8; margin-left:3px; }
+
+/* =========================================================
    Responsiivisuus
    ========================================================= */
 @media (max-width: 780px){

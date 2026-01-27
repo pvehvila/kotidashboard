@@ -1,6 +1,7 @@
 """Expose dashboard card render functions."""
 
 from .card_bitcoin import card_bitcoin
+from .card_eqe import card_eqe
 from .card_heos import card_heos
 from .card_hue_doors import card_hue_doors
 from .card_hue_motion import card_hue_motion
@@ -12,6 +13,7 @@ from .card_zen import card_zen
 
 __all__ = [
     "card_bitcoin",
+    "card_eqe",
     "card_heos",
     "card_nameday",
     "card_system",
