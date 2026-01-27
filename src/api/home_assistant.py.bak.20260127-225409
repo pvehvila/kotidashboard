@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -9,7 +10,6 @@ import streamlit as st
 
 from src.config import CACHE_TTL_SHORT, HTTP_TIMEOUT_S, TZ
 from src.utils import report_error
-from collections.abc import Mapping
 
 
 class HAConfigError(RuntimeError):
@@ -27,15 +27,19 @@ class EqeStatus:
 
 
 def _get_secret(name: str) -> str | None:
-    """Hae asetus Streamlit secretsista tai ympäristömuuttujasta."""
+    """Hae asetus ympäristömuuttujasta tai Streamlit secretsista."""
+    val = os.getenv(name)
+    if val is not None and str(val).strip():
+        return val
+
     try:
         if name in st.secrets:
             secret_val = st.secrets.get(name)
             if secret_val is not None and str(secret_val).strip():
-                return str(secret_val).strip()
+                return str(secret_val)
 
         ha_section = st.secrets.get("home_assistant")
-        if isinstance(ha_section, Mapping):
+        if isinstance(ha_section, dict):
             key_map = {
                 "HA_BASE_URL": "base_url",
                 "HA_TOKEN": "token",
@@ -45,17 +49,12 @@ def _get_secret(name: str) -> str | None:
                 "HA_CACHE_TTL": "cache_ttl",
             }
             mapped = key_map.get(name)
-            if mapped:
+            if mapped and mapped in ha_section:
                 mapped_val = ha_section.get(mapped)
                 if mapped_val is not None and str(mapped_val).strip():
-                    return str(mapped_val).strip()
+                    return str(mapped_val)
     except Exception:
-        pass
-
-    # env fallback (last)
-    val = os.getenv(name)
-    if val is not None and str(val).strip():
-        return val.strip()
+        return None
 
     return None
 
@@ -73,10 +72,6 @@ def _ha_cache_ttl() -> int:
 def _require_config() -> dict[str, str]:
     base_url = _get_secret("HA_BASE_URL")
     token = _get_secret("HA_TOKEN")
-    if not token:
-    	raise RuntimeError("Home Assistant token puuttuu secrets.toml-tiedostosta")
-    token = token.strip().strip('"').strip("'")
-
     soc_entity = _get_secret("HA_EQE_SOC_ENTITY")
     range_entity = _get_secret("HA_EQE_RANGE_ENTITY")
     charging_entity = _get_secret("HA_EQE_CHARGING_ENTITY")

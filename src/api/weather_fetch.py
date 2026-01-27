@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 
-from src.api.http import http_get_json
+from src.api.http_client import http_get_json
 from src.api.weather_mapping import wmo_to_foreca_code
 from src.api.weather_utils import as_bool, as_float, as_int
 from src.config import TZ

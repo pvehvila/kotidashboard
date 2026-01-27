@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from src.api.http import http_get_json
+from src.api.http_client import http_get_json
 from src.config import CACHE_TTL_LONG, HTTP_TIMEOUT_S
 from src.utils import report_error
 

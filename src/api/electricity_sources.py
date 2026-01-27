@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from datetime import datetime
 
-from src.api.http import http_get_json
+from src.api.http_client import http_get_json
 from src.config import TZ
 
 

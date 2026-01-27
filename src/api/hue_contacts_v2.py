@@ -1,7 +1,7 @@
 # src/api/hue_contacts_v2.py
 from __future__ import annotations
 
-import os
+import streamlit as st
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -10,9 +10,6 @@ import requests
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-HUE_BRIDGE_HOST = os.getenv("HUE_BRIDGE_HOST")
-HUE_V2_APP_KEY = os.getenv("HUE_V2_APP_KEY")
 
 
 class HueV2ConfigError(RuntimeError):
@@ -29,30 +26,34 @@ class HueContactSensor:
     last_changed: datetime | None
 
 
-def _require_v2_config() -> None:
-    if not HUE_BRIDGE_HOST or not HUE_V2_APP_KEY:
-        raise HueV2ConfigError(
-            "HUE_BRIDGE_HOST ja/tai HUE_V2_APP_KEY puuttuu ympäristöstä "
-            "(Hue v2 contact -integraatio)."
-        )
+def _hue_v2_get(path: str) -> dict:
+    hue = st.secrets["hue"]
+    bridge_host = str(hue["bridge_host"]).strip()
+    app_key = str(hue["v2_app_key"]).strip().strip('"').strip("'")
 
+    if not bridge_host or not app_key:
+        raise RuntimeError("Hue-konfiguraatio puuttuu secrets.toml: [hue] bridge_host / v2_app_key")
 
-def _hue_v2_get(path: str) -> dict[str, Any]:
-    """Yleinen GET Hue v2 -APIin (Secure /clip/v2/resource/*)."""
-    _require_v2_config()
-
-    url = f"https://{HUE_BRIDGE_HOST}{path}"
-    headers = {"hue-application-key": HUE_V2_APP_KEY}
-
-    # Hue-bridge käyttää itseallekirjoitettua serttiä → verify=False
-    resp = requests.get(
-        url,
-        headers=headers,
-        timeout=5,
-        verify=False,  # nosec B501 - Hue Bridge käyttää itseallekirjoitettua certtiä lähiverkossa
-    )
+    url = f"https://{bridge_host}{path}"
+    headers = {"hue-application-key": app_key}
+    resp = requests.get(url, headers=headers, timeout=5, verify=False)
     resp.raise_for_status()
     return resp.json()
+
+
+def _hue_cfg() -> tuple[str, str]:
+    try:
+        hue = st.secrets["hue"]
+        host = str(hue["bridge_host"]).strip()
+        key = str(hue["v2_app_key"]).strip().strip('"').strip("'")
+        if not host or not key:
+            raise KeyError
+        return host, key
+    except Exception:
+        raise RuntimeError("Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / v2_app_key")
+
+# ... ennen kuin rakennat URL:n / headerit:
+bridge_host, app_key = _hue_cfg()
 
 
 def _parse_iso8601(ts: str | None) -> datetime | None:

@@ -20,6 +20,10 @@ __pycache__/
 # mutta jos haluat säilyttää teema-asetukset ilman credentials-tietoja:
 !.streamlit/config.toml
 
+# Streamlit secrets (never commit)
+.streamlit/secrets.toml
+secrets.toml
+
 # --- Ympäristömuuttujat ---
 .env
 .env.*

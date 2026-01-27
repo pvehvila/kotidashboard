@@ -4,7 +4,7 @@ from datetime import datetime
 import requests
 import streamlit as st
 
-from src.api.http import http_get_json
+from src.api.http_client import http_get_json
 from src.config import (
     ATH_CACHE_FILE,
     CACHE_TTL_LONG,

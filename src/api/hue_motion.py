@@ -1,7 +1,7 @@
 # src/api/hue_motion.py
 from __future__ import annotations
 
-import os
+import streamlit as st
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -49,11 +49,20 @@ def fetch_hue_door_sensors(
     bridge_host ja user voidaan syöttää parametrina tai lukea
     ympäristömuuttujista HUE_BRIDGE_HOST ja HUE_BRIDGE_USER.
     """
-    bridge_host = bridge_host or os.environ.get("HUE_BRIDGE_HOST")
-    user = user or os.environ.get("HUE_BRIDGE_USER")
 
     if not bridge_host or not user:
-        raise RuntimeError("HUE_BRIDGE_HOST ja/tai HUE_BRIDGE_USER puuttuu ympäristöstä.")
+        try:
+            hue = st.secrets["hue"]
+            bridge_host = bridge_host or str(hue["bridge_host"]).strip()
+            user = user or str(hue["bridge_user"]).strip()
+        except Exception:
+            pass
+
+    if not bridge_host or not user:
+        raise RuntimeError(
+            "Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / bridge_user"
+        )
+
 
     url = f"http://{bridge_host}/api/{user}/sensors"
     sess = session or requests
