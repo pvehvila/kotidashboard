@@ -47,10 +47,11 @@ def card_heos() -> None:
     justify-content:center !important;
     }
 
-    /* Now playing: varma keskitys ja max-leveys, ilman laatikkoa */
+    /* Now playing: varma keskitys ja täysi leveys */
     .heos-np {
     text-align:center !important;
-    max-width: 520px;
+    width: 100%;
+    max-width: none;
     margin: 10px auto 0 auto;
     }
     .heos-np .card-title,
@@ -118,15 +119,6 @@ def card_heos() -> None:
 .heos-np .card-body p {
   margin-left: auto !important;
   margin-right: auto !important;
-}
-
-/* Tablet / kapeampi leveys: levitä now playing 3 sarakkeen yli (t_prev + t_play + t_next) */
-@media (max-width: 900px) {
-  .heos-np-span {
-    width: 300% !important;
-    margin-left: -100% !important;
-    max-width: none !important;
-  }
 }
 
 </style>
@@ -201,6 +193,4 @@ def card_heos() -> None:
             "</div>"
         )
 
-    g0, t_prev, t_play, t_next, g1 = st.columns([2, 1, 1, 1, 2])
-    with t_play:
-        st.markdown(f"<div class='heos-np heos-np-span'>{html}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='heos-np'>{html}</div>", unsafe_allow_html=True)

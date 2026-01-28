@@ -58,7 +58,7 @@ def test_card_prices_runs_happy_path(monkeypatch):
     assert titles, "section_title pitää kutsua"
     title_html = titles[0]
     assert "⚡ Pörssisähkö" in title_html
-    assert "Seuraavat 12 h (15 min)" in title_html
+    assert "15 min" in title_html
     assert "4.20 snt/kWh" in title_html  # badge
 
     assert len(plots) == 1

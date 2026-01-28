@@ -24,6 +24,10 @@ class EqeStatus:
     range_km: float | None
     range_unit: str | None
     charging_state: str | None
+    lock_state: str | None
+    preclimate_state: str | None
+    charging_power_kw: float | None
+    charging_power_unit: str | None
     last_changed: datetime | None
 
 
@@ -43,6 +47,9 @@ def _get_secret(name: str) -> str | None:
                 "HA_EQE_SOC_ENTITY": "eqe_soc_entity",
                 "HA_EQE_RANGE_ENTITY": "eqe_range_entity",
                 "HA_EQE_CHARGING_ENTITY": "eqe_charging_entity",
+                "HA_EQE_LOCK_ENTITY": "eqe_lock_entity",
+                "HA_EQE_PRECLIMATE_ENTITY": "eqe_preclimate_entity",
+                "HA_EQE_CHARGING_POWER_ENTITY": "eqe_charging_power_entity",
                 "HA_CACHE_TTL": "cache_ttl",
             }
             mapped = key_map.get(name)
@@ -81,6 +88,9 @@ def _require_config() -> dict[str, str]:
     soc_entity = _get_secret("HA_EQE_SOC_ENTITY")
     range_entity = _get_secret("HA_EQE_RANGE_ENTITY")
     charging_entity = _get_secret("HA_EQE_CHARGING_ENTITY")
+    lock_entity = _get_secret("HA_EQE_LOCK_ENTITY")
+    preclimate_entity = _get_secret("HA_EQE_PRECLIMATE_ENTITY")
+    charging_power_entity = _get_secret("HA_EQE_CHARGING_POWER_ENTITY")
 
     missing = [
         name
@@ -102,6 +112,9 @@ def _require_config() -> dict[str, str]:
         "soc_entity": str(soc_entity),
         "range_entity": str(range_entity),
         "charging_entity": str(charging_entity),
+        "lock_entity": str(lock_entity) if lock_entity else None,
+        "preclimate_entity": str(preclimate_entity) if preclimate_entity else None,
+        "charging_power_entity": str(charging_power_entity) if charging_power_entity else None,
     }
 
 
@@ -157,6 +170,32 @@ def _normalize_charging_state(state: str | None) -> str | None:
     return raw
 
 
+def _normalize_lock_state(state: str | None) -> str | None:
+    if not state:
+        return None
+    if state in ("unknown", "unavailable"):
+        return None
+    raw = state.strip()
+    lower = raw.lower()
+    if lower in ("locked", "lock", "on", "true", "closed"):
+        return "Lukossa"
+    if lower in ("unlocked", "unlock", "off", "false", "open"):
+        return "Auki"
+    return raw
+
+
+def _normalize_preclimate_state(state: str | None) -> str:
+    if not state or state in ("unknown", "unavailable"):
+        return "Käynnistä"
+    raw = state.strip()
+    lower = raw.lower()
+    if lower in ("on", "active", "running", "true"):
+        return "Käynnissä"
+    if lower in ("off", "idle", "false"):
+        return "Käynnistä"
+    return raw
+
+
 @st.cache_data(ttl=_ha_cache_ttl())
 def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
     cfg = _require_config()
@@ -167,6 +206,21 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
         charging_state = _fetch_state(
             cfg["base_url"], cfg["token"], cfg["charging_entity"], session
         )
+        lock_state = (
+            _fetch_state(cfg["base_url"], cfg["token"], cfg["lock_entity"], session)
+            if cfg.get("lock_entity")
+            else {}
+        )
+        preclimate_state = (
+            _fetch_state(cfg["base_url"], cfg["token"], cfg["preclimate_entity"], session)
+            if cfg.get("preclimate_entity")
+            else {}
+        )
+        charging_power_state = (
+            _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_power_entity"], session)
+            if cfg.get("charging_power_entity")
+            else {}
+        )
     except Exception as e:
         report_error("home_assistant_eqe: fetch", e)
         raise
@@ -176,11 +230,20 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
     soc_unit = (soc_state.get("attributes") or {}).get("unit_of_measurement")
     range_unit = (range_state.get("attributes") or {}).get("unit_of_measurement")
     charging_val = _normalize_charging_state(charging_state.get("state"))
+    lock_val = _normalize_lock_state(lock_state.get("state"))
+    preclimate_val = _normalize_preclimate_state(preclimate_state.get("state"))
+    charging_power_val = _parse_float(charging_power_state.get("state"))
+    charging_power_unit = (charging_power_state.get("attributes") or {}).get("unit_of_measurement")
 
     timestamps = [
         _parse_ts(soc_state.get("last_changed") or soc_state.get("last_updated")),
         _parse_ts(range_state.get("last_changed") or range_state.get("last_updated")),
         _parse_ts(charging_state.get("last_changed") or charging_state.get("last_updated")),
+        _parse_ts(lock_state.get("last_changed") or lock_state.get("last_updated")),
+        _parse_ts(preclimate_state.get("last_changed") or preclimate_state.get("last_updated")),
+        _parse_ts(
+            charging_power_state.get("last_changed") or charging_power_state.get("last_updated")
+        ),
     ]
     last_changed = max((ts for ts in timestamps if ts), default=None)
 
@@ -190,5 +253,9 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
         range_km=range_val,
         range_unit=str(range_unit) if range_unit else None,
         charging_state=charging_val,
+        lock_state=lock_val,
+        preclimate_state=preclimate_val,
+        charging_power_kw=charging_power_val,
+        charging_power_unit=str(charging_power_unit) if charging_power_unit else None,
         last_changed=last_changed,
     )

@@ -45,7 +45,7 @@ def _render_door_card(row: DoorRow) -> None:
 
     st.markdown(
         f"""
-        <div class="card" style="background:{bg}; margin-top:4px;">
+        <div class="card" style="background:{bg}; margin-top:8px;">
           <div class="card-title">{icon} {title}</div>
           <div class="card-body">
             <p>{status}</p>
@@ -96,19 +96,20 @@ def card_hue_doors() -> None:
     # Hue Secure / v2 health chip
     if bridge_ok:
         st.markdown(
-            '<div class="chip green" style="margin-bottom:10px;">Hue Secure: OK</div>',
+            '<div class="chip green" style="margin-bottom:14px;">Hue Secure: OK</div>',
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
             f"""
-            <div class="chip red" style="margin-bottom:10px;">Hue Secure: OFFLINE</div>
+            <div class="chip red" style="margin-bottom:14px;">Hue Secure: OFFLINE</div>
             <p style="margin-top:-6px;"><small>{html.escape(error_text)}</small></p>
             """,
             unsafe_allow_html=True,
         )
 
-    # (rowgap ei ole tässä välissä tarpeen, koska chipillä on nyt oma spacing)
+    # Lisää tilaa statuschipin ja ovikorttien väliin
+    st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
 
     # Oletus: kolme ovea → kolme kolumnia; zip leikkaa ylimääräiset pois jos rivejä vähemmän
     col1, col2, col3 = st.columns(3, gap="small")

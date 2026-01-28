@@ -147,6 +147,9 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
   height:210px;
   background-size:cover;
   background-position:center;
+  background-origin:border-box;
+  background-clip:padding-box;
+  overflow:hidden;
 }
 .eqe-card .card-body{
   color:#f5f7fa;

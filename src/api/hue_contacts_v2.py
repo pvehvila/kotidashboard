@@ -1,6 +1,7 @@
 # src/api/hue_contacts_v2.py
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -26,14 +27,40 @@ class HueContactSensor:
     last_changed: datetime | None
 
 
+_UNSET = object()
+HUE_BRIDGE_HOST: str | None | object = _UNSET
+HUE_V2_APP_KEY: str | None | object = _UNSET
+
+
+def _resolve_v2_config() -> tuple[str, str]:
+    host = HUE_BRIDGE_HOST
+    key = HUE_V2_APP_KEY
+
+    if host is _UNSET:
+        host = os.getenv("HUE_BRIDGE_HOST")
+    if key is _UNSET:
+        key = os.getenv("HUE_V2_APP_KEY")
+
+    if host is _UNSET or key is _UNSET:
+        try:
+            hue = st.secrets["hue"]
+            if host is _UNSET:
+                host = str(hue["bridge_host"]).strip()
+            if key is _UNSET:
+                key = str(hue["v2_app_key"]).strip().strip('"').strip("'")
+        except Exception:
+            pass
+
+    if not host or not key:
+        raise HueV2ConfigError(
+            "Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / v2_app_key"
+        )
+
+    return host, key
+
+
 def _hue_v2_get(path: str) -> dict:
-    hue = st.secrets["hue"]
-    bridge_host = str(hue["bridge_host"]).strip()
-    app_key = str(hue["v2_app_key"]).strip().strip('"').strip("'")
-
-    if not bridge_host or not app_key:
-        raise RuntimeError("Hue-konfiguraatio puuttuu secrets.toml: [hue] bridge_host / v2_app_key")
-
+    bridge_host, app_key = _resolve_v2_config()
     url = f"https://{bridge_host}{path}"
     headers = {"hue-application-key": app_key}
     resp = requests.get(url, headers=headers, timeout=5, verify=False)  # nosec B501
@@ -43,20 +70,11 @@ def _hue_v2_get(path: str) -> dict:
 
 def _hue_cfg() -> tuple[str, str]:
     try:
-        hue = st.secrets["hue"]
-        host = str(hue["bridge_host"]).strip()
-        key = str(hue["v2_app_key"]).strip().strip('"').strip("'")
-        if not host or not key:
-            raise KeyError
-        return host, key
+        return _resolve_v2_config()
     except Exception as err:
-        raise RuntimeError(
+        raise HueV2ConfigError(
             "Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / v2_app_key"
         ) from err
-
-
-# ... ennen kuin rakennat URL:n / headerit:
-bridge_host, app_key = _hue_cfg()
 
 
 def _parse_iso8601(ts: str | None) -> datetime | None:
