@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -130,6 +131,12 @@ def _parse_float(value: Any) -> float | None:
         try:
             return float(text.replace(",", "."))
         except ValueError:
+            match = re.search(r"[-+]?\d+(?:[.,]\d+)?", text)
+            if match:
+                try:
+                    return float(match.group(0).replace(",", "."))
+                except ValueError:
+                    return None
             return None
     return None
 
