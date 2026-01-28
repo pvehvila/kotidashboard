@@ -71,7 +71,6 @@ def card_eqe() -> None:
             <div class="eqe-value"><span class="{chip_class}">{html.escape(chip_text)}</span></div>
           </div>
         </div>
-        <div class="hint" style="margin-top:6px;">Päivitetty: {html.escape(updated)}</div>
         """
         st.markdown(
             f"""
@@ -79,6 +78,10 @@ def card_eqe() -> None:
               <div class="card-body">{body}</div>
             </section>
             """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<div class='hint' style='margin-top:4px;'>Päivitetty: {html.escape(updated)}</div>",
             unsafe_allow_html=True,
         )
 

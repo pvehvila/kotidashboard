@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -9,7 +11,6 @@ import streamlit as st
 
 from src.config import CACHE_TTL_SHORT, HTTP_TIMEOUT_S, TZ
 from src.utils import report_error
-from collections.abc import Mapping
 
 
 class HAConfigError(RuntimeError):
@@ -74,7 +75,7 @@ def _require_config() -> dict[str, str]:
     base_url = _get_secret("HA_BASE_URL")
     token = _get_secret("HA_TOKEN")
     if not token:
-    	raise RuntimeError("Home Assistant token puuttuu secrets.toml-tiedostosta")
+        raise RuntimeError("Home Assistant token puuttuu secrets.toml-tiedostosta")
     token = token.strip().strip('"').strip("'")
 
     soc_entity = _get_secret("HA_EQE_SOC_ENTITY")

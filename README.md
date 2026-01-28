@@ -77,6 +77,14 @@ Jos nämä puuttuvat, nimipäiväkortti näyttää vain päivämäärän.
 git clone https://github.com/<oma-kayttaja>/kotidashboard.git
 cd kotidashboard
 
+# Suositeltu tapa: käyttää projektin päivitysskriptiä (luo .venv automaattisesti)
+.\scripts\Update-Dependencies.ps1
+
+```
+
+Vaihtoehtoisesti manuaalisesti:
+
+```powershell
 py -m venv .venv
 .\.venv\Scripts\activate
 

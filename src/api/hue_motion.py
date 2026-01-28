@@ -1,11 +1,11 @@
 # src/api/hue_motion.py
 from __future__ import annotations
 
-import streamlit as st
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import requests
+import streamlit as st
 
 HUE_DEFAULT_TIMEOUT = 5
 
@@ -62,7 +62,6 @@ def fetch_hue_door_sensors(
         raise RuntimeError(
             "Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / bridge_user"
         )
-
 
     url = f"http://{bridge_host}/api/{user}/sensors"
     sess = session or requests

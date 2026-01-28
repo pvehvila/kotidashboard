@@ -1,12 +1,12 @@
 # src/api/hue_contacts_v2.py
 from __future__ import annotations
 
-import streamlit as st
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 import requests
+import streamlit as st
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -36,7 +36,7 @@ def _hue_v2_get(path: str) -> dict:
 
     url = f"https://{bridge_host}{path}"
     headers = {"hue-application-key": app_key}
-    resp = requests.get(url, headers=headers, timeout=5, verify=False)
+    resp = requests.get(url, headers=headers, timeout=5, verify=False)  # nosec B501
     resp.raise_for_status()
     return resp.json()
 
@@ -49,8 +49,11 @@ def _hue_cfg() -> tuple[str, str]:
         if not host or not key:
             raise KeyError
         return host, key
-    except Exception:
-        raise RuntimeError("Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / v2_app_key")
+    except Exception as err:
+        raise RuntimeError(
+            "Hue-konfiguraatio puuttuu secrets.toml-tiedostosta: [hue] bridge_host / v2_app_key"
+        ) from err
+
 
 # ... ennen kuin rakennat URL:n / headerit:
 bridge_host, app_key = _hue_cfg()

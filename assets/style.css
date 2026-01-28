@@ -150,6 +150,9 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
 }
 .eqe-card .card-body{
   color:#f5f7fa;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
 }
 .eqe-grid{
   display:grid;
@@ -157,7 +160,7 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
   gap:10px;
 }
 .eqe-item{
-  background:var(--panel-2);
+  background:rgba(0,0,0,0.45);
   border-radius:12px;
   padding:8px 6px;
   text-align:center;

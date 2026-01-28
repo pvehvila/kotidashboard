@@ -76,6 +76,14 @@ If these files are missing, the nameday card will display only the date.
 git clone https://github.com/<your-username>/kotidashboard.git
 cd kotidashboard
 
+# Recommended: use the update script (creates .venv automatically)
+.\scripts\Update-Dependencies.ps1
+
+```
+
+Alternatively, manual setup:
+
+```powershell
 py -m venv .venv
 .\.venv\Scripts\activate
 

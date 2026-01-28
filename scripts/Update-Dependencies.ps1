@@ -1,22 +1,34 @@
 # --- Update-Dependencies.ps1 ---
 
-Write-Host "Updating pip..."
-python -m pip install --upgrade pip
+$ErrorActionPreference = "Stop"
 
-# Selvitetään projektin juurikansio (yksi taso ylöspäin tästä skriptistä)
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Write-Host "Ensuring virtual environment..."
+$ProjectRoot  = Split-Path -Parent $PSScriptRoot
+$VenvDir      = Join-Path $ProjectRoot ".venv"
+$VenvPython   = Join-Path $VenvDir "Scripts\python.exe"
+
+if (!(Test-Path $VenvPython)) {
+    Write-Host "Creating .venv..."
+    python -m venv $VenvDir
+    if ($LASTEXITCODE -ne 0) { throw "venv creation failed (exit $LASTEXITCODE)" }
+}
+
+Write-Host "Updating pip..."
+& $VenvPython -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed (exit $LASTEXITCODE)" }
+
 $Requirements = Join-Path $ProjectRoot "requirements.txt"
 
 Write-Host "Installing/updating dependencies..."
-
-if (Test-Path $Requirements) {
-    python -m pip install -r $Requirements
-} else {
-    Write-Host "ERROR: requirements.txt not found at $Requirements" -ForegroundColor Red
+if (!(Test-Path $Requirements)) {
+    throw "requirements.txt not found at $Requirements"
 }
 
-# Kehitystyökalut
+& $VenvPython -m pip install -r $Requirements
+if ($LASTEXITCODE -ne 0) { throw "pip install -r requirements.txt failed (exit $LASTEXITCODE)" }
+
 Write-Host "Installing development tools..."
-python -m pip install ruff pytest pytest-cov
+& $VenvPython -m pip install ruff pytest pytest-cov bandit
+if ($LASTEXITCODE -ne 0) { throw "pip install dev tools failed (exit $LASTEXITCODE)" }
 
 Write-Host "Dependencies updated successfully!" -ForegroundColor Green
