@@ -1,7 +1,6 @@
 # src/api/hue_motion.py
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -48,21 +47,16 @@ def fetch_hue_door_sensors(
     """Hakee Hue-sensorit ja suodattaa ovikontaktit + liikesensorit.
 
     bridge_host ja user voidaan syöttää parametrina tai lukea
-    ympäristömuuttujista HUE_BRIDGE_HOST ja HUE_BRIDGE_USER.
+    streamlitin secrets.toml-tiedostosta ([hue] bridge_host / bridge_user).
     """
 
     if not bridge_host or not user:
-        bridge_host = bridge_host or os.getenv("HUE_BRIDGE_HOST")
-        user = user or os.getenv("HUE_BRIDGE_USER")
-
-    if not bridge_host or not user:
-        if not os.getenv("PYTEST_CURRENT_TEST"):
-            try:
-                hue = st.secrets["hue"]
-                bridge_host = bridge_host or str(hue["bridge_host"]).strip()
-                user = user or str(hue["bridge_user"]).strip()
-            except Exception:
-                pass
+        try:
+            hue = st.secrets["hue"]
+            bridge_host = bridge_host or str(hue["bridge_host"]).strip()
+            user = user or str(hue["bridge_user"]).strip()
+        except Exception:
+            pass
 
     if not bridge_host or not user:
         raise RuntimeError(

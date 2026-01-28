@@ -71,8 +71,11 @@ def test_fetch_hue_sensors_basic(monkeypatch):
 
     sess = DummySession(raw)
 
-    monkeypatch.setenv("HUE_BRIDGE_HOST", "host")
-    monkeypatch.setenv("HUE_BRIDGE_USER", "user")
+    monkeypatch.setattr(
+        "src.api.hue_motion.st.secrets",
+        {"hue": {"bridge_host": "host", "bridge_user": "user"}},
+        raising=False,
+    )
 
     sensors = fetch_hue_door_sensors(session=sess)
 
@@ -82,8 +85,7 @@ def test_fetch_hue_sensors_basic(monkeypatch):
 
 
 def test_fetch_hue_sensors_missing_env(monkeypatch):
-    monkeypatch.delenv("HUE_BRIDGE_HOST", raising=False)
-    monkeypatch.delenv("HUE_BRIDGE_USER", raising=False)
+    monkeypatch.setattr("src.api.hue_motion.st.secrets", {}, raising=False)
 
     with pytest.raises(RuntimeError):
         fetch_hue_door_sensors(session=DummySession({}))
@@ -103,8 +105,11 @@ def test_fetch_hue_sensors_http_error(monkeypatch):
         def get(self, *args, **kwargs):  # type: ignore[override]
             return BadResp()
 
-    monkeypatch.setenv("HUE_BRIDGE_HOST", "host")
-    monkeypatch.setenv("HUE_BRIDGE_USER", "user")
+    monkeypatch.setattr(
+        "src.api.hue_motion.st.secrets",
+        {"hue": {"bridge_host": "host", "bridge_user": "user"}},
+        raising=False,
+    )
 
     with pytest.raises(RuntimeError):
         fetch_hue_door_sensors(session=BadSession())

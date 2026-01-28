@@ -28,8 +28,7 @@ class DummyResp:
 
 def test_require_v2_config_missing(monkeypatch):
     # patchataan moduulin globaalit, ei ympäristömuuttujia
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_BRIDGE_HOST", None)
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_V2_APP_KEY", None)
+    monkeypatch.setattr("src.api.hue_contacts_v2.st.secrets", {}, raising=False)
 
     with pytest.raises(HueV2ConfigError):
         _hue_v2_get("/clip/v2/resource/device")
@@ -45,8 +44,11 @@ def test_hue_v2_get_builds_url_and_headers(monkeypatch):
         called["verify"] = verify
         return DummyResp({"data": []})
 
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_BRIDGE_HOST", "bridge")
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_V2_APP_KEY", "app-key")
+    monkeypatch.setattr(
+        "src.api.hue_contacts_v2.st.secrets",
+        {"hue": {"bridge_host": "bridge", "v2_app_key": "app-key"}},
+        raising=False,
+    )
     monkeypatch.setattr("src.api.hue_contacts_v2.requests.get", fake_get)
 
     data = _hue_v2_get("/clip/v2/resource/device")
@@ -117,8 +119,11 @@ def test_fetch_hue_contact_sensors_basic(monkeypatch):
 
     monkeypatch.setattr("src.api.hue_contacts_v2._hue_v2_get", fake_v2_get)
     # varmista, että konfiguraatio näyttää olevan kunnossa
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_BRIDGE_HOST", "bridge")
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_V2_APP_KEY", "key")
+    monkeypatch.setattr(
+        "src.api.hue_contacts_v2.st.secrets",
+        {"hue": {"bridge_host": "bridge", "v2_app_key": "key"}},
+        raising=False,
+    )
 
     sensors = fetch_hue_contact_sensors()
     assert len(sensors) == 1
@@ -159,8 +164,11 @@ def test_fetch_hue_contact_sensors_unknown_state(monkeypatch):
         raise AssertionError
 
     monkeypatch.setattr("src.api.hue_contacts_v2._hue_v2_get", fake_v2_get)
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_BRIDGE_HOST", "bridge")
-    monkeypatch.setattr("src.api.hue_contacts_v2.HUE_V2_APP_KEY", "key")
+    monkeypatch.setattr(
+        "src.api.hue_contacts_v2.st.secrets",
+        {"hue": {"bridge_host": "bridge", "v2_app_key": "key"}},
+        raising=False,
+    )
 
     sensors = fetch_hue_contact_sensors()
     assert len(sensors) == 1
