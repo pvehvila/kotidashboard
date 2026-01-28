@@ -14,7 +14,7 @@ def load_css(file_name: str) -> None:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
-def section_title(html: str, mt: int = 10, mb: int = 4) -> None:
+def section_title(html: str, mt: int = 10, mb: int = 10) -> None:
     """Render a section title with customizable margins.
 
     Args:
@@ -22,7 +22,10 @@ def section_title(html: str, mt: int = 10, mb: int = 4) -> None:
         mt: Top margin in pixels (default: 10).
         mb: Bottom margin in pixels (default: 4).
     """
-    st.markdown(f"<div style='margin:{mt}px 0 {mb}px 0'>{html}</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='section-title' style='margin:{mt}px 0 {mb}px 0'>{html}</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def card(title: str, body_html: str, height_dvh: int = 16) -> None:

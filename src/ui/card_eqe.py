@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+import base64
 import html
 
 import streamlit as st
 
 from src.api.home_assistant import HAConfigError, fetch_eqe_status
+from src.paths import asset_path
 from src.ui.common import section_title
+
+
+def _get_eqe_background() -> str:
+    """Palauttaa EQE-taustakuvan data-URLina, jos löytyy assets-hakemistosta."""
+    name = "mercedes-benz-eqe-2023_00_original.jpg"
+    p = asset_path(name)
+    if not p.exists():
+        return ""
+    b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
 
 
 def _fmt_value(value: float | None, unit: str | None, digits: int = 0) -> str:
@@ -40,6 +52,10 @@ def card_eqe() -> None:
         chip_class, chip_text = _charging_chip(vm.charging_state)
         updated = vm.last_changed.strftime("%H:%M") if vm.last_changed else "—"
 
+        bg = _get_eqe_background()
+        overlay = "linear-gradient(90deg, rgba(11,15,20,0.70) 0%, rgba(11,15,20,0.10) 72%)"
+        bg_layer = f"{overlay}, url('{bg}')" if bg else overlay
+
         body = f"""
         <div class="eqe-grid">
           <div class="eqe-item">
@@ -59,7 +75,7 @@ def card_eqe() -> None:
         """
         st.markdown(
             f"""
-            <section class="card" style="min-height:14dvh;">
+            <section class="card eqe-card" style="background-image:{bg_layer}; background-size:cover; background-position:center;">
               <div class="card-body">{body}</div>
             </section>
             """,

@@ -57,7 +57,7 @@ def card_prices() -> None:
 
         title_html = (
             "⚡ Pörssisähkö " + "<span style='background:{0}; color:{1}; padding:2px 10px; "
-            "border-radius:999px; font-weight:600; font-size:0.95rem'>Seuraavat 12 h (15 min)</span>"
+            "border-radius:999px; font-weight:600; font-size:0.95rem'>15 min</span>"
         ).format(COLOR_GRAY, COLOR_TEXT_GRAY)
 
         if current_cents is not None:
@@ -124,7 +124,6 @@ def card_prices() -> None:
               <span style='color:#00b400;'>&#9632;</span> ≤ 5 snt &nbsp;
               <span style='color:#cccc00;'>&#9632;</span> 5–15 snt &nbsp;
               <span style='color:#dc0000;'>&#9632;</span> ≥ 15 snt &nbsp;
-              (vihreä = halpa, punainen = kallis)
             </div>
             """,
             unsafe_allow_html=True,

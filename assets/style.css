@@ -47,6 +47,9 @@ html body div:has(> #root) [data-testid="stAppViewContainer"]{
 /* =========================================================
    Cards
    ========================================================= */
+.section-title{
+  padding-bottom:8px;
+}
 .card{
   background:var(--panel);
   border:1px solid var(--panel-border);
@@ -58,7 +61,7 @@ html body div:has(> #root) [data-testid="stAppViewContainer"]{
   overflow:hidden !important;
 }
 .card-title{
-  margin:13px 0 6px 0 !important;
+  margin:13px 0 16px 0 !important;
   padding:0 !important;
   font-weight:700;
   font-size:.9rem !important;
@@ -140,6 +143,14 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
 /* =========================================================
    Mercedes EQE
    ========================================================= */
+.eqe-card{
+  height:210px;
+  background-size:cover;
+  background-position:center;
+}
+.eqe-card .card-body{
+  color:#f5f7fa;
+}
 .eqe-grid{
   display:grid;
   grid-template-columns:repeat(3, minmax(0,1fr));
