@@ -33,6 +33,7 @@ secrets.toml
 *.log
 *.tmp
 *.cache
+.coverage
 .cache/
 logs/
 nohup.out
@@ -57,3 +58,6 @@ desktop.ini
 *.ps1~
 *.bat~
 *.bak
+
+# --- App data ---
+data/btc_ath_cache.json
