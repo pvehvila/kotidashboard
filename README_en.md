@@ -70,6 +70,20 @@ If these files are missing, the nameday card will display only the date.
 
 ---
 
+## 🏠 Home Assistant Settings
+
+The EQE climate control toggle requires the entity to be set. Add it to Streamlit secrets:
+
+```toml
+# .streamlit/secrets.toml
+[home_assistant]
+eqe_preclimate_entity = "switch.eqe_pre_entry_climate_control"
+```
+
+Note: you still need the standard Home Assistant settings (base_url, token, other EQE entities) as before.
+
+---
+
 ## 🪟 Installation (Windows)
 
 ```powershell

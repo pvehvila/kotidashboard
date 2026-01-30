@@ -71,6 +71,20 @@ Jos nämä puuttuvat, nimipäiväkortti näyttää vain päivämäärän.
 
 ---
 
+## 🏠 Home Assistant -asetukset
+
+EQE-kortin ilmastoinnin ohjaus vaatii entiteetin määrittelyn. Lisää se Streamlitin secrets-tiedostoon:
+
+```toml
+# .streamlit/secrets.toml
+[home_assistant]
+eqe_preclimate_entity = "switch.eqe_pre_entry_climate_control"
+```
+
+Huom: lisäksi tarvitaan Home Assistantin perusasetukset (base_url, token, muut EQE-entiteetit), kuten aiemmin.
+
+---
+
 ## 🪟 Asennus (Windows)
 
 ```powershell

@@ -163,6 +163,39 @@ def _fetch_state(
     return data if isinstance(data, dict) else {}
 
 
+def _call_service(
+    base_url: str,
+    token: str,
+    domain: str,
+    service: str,
+    data: dict[str, Any],
+    session: requests.Session | None = None,
+) -> Any:
+    url = f"{base_url}/api/services/{domain}/{service}"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    sess = session or requests
+    resp = sess.post(url, headers=headers, json=data, timeout=HTTP_TIMEOUT_S)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def set_eqe_preclimate(enabled: bool, session: requests.Session | None = None) -> Any:
+    cfg = _require_config()
+    entity_id = cfg.get("preclimate_entity")
+    if not entity_id:
+        raise HAConfigError("HA_EQE_PRECLIMATE_ENTITY puuttuu")
+    domain = entity_id.split(".", 1)[0] if "." in entity_id else "homeassistant"
+    service = "turn_on" if enabled else "turn_off"
+    return _call_service(
+        cfg["base_url"],
+        cfg["token"],
+        domain,
+        service,
+        {"entity_id": entity_id},
+        session,
+    )
+
+
 def _normalize_charging_state(state: str | None) -> str | None:
     if not state:
         return None
@@ -183,6 +216,11 @@ def _normalize_lock_state(state: str | None) -> str | None:
     if state in ("unknown", "unavailable"):
         return None
     raw = state.strip()
+    if raw.isdigit():
+        if raw == "2":
+            return "Lukossa"
+        if raw == "0":
+            return "Auki"
     lower = raw.lower()
     if lower in ("locked", "lock", "on", "true", "closed"):
         return "Lukossa"

@@ -104,7 +104,8 @@ def render_nameday_card(vm: dict) -> None:
     html.append(
         f'<section class="card card-top-equal" '
         f'style="height:180px; position:relative; overflow:hidden; '
-        f'background-image:{bg_layer}; background-size:cover; background-position:center;">'
+        f"background-image:{bg_layer}; background-size:cover; "
+        f'background-position:center; background-repeat:no-repeat;">'
     )
     html.append(
         '<div class="card-body" '

@@ -150,12 +150,22 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
   background-origin:border-box;
   background-clip:padding-box;
   overflow:hidden;
+  position:relative;
+}
+.eqe-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,0.35);
+  pointer-events:none;
 }
 .eqe-card .card-body{
   color:#f5f7fa;
   display:flex;
   flex-direction:column;
   justify-content:center;
+  position:relative;
+  z-index:1;
 }
 .eqe-grid{
   display:grid;
@@ -171,6 +181,25 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
 .eqe-label{ font-size:.82rem; opacity:.75; margin-bottom:2px; }
 .eqe-value{ font-size:1.2rem; font-weight:700; }
 .eqe-unit{ font-size:.85rem; opacity:.8; margin-left:3px; }
+.eqe-switch{
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  font: inherit;
+  line-height:1;
+  border:0;
+  padding:0;
+  background:transparent;
+}
+.eqe-switch:hover{ filter:brightness(1.08); }
+.eqe-switch .chip{ font-size:.92rem; }
+.eqe-switch:focus-visible{
+  outline:2px solid rgba(255,255,255,0.35);
+  outline-offset:2px;
+  border-radius:999px;
+}
 
 /* =========================================================
    Responsiivisuus
