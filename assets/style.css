@@ -137,6 +137,14 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
 .chip.yellow{ background:#332b10; color:#ffe08a; border:1px solid #8a6d1f; }
 .chip.orange{ background:#331d10; color:#ffc19a; border:1px solid #8a3f1f; }
 .chip.red{    background:#331012; color:#ff9aa7; border:1px solid #8a1f2b; }
+.chip.blue{   background:#0f2433; color:#9ad7ff; border:1px solid #1f5a8a; }
+.chip.pulse{ animation:chip-pulse 1.6s ease-in-out infinite; }
+
+@keyframes chip-pulse{
+  0%{ box-shadow:0 0 0 0 rgba(255,224,138,0.35); }
+  70%{ box-shadow:0 0 0 10px rgba(255,224,138,0); }
+  100%{ box-shadow:0 0 0 0 rgba(255,224,138,0); }
+}
 
 .rowgap{ height:.5dvh; }
 
