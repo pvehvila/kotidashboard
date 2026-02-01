@@ -11,6 +11,7 @@ HTTP_TIMEOUT_S: float = 8.0
 CACHE_TTL_SHORT: int = 60
 CACHE_TTL_MED: int = 300
 CACHE_TTL_LONG: int = 3600
+COINGECKO_BACKOFF_S: int = 600
 
 DEV: bool = os.environ.get("DEV", "0") == "1"
 

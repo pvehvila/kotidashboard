@@ -4,7 +4,7 @@ from datetime import datetime
 import requests
 import streamlit as st
 
-from src.api.http_client import http_get_json
+from src.api.http_client import RateLimitBackoff, http_get_json
 from src.config import (
     ATH_CACHE_FILE,
     BTC_PRICE_CACHE_FILE,
@@ -32,13 +32,18 @@ def _calc_change_pct_from_series(series: list[tuple[datetime, float]]) -> float 
 
 
 @st.cache_data(ttl=CACHE_TTL_SHORT)
-def fetch_btc_eur() -> dict[str, float | None]:
+def _fetch_simple_prices_eur() -> dict:
     url = (
         "https://api.coingecko.com/api/v3/simple/price"
-        "?ids=bitcoin&vs_currencies=eur&include_24hr_change=true"
+        "?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true"
     )
+    return http_get_json(url)
+
+
+@st.cache_data(ttl=CACHE_TTL_SHORT)
+def fetch_btc_eur() -> dict[str, float | None]:
     try:
-        data = http_get_json(url)
+        data = _fetch_simple_prices_eur()
         btc = data.get("bitcoin", {})
         price = btc.get("eur")
         change = btc.get("eur_24h_change")
@@ -73,12 +78,8 @@ def fetch_btc_eur() -> dict[str, float | None]:
 
 @st.cache_data(ttl=CACHE_TTL_SHORT)
 def fetch_eth_eur() -> dict[str, float | None]:
-    url = (
-        "https://api.coingecko.com/api/v3/simple/price"
-        "?ids=ethereum&vs_currencies=eur&include_24hr_change=true"
-    )
     try:
-        data = http_get_json(url)
+        data = _fetch_simple_prices_eur()
         eth = data.get("ethereum", {})
         price = eth.get("eur")
         change = eth.get("eur_24h_change")
@@ -244,7 +245,8 @@ def _btc_market_chart(
         if prices_ms:
             return _to_dashboard_from_ms(prices_ms, days)
     except Exception as e:
-        report_error(f"{label}: market_chart coingecko", e)
+        if not isinstance(e, RateLimitBackoff):
+            report_error(f"{label}: market_chart coingecko", e)
 
     # ---- 2) CryptoCompare fallback
     try:
