@@ -16,6 +16,9 @@ DEV: bool = os.environ.get("DEV", "0") == "1"
 
 # ==== TÄRKEÄ: kaikki nämä osoittaa nyt data/ -kansioon ====
 ATH_CACHE_FILE = data_path("btc_ath_cache.json")
+ETH_ATH_CACHE_FILE = data_path("eth_ath_cache.json")
+BTC_PRICE_CACHE_FILE = data_path("btc_price_cache.json")
+ETH_PRICE_CACHE_FILE = data_path("eth_price_cache.json")
 NAMEDAY_FILE = data_path("nimipaivat_fi.json")
 HOLIDAY_FILE = data_path("pyhat_fi.json")
 
@@ -97,7 +100,7 @@ PLOTLY_CONFIG: dict = {
 
 # ------------------- BITCOIN CHART SETTINGS -------------------
 
-BTC_Y_STEP_EUR: int = 2000
+BTC_Y_STEP_EUR: int = 5000
 """Y-axis step size for Bitcoin price chart (EUR)."""
 
 BTC_Y_PAD_EUR: int = 300

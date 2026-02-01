@@ -17,6 +17,15 @@ from .bitcoin import (
 from .bitcoin import (
     fetch_btc_last_30d_eur as fetch_btc_last_30d_eur,
 )
+from .bitcoin import (
+    fetch_eth_ath_eur as fetch_eth_ath_eur,
+)
+from .bitcoin import (
+    fetch_eth_eur as fetch_eth_eur,
+)
+from .bitcoin import (
+    fetch_eth_eur_range as fetch_eth_eur_range,
+)
 from .calendar import fetch_holiday_today as fetch_holiday_today
 from .calendar import fetch_nameday_today as fetch_nameday_today
 from .electricity import try_fetch_prices as try_fetch_prices

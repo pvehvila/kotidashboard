@@ -19,8 +19,6 @@ from src.config import (
     BTC_Y_STEP_EUR,
     BTC_Y_USE_PCT_PAD,
     COLOR_GRAY,
-    COLOR_GREEN,
-    COLOR_RED,
     COLOR_TEXT_GRAY,
     TZ,
 )
@@ -31,7 +29,7 @@ from src.config import (
 
 
 def _try_fetch_series_for_window(window: str) -> list[tuple[datetime, float]] | None:
-    """Hae BTC-sarja pyydetylle ikkunalle (24h, 7d, 30d)."""
+    """Hae BTC-sarja pyydetylle ikkunalle (24h, 7d, 30d, 1y)."""
     if window == "24h":
         s = fetch_btc_last_24h_eur()
         if not s:
@@ -49,6 +47,9 @@ def _try_fetch_series_for_window(window: str) -> list[tuple[datetime, float]] | 
         if not s:
             s = fetch_btc_eur_range(days=30)
         return s
+
+    if window == "1y":
+        return fetch_btc_eur_range(days=365)
 
     return None
 
@@ -83,10 +84,15 @@ def get_btc_series_for_window(window: str) -> tuple[list[tuple[datetime, float]]
     """
     Palauttaa (sarja, degraded).
     Sarja on aina aikajärjestyksessä.
-    degraded = True jos jouduttiin käyttämään kapeampaa ikkunaa
-    kuin mitä käyttäjä pyysi (esim. 30d → 7d).
+    degraded on varattu mahdollisille future-fallbackeille.
     """
     now = datetime.now(TZ)
+
+    if window == "1y":
+        s = _try_fetch_series_for_window("1y")
+        if s:
+            return s, False
+        raise ValueError("BTC-historiasarjaa ei saatu (1 v).")
 
     # 24 h: ensin suoraan 24h-lähteet, sitten 7d->24h downsample
     if window == "24h":
@@ -120,7 +126,7 @@ def get_btc_series_for_window(window: str) -> tuple[list[tuple[datetime, float]]
 
 
 # ------------------------------------------------------------
-#  UI-palaset (otsikko, footer)
+#  UI-palaset (otsikko)
 # ------------------------------------------------------------
 
 
@@ -138,10 +144,32 @@ def build_window_pill(active: str, opt_code: str, label: str) -> str:
 
 
 def build_title_html(
-    eur_now: float,
-    change_24h: float | None,
-    window: str,
+    eur_now: float | None = None,
+    change_24h: float | None = None,
+    window: str | None = None,
 ) -> str:
+    # Uusi "Kryptot" -otsikko (kun parametreja ei annettu)
+    if eur_now is None and change_24h is None and (window is None or window == "1y"):
+        window_label = "Viimeiset 12 kk"
+        title_html = (
+            "Kryptot"
+            " <span style='margin-left:8px; font-size:0.9rem;'>"
+            "ATH: <span style='color:#4ade80; font-weight:700;'>- - -</span>"
+            " &nbsp;|&nbsp; "
+            "<span style='color:#f7931a; font-weight:700;'>BTC</span>"
+            " · "
+            "<span style='color:#8ab4f8; font-weight:700;'>ETH</span>"
+            "</span>"
+        )
+        title_html += (
+            f" <span style='background:{COLOR_GRAY}; color:{COLOR_TEXT_GRAY}; padding:2px 10px; "
+            "border-radius:999px; font-weight:600; font-size:0.95rem'>"
+            f"{window_label}</span>"
+        )
+        return title_html
+
+    # Legacy-otsikko (24h/7d/30d)
+    window = window or "7d"
     window_label = {
         "24h": "Viimeiset 24 h",
         "7d": "Viimeiset 7 päivää",
@@ -155,9 +183,9 @@ def build_title_html(
         + build_window_pill(window, "30d", "30 d")
     )
 
-    if change_24h is not None:
+    if eur_now is not None and change_24h is not None:
         is_up = change_24h >= 0
-        badge_bg = COLOR_GREEN if is_up else COLOR_RED
+        badge_bg = "#5cd65c" if is_up else "#ff6666"
         sign = "+" if is_up else ""
         change_fmt = f"{sign}{change_24h:.2f}%"
         badge_text = f"{eur_now:,.0f}".replace(",", " ") + f" € {change_fmt} (24 h)"
@@ -226,6 +254,24 @@ def _y_axis_range(
     return y_min, y_max, step
 
 
+def _format_eur_tick(value: float) -> str:
+    rounded = int(round(value / 200.0) * 200)
+    return f"{rounded:,.0f}".replace(",", " ") + " €"
+
+
+def _build_tick_vals(y_min: float, y_max: float, step: float) -> list[float]:
+    if step <= 0:
+        return []
+    vals: list[float] = []
+    v = float(y_min)
+    for _ in range(2000):
+        if v > y_max + 1e-6:
+            break
+        vals.append(v)
+        v += step
+    return vals
+
+
 @dataclass
 class BtcFigureVM:
     xs: list[datetime]
@@ -247,6 +293,7 @@ def get_btc_figure_vm(
     window: str,
     ath_eur: float | None,
     ath_date: str | None,
+    extra_ys: Iterable[float] | None = None,
 ) -> BtcFigureVM:
     """Viewmodel: kaikki datamuotoilu yhteen paikkaan."""
     xs = [t for t, _ in series]
@@ -262,17 +309,25 @@ def get_btc_figure_vm(
         hover = "%{x|%d.%m} — %{y:.0f} €"
         dtick = "D2"
         tickformat = "%d.%m"
+    elif window == "1y":
+        name = "BTC/EUR (12 kk)"
+        hover = "%{x|%d.%m.%Y} — %{y:.0f} €"
+        dtick = "M1"
+        tickformat = "%m/%y"
     else:
         name = "BTC/EUR (7 d)"
         hover = "%{x|%d.%m %H:%M} — %{y:.0f} €"
         dtick = "D1"
         tickformat = "%d.%m"
 
-    y_min, y_max, step = _y_axis_range(ys, ath_eur)
+    ys_for_range = list(ys)
+    if extra_ys:
+        ys_for_range.extend(list(extra_ys))
+    y_min, y_max, step = _y_axis_range(ys_for_range, ath_eur)
 
     label_text = None
     if xs and ys:
-        label_text = f"{ys[-1]:,.0f}".replace(",", " ") + " €"
+        label_text = "BTC " + f"{ys[-1]:,.0f}".replace(",", " ") + " €"
 
     return BtcFigureVM(
         xs=xs,
@@ -295,8 +350,16 @@ def build_btc_figure(
     window: str,
     ath_eur: float | None,
     ath_date: str | None,
+    eth_series: list[tuple[datetime, float]] | None = None,
+    eth_scale: float | None = None,
 ) -> go.Figure:
-    vm = get_btc_figure_vm(series, window, ath_eur, ath_date)
+    eth_scaled: list[tuple[datetime, float]] | None = None
+    scale = eth_scale if eth_scale and eth_scale > 0 else None
+    if eth_series and scale:
+        eth_scaled = [(t, v * scale) for t, v in eth_series]
+
+    extra_ys = [v for _, v in eth_scaled] if eth_scaled else None
+    vm = get_btc_figure_vm(series, window, ath_eur, ath_date, extra_ys=extra_ys)
 
     fig = go.Figure()
     fig.add_trace(
@@ -305,9 +368,22 @@ def build_btc_figure(
             y=vm.ys,
             mode="lines",
             name=vm.name,
+            line=dict(color="#f7931a", width=2),
             hovertemplate=vm.hovertemplate + "<extra></extra>",
         )
     )
+    if eth_series:
+        fig.add_trace(
+            go.Scatter(
+                x=[t for t, _ in eth_series],
+                y=[v for _, v in eth_series],
+                mode="lines",
+                name="ETH",
+                yaxis="y2",
+                line=dict(color="#8ab4f8", width=2),
+                hovertemplate="%{x|%d.%m.%Y} — %{y:.0f} €<extra></extra>",
+            )
+        )
 
     # ATH katkoviivana
     if vm.ath_eur:
@@ -319,34 +395,60 @@ def build_btc_figure(
                 y=[vm.ath_eur, vm.ath_eur],
                 mode="lines",
                 name=f"ATH {vm.ath_eur:,.0f} €",
-                line=dict(dash="dot"),
+                line=dict(dash="dot", color="#4ade80", width=2),
                 hovertemplate="ATH — %{y:.0f} € (%{x|%d.%m})<extra></extra>",
             )
         )
 
-    # y-akseli
+    # y-akseli (BTC)
     if vm.y_min is not None and vm.y_max is not None and vm.y_step is not None:
-        fig.update_yaxes(range=[vm.y_min, vm.y_max], tick0=vm.y_min, dtick=vm.y_step)
+        tick_vals = _build_tick_vals(vm.y_min, vm.y_max, vm.y_step)
+        tick_text = [_format_eur_tick(v) for v in tick_vals]
+        fig.update_yaxes(
+            range=[vm.y_min, vm.y_max],
+            tickvals=tick_vals,
+            ticktext=tick_text,
+            title=dict(text="BTC €", font=dict(color="#f7931a")),
+        )
     else:
         fig.update_yaxes(autorange=True)
 
-    # hintalappu oikeaan laitaan
-    if vm.xs and vm.ys and vm.label_text:
-        fig.add_annotation(
-            x=vm.xs[-1],
-            y=vm.ys[-1],
-            xref="x",
-            yref="y",
-            text=vm.label_text,
-            showarrow=False,
-            xanchor="right",
-            align="right",
-            xshift=-12,
-            font=dict(color="#e7eaee", size=12),
+    # y-akseli (ETH oikealla)
+    if eth_series:
+        y2_range = None
+        y2_step = None
+        y2_vals: list[float] | None = None
+        y2_text: list[str] | None = None
+        if vm.y_min is not None and vm.y_max is not None and scale:
+            y2_range = [vm.y_min / scale, vm.y_max / scale]
+            if vm.y_step is not None:
+                y2_step = vm.y_step / scale
+        else:
+            eth_ys = [v for _, v in eth_series]
+            y2_min, y2_max, y2_dtick = _y_axis_range(eth_ys, None)
+            if y2_min is not None and y2_max is not None:
+                y2_range = [y2_min, y2_max]
+                y2_step = y2_dtick
+        if y2_range is not None and y2_step is not None:
+            y2_vals = _build_tick_vals(y2_range[0], y2_range[1], y2_step)
+            y2_text = [_format_eur_tick(v) for v in y2_vals]
+        fig.update_layout(
+            yaxis2=dict(
+                title=dict(text="ETH €", font=dict(color="#8ab4f8")),
+                overlaying="y",
+                side="right",
+                showgrid=False,
+                tickformat="~s",
+                tickfont=dict(size=11, color="#cfd3d8"),
+                range=y2_range,
+                tickvals=y2_vals,
+                ticktext=y2_text,
+                fixedrange=True,
+            )
         )
 
     fig.update_layout(
-        margin=dict(l=64, r=12, t=8, b=32),
+        margin=dict(l=64, r=46, t=8, b=32),
         height=210,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -362,7 +464,7 @@ def build_btc_figure(
             automargin=True,
         ),
         yaxis=dict(
-            title="€",
+            title=dict(text="BTC €", font=dict(color="#f7931a")),
             gridcolor="rgba(255,255,255,0.28)",
             tickfont=dict(size=11, color="#cfd3d8"),
             tickformat="~s",

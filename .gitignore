@@ -61,3 +61,6 @@ desktop.ini
 
 # --- App data ---
 data/btc_ath_cache.json
+data/btc_price_cache.json
+data/eth_ath_cache.json
+data/eth_price_cache.json

@@ -12,7 +12,9 @@ from src.logger_config import setup_logging
 from src.paths import ensure_dirs
 from src.ui import (
     card_bitcoin,
+    card_bitcoin_ticker,
     card_eqe,
+    card_ethereum_ticker,
     card_heos,
     card_hue_doors,
     card_nameday,
@@ -81,8 +83,14 @@ def main() -> None:
         with col2:
             card_prices()
 
-        # Row 5: Bitcoin
-        card_bitcoin()
+        # Row 5: Bitcoin (half-width, plus small ticker card)
+        col1, col2, col3 = st.columns([2, 1, 1], gap="small")
+        with col1:
+            card_bitcoin()
+        with col2:
+            card_bitcoin_ticker()
+        with col3:
+            card_ethereum_ticker()
 
         # Row 6: System status + Tidal player
         col1, col2 = st.columns(2, gap="small")
