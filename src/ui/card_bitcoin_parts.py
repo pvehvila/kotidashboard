@@ -439,7 +439,7 @@ def build_btc_figure(
             y2_text = [_format_eth_tick(v) for v in y2_vals]
         fig.update_layout(
             yaxis2=dict(
-                title=dict(text="ETH €", font=dict(color="#8ab4f8")),
+                title=dict(text="ETH €", font=dict(color="#8ab4f8"), standoff=6),
                 overlaying="y",
                 side="right",
                 showgrid=False,
@@ -449,11 +449,12 @@ def build_btc_figure(
                 tickvals=y2_vals,
                 ticktext=y2_text,
                 fixedrange=True,
+                automargin=False,
             )
         )
 
     fig.update_layout(
-        margin=dict(l=64, r=46, t=8, b=32),
+        margin=dict(l=56, r=56, t=8, b=32),
         height=210,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -469,12 +470,12 @@ def build_btc_figure(
             automargin=True,
         ),
         yaxis=dict(
-            title=dict(text="BTC €", font=dict(color="#f7931a")),
+            title=dict(text="BTC €", font=dict(color="#f7931a"), standoff=6),
             gridcolor="rgba(255,255,255,0.28)",
             tickfont=dict(size=11, color="#cfd3d8"),
             tickformat="~s",
             fixedrange=True,
-            automargin=True,
+            automargin=False,
         ),
         hoverlabel=dict(font_size=11),
     )
