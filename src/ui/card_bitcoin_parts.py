@@ -254,9 +254,14 @@ def _y_axis_range(
     return y_min, y_max, step
 
 
-def _format_eur_tick(value: float) -> str:
-    rounded = int(round(value / 200.0) * 200)
-    return f"{rounded:,.0f}".replace(",", " ") + " €"
+def _format_btc_tick(value: float) -> str:
+    value_k = value / 1000.0
+    return f"{value_k:.0f} k"
+
+
+def _format_eth_tick(value: float) -> str:
+    value_k = value / 1000.0
+    return f"{value_k:.1f}".replace(".", ",") + " k"
 
 
 def _build_tick_vals(y_min: float, y_max: float, step: float) -> list[float]:
@@ -403,7 +408,7 @@ def build_btc_figure(
     # y-akseli (BTC)
     if vm.y_min is not None and vm.y_max is not None and vm.y_step is not None:
         tick_vals = _build_tick_vals(vm.y_min, vm.y_max, vm.y_step)
-        tick_text = [_format_eur_tick(v) for v in tick_vals]
+        tick_text = [_format_btc_tick(v) for v in tick_vals]
         fig.update_yaxes(
             range=[vm.y_min, vm.y_max],
             tickvals=tick_vals,
@@ -431,7 +436,7 @@ def build_btc_figure(
                 y2_step = y2_dtick
         if y2_range is not None and y2_step is not None:
             y2_vals = _build_tick_vals(y2_range[0], y2_range[1], y2_step)
-            y2_text = [_format_eur_tick(v) for v in y2_vals]
+            y2_text = [_format_eth_tick(v) for v in y2_vals]
         fig.update_layout(
             yaxis2=dict(
                 title=dict(text="ETH €", font=dict(color="#8ab4f8")),
