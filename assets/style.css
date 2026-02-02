@@ -195,11 +195,16 @@ div[data-testid="stPlotlyChart"] > div{ margin:0 !important; }
   align-items:center;
   justify-content:center;
   cursor:pointer;
+  user-select:none;
   font: inherit;
   line-height:1;
   border:0;
   padding:0;
   background:transparent;
+}
+.eqe-switch,
+.eqe-switch *{
+  cursor:pointer;
 }
 .eqe-switch:hover{ filter:brightness(1.08); }
 .eqe-switch .chip{ font-size:.92rem; }

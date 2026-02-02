@@ -35,6 +35,7 @@ class EqeStatus:
     preclimate_state: str | None
     charging_power_kw: float | None
     charging_power_unit: str | None
+    charging_switch_on: bool | None
     last_changed: datetime | None
 
 
@@ -64,6 +65,7 @@ def _get_secret(name: str) -> str | None:
                 "HA_EQE_PRECLIMATE_START_ENTITY": "eqe_preclimate_start_entity",
                 "HA_EQE_PRECLIMATE_STOP_ENTITY": "eqe_preclimate_stop_entity",
                 "HA_EQE_CHARGING_POWER_ENTITY": "eqe_charging_power_entity",
+                "HA_EQE_CHARGING_SWITCH_ENTITY": "eqe_charging_switch_entity",
                 "HA_CACHE_TTL": "cache_ttl",
             }
             mapped = key_map.get(name)
@@ -118,6 +120,7 @@ def _require_config() -> dict[str, str]:
     preclimate_start_entity = _get_secret("HA_EQE_PRECLIMATE_START_ENTITY")
     preclimate_stop_entity = _get_secret("HA_EQE_PRECLIMATE_STOP_ENTITY")
     charging_power_entity = _get_secret("HA_EQE_CHARGING_POWER_ENTITY")
+    charging_switch_entity = _get_secret("HA_EQE_CHARGING_SWITCH_ENTITY")
 
     missing = [
         name
@@ -147,6 +150,7 @@ def _require_config() -> dict[str, str]:
         ),
         "preclimate_stop_entity": str(preclimate_stop_entity) if preclimate_stop_entity else None,
         "charging_power_entity": str(charging_power_entity) if charging_power_entity else None,
+        "charging_switch_entity": (str(charging_switch_entity) if charging_switch_entity else None),
     }
 
 
@@ -162,6 +166,11 @@ def eqe_preclimate_configured() -> bool:
 def eqe_lock_configured() -> bool:
     """Palauttaa True, jos EQE-lukituksen entity on määritetty."""
     return bool(_get_secret("HA_EQE_LOCK_ENTITY"))
+
+
+def eqe_charging_switch_configured() -> bool:
+    """Palauttaa True, jos EQE-latauksen kytkinentity on määritetty."""
+    return bool(_get_secret("HA_EQE_CHARGING_SWITCH_ENTITY"))
 
 
 def _parse_float(value: Any) -> float | None:
@@ -298,6 +307,23 @@ def set_eqe_lock(locked: bool, session: requests.Session | None = None) -> Any:
         raise
 
 
+def set_eqe_charging_enabled(enabled: bool, session: requests.Session | None = None) -> Any:
+    cfg = _require_config()
+    entity_id = cfg.get("charging_switch_entity")
+    if not entity_id:
+        raise HAConfigError("HA_EQE_CHARGING_SWITCH_ENTITY puuttuu")
+    domain = entity_id.split(".", 1)[0] if "." in entity_id else "switch"
+    service = "turn_on" if enabled else "turn_off"
+    return _call_service(
+        cfg["base_url"],
+        cfg["token"],
+        domain,
+        service,
+        {"entity_id": entity_id},
+        session,
+    )
+
+
 def refresh_eqe_lock_status(session: requests.Session | None = None) -> Any:
     cfg = _require_config()
     entity_id = cfg.get("lock_status_entity") or cfg.get("lock_entity")
@@ -346,6 +372,49 @@ def refresh_eqe_lock_status(session: requests.Session | None = None) -> Any:
     )
 
 
+def refresh_eqe_charging_power(session: requests.Session | None = None) -> Any:
+    cfg = _require_config()
+    entity_id = cfg.get("charging_power_entity")
+    if not entity_id:
+        raise HAConfigError("HA_EQE_CHARGING_POWER_ENTITY puuttuu")
+    return _call_service(
+        cfg["base_url"],
+        cfg["token"],
+        "homeassistant",
+        "update_entity",
+        {"entity_id": entity_id},
+        session,
+    )
+
+
+def refresh_eqe_charging_state(session: requests.Session | None = None) -> Any:
+    cfg = _require_config()
+    entity_id = cfg.get("charging_entity")
+    if not entity_id:
+        raise HAConfigError("HA_EQE_CHARGING_ENTITY puuttuu")
+    return _call_service(
+        cfg["base_url"],
+        cfg["token"],
+        "homeassistant",
+        "update_entity",
+        {"entity_id": entity_id},
+        session,
+    )
+
+
+def fetch_eqe_charging_power(
+    session: requests.Session | None = None,
+) -> tuple[float | None, str | None, datetime | None]:
+    cfg = _require_config()
+    entity_id = cfg.get("charging_power_entity")
+    if not entity_id:
+        raise HAConfigError("HA_EQE_CHARGING_POWER_ENTITY puuttuu")
+    state = _fetch_state(cfg["base_url"], cfg["token"], entity_id, session)
+    val, unit = _extract_power_value(state)
+    updated = _parse_ts(state.get("last_changed") or state.get("last_updated"))
+    return val, str(unit) if unit else None, updated
+
+
 def fetch_eqe_lock_state(
     session: requests.Session | None = None,
 ) -> tuple[str | None, str | None, str | None, str | None, datetime | None]:
@@ -371,6 +440,40 @@ def _normalize_charging_state(state: str | None) -> str | None:
     if lower in ("off", "idle", "not_charging", "false", "disconnected"):
         return "Ei lataa"
     return raw
+
+
+def _normalize_switch_state(state: str | None) -> bool | None:
+    if not state:
+        return None
+    if state in ("unknown", "unavailable"):
+        return None
+    lower = state.strip().lower()
+    if lower in ("on", "true", "open"):
+        return True
+    if lower in ("off", "false", "closed"):
+        return False
+    return None
+
+
+def _extract_power_value(state: dict[str, Any]) -> tuple[float | None, str | None]:
+    attrs = state.get("attributes") or {}
+    val = _parse_float(state.get("state"))
+    unit = attrs.get("unit_of_measurement")
+    if val is None or abs(val) < 1e-9:
+        for key in (
+            "power",
+            "charging_power",
+            "charge_power",
+            "charger_power",
+            "current_power",
+            "value",
+        ):
+            candidate = _parse_float(attrs.get(key))
+            if candidate is not None:
+                val = candidate
+                unit = unit or attrs.get(f"{key}_unit")
+                break
+    return val, unit
 
 
 def _coerce_lock_value(value: Any) -> str | None:
@@ -466,6 +569,11 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
             if cfg.get("charging_power_entity")
             else {}
         )
+        charging_switch_state = (
+            _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_switch_entity"], session)
+            if cfg.get("charging_switch_entity")
+            else {}
+        )
     except Exception as e:
         report_error("home_assistant_eqe: fetch", e)
         raise
@@ -479,8 +587,8 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
     lock_val, lock_raw, lock_attr, lock_source = _extract_lock_state(lock_state)
     lock_updated = _parse_ts(lock_state.get("last_changed") or lock_state.get("last_updated"))
     preclimate_val = _normalize_preclimate_state(preclimate_state.get("state"))
-    charging_power_val = _parse_float(charging_power_state.get("state"))
-    charging_power_unit = (charging_power_state.get("attributes") or {}).get("unit_of_measurement")
+    charging_power_val, charging_power_unit = _extract_power_value(charging_power_state)
+    charging_switch_on = _normalize_switch_state(charging_switch_state.get("state"))
 
     timestamps = [
         _parse_ts(soc_state.get("last_changed") or soc_state.get("last_updated")),
@@ -490,6 +598,9 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
         _parse_ts(preclimate_state.get("last_changed") or preclimate_state.get("last_updated")),
         _parse_ts(
             charging_power_state.get("last_changed") or charging_power_state.get("last_updated")
+        ),
+        _parse_ts(
+            charging_switch_state.get("last_changed") or charging_switch_state.get("last_updated")
         ),
     ]
     last_changed = max((ts for ts in timestamps if ts), default=None)
@@ -508,5 +619,6 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
         preclimate_state=preclimate_val,
         charging_power_kw=charging_power_val,
         charging_power_unit=str(charging_power_unit) if charging_power_unit else None,
+        charging_switch_on=charging_switch_on,
         last_changed=last_changed,
     )

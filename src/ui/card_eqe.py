@@ -7,14 +7,20 @@ import time
 
 import requests
 import streamlit as st
+from streamlit.components.v1 import html as st_html
 
 from src.api.home_assistant import (
     HAConfigError,
+    eqe_charging_switch_configured,
     eqe_lock_configured,
     eqe_preclimate_configured,
+    fetch_eqe_charging_power,
     fetch_eqe_lock_state,
     fetch_eqe_status,
+    refresh_eqe_charging_power,
+    refresh_eqe_charging_state,
     refresh_eqe_lock_status,
+    set_eqe_charging_enabled,
     set_eqe_lock,
     set_eqe_preclimate,
 )
@@ -226,24 +232,25 @@ def _charging_chip(
     raw_state: str | None,
     soc_pct: float | None,
     power_kw: float | None,
+    switch_on: bool | None,
 ) -> tuple[str, str]:
-    if not state and not raw_state:
+    if not state and not raw_state and power_kw is None and switch_on is None:
         return ("chip yellow", "Tuntematon")
     state_lower = (state or "").strip().lower()
     raw_lower = (raw_state or "").strip().lower()
     soc_full = soc_pct is not None and soc_pct >= 99
     power_active = power_kw is not None and power_kw > 0.1
 
-    if raw_lower in ("full", "fully_charged", "complete", "completed", "done", "ready"):
+    if soc_full or raw_lower in ("full", "fully_charged", "complete", "completed", "done", "ready"):
         return ("chip green", "Täynnä")
-    if soc_full and raw_lower in ("plugged_in", "connected", "on", "charging", "charge"):
-        return ("chip green", "Täynnä")
-    if (
-        soc_full
-        and ("lataa" in state_lower or state_lower in ("charging", "on"))
-        and not power_active
-    ):
-        return ("chip green", "Täynnä")
+    if switch_on is False:
+        return ("chip red", "Ei lataa")
+    if power_active:
+        return ("chip blue pulse", "Lataa")
+    if switch_on is True:
+        return ("chip blue", "Käynnistyy")
+    if power_kw is not None:
+        return ("chip red", "Ei lataa")
     if "lataa" in state_lower or raw_lower in ("charging", "charge", "on"):
         return ("chip blue pulse", "Lataa")
     if (
@@ -253,8 +260,72 @@ def _charging_chip(
     ):
         return ("chip red", "Ei lataa")
     if raw_lower in ("plugged_in", "connected"):
-        return ("chip blue pulse", "Lataa")
+        return ("chip red", "Ei lataa")
     return ("chip red", "Ei lataa")
+
+
+def _charging_plug_status(state: str | None, raw_state: str | None) -> str:
+    state_lower = (state or "").strip().lower()
+    raw_lower = (raw_state or "").strip().lower()
+    if raw_lower in ("disconnected", "unplugged", "not_connected"):
+        return "disconnected"
+    if raw_lower in ("plugged_in", "connected", "charging", "charge", "on"):
+        return "connected"
+    if "lataa" in state_lower or state_lower in ("charging", "on"):
+        return "connected"
+    return "unknown"
+
+
+def _charging_state_active(state: str | None, raw_state: str | None) -> bool:
+    state_lower = (state or "").strip().lower()
+    raw_lower = (raw_state or "").strip().lower()
+    return "lataa" in state_lower or raw_lower in ("charging", "charge", "on")
+
+
+def _wait_for_power_change(
+    expected_on: bool,
+    timeout_s: float = 5.0,
+    interval_s: float = 1.0,
+) -> tuple[float | None, str | None]:
+    deadline = time.time() + timeout_s
+    last_val: float | None = None
+    last_unit: str | None = None
+    while True:
+        try:
+            refresh_eqe_charging_power()
+        except Exception:
+            pass
+        try:
+            val, unit, _updated = fetch_eqe_charging_power()
+            if val is not None:
+                last_val = val
+                last_unit = unit
+                if expected_on and val > 0.1:
+                    return last_val, last_unit
+                if (not expected_on) and val <= 0.1:
+                    return last_val, last_unit
+        except Exception:
+            pass
+        if time.time() >= deadline:
+            return last_val, last_unit
+        time.sleep(interval_s)
+
+
+def _maybe_force_charging_refresh(interval_s: float = 15.0) -> None:
+    now = time.time()
+    last_ts = st.session_state.get("eqe_charge_refresh_ts")
+    if isinstance(last_ts, int | float) and now - float(last_ts) < interval_s:
+        return
+    try:
+        refresh_eqe_charging_state()
+    except Exception:
+        pass
+    try:
+        refresh_eqe_charging_power()
+    except Exception:
+        pass
+    st.session_state["eqe_charge_refresh_ts"] = now
+    fetch_eqe_status.clear()
 
 
 def _lock_chip(state: str | None) -> tuple[str, str]:
@@ -326,6 +397,7 @@ def card_eqe() -> None:
 
         lock_available = eqe_lock_configured()
         preclimate_available = eqe_preclimate_configured()
+        charging_available = eqe_charging_switch_configured()
         lock_action_raw = st.query_params.get("eqe_lock")
         if isinstance(lock_action_raw, list):
             lock_action = (lock_action_raw[0] if lock_action_raw else "") or ""
@@ -366,6 +438,27 @@ def card_eqe() -> None:
             except Exception:
                 st.query_params.clear()
             st.rerun()
+        charge_action_raw = st.query_params.get("eqe_charge")
+        if isinstance(charge_action_raw, list):
+            charge_action = (charge_action_raw[0] if charge_action_raw else "") or ""
+        else:
+            charge_action = charge_action_raw or ""
+        charge_action = str(charge_action).lower()
+        charge_requested = bool(charge_action)
+        if charge_requested:
+            try:
+                del st.query_params["eqe_charge"]
+            except Exception:
+                st.query_params.clear()
+            if not charging_available:
+                st.session_state["eqe_charge_msg"] = (
+                    "err",
+                    "Latauksen ohjaus ei ole käytössä (HA_EQE_CHARGING_SWITCH_ENTITY puuttuu).",
+                )
+
+        prev_polling = st.session_state.get("eqe_charging_polling", False)
+        if prev_polling:
+            _maybe_force_charging_refresh(interval_s=30.0)
 
         lock_job = _lock_job_snapshot()
         lock_pending_action = (
@@ -394,6 +487,12 @@ def card_eqe() -> None:
         if preclimate_pending_action:
             fetch_eqe_status.clear()
         vm = fetch_eqe_status()
+        charge_override = st.session_state.get("eqe_charge_override")
+        charge_override_on = None
+        charge_override_ts = None
+        if isinstance(charge_override, dict):
+            charge_override_on = charge_override.get("value")
+            charge_override_ts = charge_override.get("ts")
         if lock_override:
             (
                 vm.lock_state,
@@ -452,12 +551,136 @@ def card_eqe() -> None:
             digits=0,
             color=_range_color(vm.range_km),
         )
+        switch_on = vm.charging_switch_on
+        if charge_override_on in (True, False):
+            if (
+                isinstance(charge_override_ts, int | float)
+                and time.time() - float(charge_override_ts) <= 30
+            ):
+                if switch_on == charge_override_on:
+                    st.session_state.pop("eqe_charge_override", None)
+                else:
+                    switch_on = charge_override_on
+            else:
+                st.session_state.pop("eqe_charge_override", None)
+        power_probe = st.session_state.get("eqe_power_probe")
+        if isinstance(power_probe, dict):
+            expected_on = power_probe.get("expected_on")
+            due_at = power_probe.get("due_at")
+            if (
+                isinstance(expected_on, bool)
+                and isinstance(due_at, int | float)
+                and time.time() >= float(due_at)
+            ):
+                power_val, power_unit = _wait_for_power_change(
+                    expected_on=expected_on, timeout_s=10.0, interval_s=1.0
+                )
+                if power_val is not None:
+                    st.session_state["eqe_power_override"] = {
+                        "value": power_val,
+                        "unit": power_unit,
+                        "ts": time.time(),
+                    }
+                st.session_state.pop("eqe_power_probe", None)
+        power_override = st.session_state.get("eqe_power_override")
+        if isinstance(power_override, dict):
+            override_val = power_override.get("value")
+            override_unit = power_override.get("unit")
+            override_ts = power_override.get("ts")
+            if (
+                override_val is None
+                or not isinstance(override_ts, int | float)
+                or time.time() - float(override_ts) > 30
+            ):
+                st.session_state.pop("eqe_power_override", None)
+            else:
+                try:
+                    override_val_f = float(override_val)
+                except (TypeError, ValueError):
+                    st.session_state.pop("eqe_power_override", None)
+                else:
+                    if (
+                        vm.charging_power_kw is not None
+                        and abs(vm.charging_power_kw - override_val_f) <= 0.01
+                    ):
+                        st.session_state.pop("eqe_power_override", None)
+                    else:
+                        vm.charging_power_kw = override_val_f
+                        if override_unit:
+                            vm.charging_power_unit = str(override_unit)
+        power_refresh = (
+            switch_on is True
+            or charge_override_on is True
+            or _charging_state_active(vm.charging_state, vm.charging_state_raw)
+        )
+        if power_refresh:
+            try:
+                power_val, power_unit, power_updated = fetch_eqe_charging_power()
+                if power_val is not None:
+                    vm.charging_power_kw = power_val
+                if power_unit:
+                    vm.charging_power_unit = power_unit
+                if power_updated and (vm.last_changed is None or power_updated > vm.last_changed):
+                    vm.last_changed = power_updated
+            except Exception:
+                pass
         chip_class, chip_text = _charging_chip(
             vm.charging_state,
             vm.charging_state_raw,
             vm.soc_pct,
             vm.charging_power_kw,
+            switch_on,
         )
+        override_recent = (
+            isinstance(charge_override_ts, int | float)
+            and time.time() - float(charge_override_ts) <= 30
+        )
+        charging_polling = chip_text == "Lataa" or override_recent
+        st.session_state["eqe_charging_polling"] = charging_polling
+        if charge_requested and charging_available:
+            desired_on = None
+            if chip_text in ("Lataa", "Käynnistyy"):
+                desired_on = False
+            elif chip_text == "Ei lataa":
+                desired_on = True
+            if desired_on is None:
+                st.session_state["eqe_charge_msg"] = (
+                    "info",
+                    f"Latausta ei muuteta (tila: {chip_text}).",
+                )
+            else:
+                plug_status = _charging_plug_status(vm.charging_state, vm.charging_state_raw)
+                if desired_on and plug_status == "disconnected":
+                    st.session_state["eqe_charge_msg"] = (
+                        "err",
+                        "Kaapeli ei ole kiinni.",
+                    )
+                else:
+                    try:
+                        set_eqe_charging_enabled(desired_on)
+                        try:
+                            refresh_eqe_charging_power()
+                        except Exception:
+                            pass
+                        st.session_state["eqe_power_probe"] = {
+                            "expected_on": desired_on,
+                            "due_at": time.time() + 10.0,
+                        }
+                        st.session_state["eqe_charge_override"] = {
+                            "value": desired_on,
+                            "ts": time.time(),
+                        }
+                        st.session_state["eqe_charge_msg"] = (
+                            "info",
+                            "Lataus kytketty päälle." if desired_on else "Lataus kytketty pois.",
+                        )
+                        fetch_eqe_status.clear()
+                        st.rerun()
+                    except Exception as e:
+                        st.session_state["eqe_charge_msg"] = (
+                            "err",
+                            f"Latauksen ohjaus epäonnistui: {e}",
+                        )
         if lock_available:
             if lock_pending_action == "lock":
                 lock_class, lock_text = ("chip yellow pulse", "Lukitaan")
@@ -514,6 +737,12 @@ def card_eqe() -> None:
             preclimate_html = (
                 f"<span class='{preclimate_class}'>{html.escape(preclimate_text)}</span>"
             )
+        charge_html = (
+            "<form method='get' style='margin:0; display:inline;'>"
+            "<button class='eqe-switch' type='submit' name='eqe_charge' value='toggle'>"
+            f"<span class='{chip_class}'>{html.escape(chip_text)}</span>"
+            "</button></form>"
+        )
 
         body = f"""
         <div class="eqe-grid">
@@ -527,7 +756,7 @@ def card_eqe() -> None:
           </div>
           <div class="eqe-item">
             <div class="eqe-label">Lataus</div>
-            <div class="eqe-value"><span class="{chip_class}">{html.escape(chip_text)}</span></div>
+            <div class="eqe-value">{charge_html}</div>
           </div>
           <div class="eqe-item">
             <div class="eqe-label">Lukitus</div>
@@ -551,17 +780,16 @@ def card_eqe() -> None:
             """,
             unsafe_allow_html=True,
         )
-        for msg_key in ("eqe_preclimate_msg", "eqe_lock_msg"):
+        for msg_key in ("eqe_preclimate_msg", "eqe_lock_msg", "eqe_charge_msg"):
             msg = st.session_state.pop(msg_key, None)
             if msg:
                 kind, text = msg
                 if kind == "err":
                     st.error(text)
-        if lock_pending_action or preclimate_pending_action:
-            st.markdown(
-                "<script>setTimeout(() => window.location.reload(), 2000);</script>",
-                unsafe_allow_html=True,
-            )
+                elif kind == "info":
+                    st.info(text)
+        if lock_pending_action or preclimate_pending_action or charging_polling:
+            st_html("<script>setTimeout(() => window.location.reload(), 10000);</script>", height=0)
         st.markdown(
             f"<div class='hint' style='margin-top:16px; margin-bottom:2px;'>Päivitetty: {html.escape(updated_label)}</div>",
             unsafe_allow_html=True,
