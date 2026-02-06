@@ -31,6 +31,39 @@ def _calc_change_pct_from_series(series: list[tuple[datetime, float]]) -> float 
     return (end - start) / start * 100.0
 
 
+def _extract_simple_price(data: dict, coin_key: str) -> tuple[float | None, float | None]:
+    if not isinstance(data, dict) or data.get("error"):
+        return None, None
+    coin = data.get(coin_key)
+    if not isinstance(coin, dict):
+        return None, None
+    return coin.get("eur"), coin.get("eur_24h_change")
+
+
+def _price_from_series(series: list[tuple[datetime, float]]) -> tuple[float | None, float | None]:
+    if not series:
+        return None, None
+    return series[-1][1], _calc_change_pct_from_series(series)
+
+
+def _write_price_cache(path, price: float | None, change: float | None, ctx: str) -> None:
+    if price is None and change is None:
+        return
+    try:
+        path.write_text(json.dumps({"price": price, "change": change}), encoding="utf-8")
+    except Exception as e:
+        report_error(f"{ctx}: write cache", e)
+
+
+def _read_price_cache(path, ctx: str) -> tuple[float | None, float | None]:
+    try:
+        cached = json.loads(path.read_text(encoding="utf-8"))
+        return cached.get("price"), cached.get("change")
+    except Exception as e:
+        report_error(ctx, e)
+        return None, None
+
+
 @st.cache_data(ttl=CACHE_TTL_SHORT)
 def _fetch_simple_prices_eur() -> dict:
     url = (
@@ -44,72 +77,76 @@ def _fetch_simple_prices_eur() -> dict:
 def fetch_btc_eur() -> dict[str, float | None]:
     try:
         data = _fetch_simple_prices_eur()
-        btc = data.get("bitcoin", {})
-        price = btc.get("eur")
-        change = btc.get("eur_24h_change")
+        price, change = _extract_simple_price(data, "bitcoin")
+        if price is None and change is None:
+            raise ValueError("btc_price: missing fields")
         if change is None and price is not None:
             try:
                 series_24h = fetch_btc_eur_range(hours=24)
                 change = _calc_change_pct_from_series(series_24h)
             except Exception as e:
                 report_error("btc_price: change fallback", e)
-        out = {"price": price, "change": change}
-        try:
-            BTC_PRICE_CACHE_FILE.write_text(json.dumps(out), encoding="utf-8")
-        except Exception as e:
-            report_error("btc_price: write cache", e)
-        return out
-    except requests.HTTPError:
-        try:
-            cached = json.loads(BTC_PRICE_CACHE_FILE.read_text(encoding="utf-8"))
-            return {"price": cached.get("price"), "change": cached.get("change")}
-        except Exception as e2:
-            report_error("btc_price: read cache on 429", e2)
-            return {"price": None, "change": None}
+        _write_price_cache(BTC_PRICE_CACHE_FILE, price, change, "btc_price")
+        return {"price": price, "change": change}
     except Exception as e:
-        report_error("btc_price: network", e)
         try:
-            cached = json.loads(BTC_PRICE_CACHE_FILE.read_text(encoding="utf-8"))
-            return {"price": cached.get("price"), "change": cached.get("change")}
+            series_24h = fetch_btc_eur_range(hours=24)
+            series_price, series_change = _price_from_series(series_24h)
+            if series_price is not None or series_change is not None:
+                _write_price_cache(
+                    BTC_PRICE_CACHE_FILE,
+                    series_price,
+                    series_change,
+                    "btc_price",
+                )
+                return {"price": series_price, "change": series_change}
         except Exception as e2:
-            report_error("btc_price: read local cache", e2)
-            return {"price": None, "change": None}
+            report_error("btc_price: series fallback", e2)
+        if isinstance(e, requests.HTTPError):
+            cached_price, cached_change = _read_price_cache(
+                BTC_PRICE_CACHE_FILE,
+                "btc_price: read cache on http error",
+            )
+            return {"price": cached_price, "change": cached_change}
+        return {"price": None, "change": None}
 
 
 @st.cache_data(ttl=CACHE_TTL_SHORT)
 def fetch_eth_eur() -> dict[str, float | None]:
     try:
         data = _fetch_simple_prices_eur()
-        eth = data.get("ethereum", {})
-        price = eth.get("eur")
-        change = eth.get("eur_24h_change")
+        price, change = _extract_simple_price(data, "ethereum")
+        if price is None and change is None:
+            raise ValueError("eth_price: missing fields")
         if change is None and price is not None:
             try:
                 series_24h = fetch_eth_eur_range(hours=24)
                 change = _calc_change_pct_from_series(series_24h)
             except Exception as e:
                 report_error("eth_price: change fallback", e)
-        out = {"price": price, "change": change}
-        try:
-            ETH_PRICE_CACHE_FILE.write_text(json.dumps(out), encoding="utf-8")
-        except Exception as e:
-            report_error("eth_price: write cache", e)
-        return out
-    except requests.HTTPError:
-        try:
-            cached = json.loads(ETH_PRICE_CACHE_FILE.read_text(encoding="utf-8"))
-            return {"price": cached.get("price"), "change": cached.get("change")}
-        except Exception as e2:
-            report_error("eth_price: read cache on 429", e2)
-            return {"price": None, "change": None}
+        _write_price_cache(ETH_PRICE_CACHE_FILE, price, change, "eth_price")
+        return {"price": price, "change": change}
     except Exception as e:
-        report_error("eth_price: network", e)
         try:
-            cached = json.loads(ETH_PRICE_CACHE_FILE.read_text(encoding="utf-8"))
-            return {"price": cached.get("price"), "change": cached.get("change")}
+            series_24h = fetch_eth_eur_range(hours=24)
+            series_price, series_change = _price_from_series(series_24h)
+            if series_price is not None or series_change is not None:
+                _write_price_cache(
+                    ETH_PRICE_CACHE_FILE,
+                    series_price,
+                    series_change,
+                    "eth_price",
+                )
+                return {"price": series_price, "change": series_change}
         except Exception as e2:
-            report_error("eth_price: read local cache", e2)
-            return {"price": None, "change": None}
+            report_error("eth_price: series fallback", e2)
+        if isinstance(e, requests.HTTPError):
+            cached_price, cached_change = _read_price_cache(
+                ETH_PRICE_CACHE_FILE,
+                "eth_price: read cache on http error",
+            )
+            return {"price": cached_price, "change": cached_change}
+        return {"price": None, "change": None}
 
 
 @st.cache_data(ttl=CACHE_TTL_MED)

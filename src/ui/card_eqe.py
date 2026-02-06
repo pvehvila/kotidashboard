@@ -4,12 +4,14 @@ import base64
 import html
 import threading
 import time
+from dataclasses import dataclass
 
 import requests
 import streamlit as st
 from streamlit.components.v1 import html as st_html
 
 from src.api.home_assistant import (
+    EqeStatus,
     HAConfigError,
     eqe_charging_switch_configured,
     eqe_lock_configured,
@@ -364,6 +366,101 @@ def _preclimate_is_on(state: str | None) -> bool:
     return state_lower in ("on", "active", "running", "true", "käynnissä")
 
 
+@dataclass(frozen=True)
+class EqeCardVM:
+    soc_html: str
+    range_html: str
+    charge_chip_class: str
+    charge_chip_text: str
+    lock_chip_class: str
+    lock_chip_text: str
+    lock_on: bool
+    preclimate_chip_class: str
+    preclimate_chip_text: str
+    preclimate_on: bool
+    power_html: str
+    updated_label: str
+    charging_polling: bool
+
+
+def build_eqe_viewmodel(
+    vm: EqeStatus,
+    effective_switch_on: bool | None,
+    lock_available: bool,
+    preclimate_available: bool,
+    lock_pending_action: str | None,
+    preclimate_pending_action: str | None,
+    charge_override_recent: bool,
+) -> EqeCardVM:
+    """Pure viewmodel builder: EqeStatus -> UI fields."""
+    soc_html = _fmt_value(
+        vm.soc_pct,
+        vm.soc_unit or "%",
+        digits=0,
+        color=_soc_color(vm.soc_pct),
+    )
+    range_html = _fmt_value(
+        vm.range_km,
+        vm.range_unit or "km",
+        digits=0,
+        color=_range_color(vm.range_km),
+    )
+    charge_chip_class, charge_chip_text = _charging_chip(
+        vm.charging_state,
+        vm.charging_state_raw,
+        vm.soc_pct,
+        vm.charging_power_kw,
+        effective_switch_on,
+    )
+    charging_polling = charge_chip_text == "Lataa" or charge_override_recent
+
+    if lock_available:
+        if lock_pending_action == "lock":
+            lock_chip_class, lock_chip_text = ("chip yellow pulse", "Lukitaan")
+            lock_on = True
+        elif lock_pending_action == "unlock":
+            lock_chip_class, lock_chip_text = ("chip yellow pulse", "Avataan")
+            lock_on = False
+        else:
+            lock_chip_class, lock_chip_text = _lock_chip(vm.lock_state)
+            lock_on = _lock_is_locked(vm.lock_state)
+    else:
+        lock_chip_class, lock_chip_text = ("chip yellow", "Ei käytössä")
+        lock_on = False
+
+    if preclimate_available:
+        if preclimate_pending_action == "on":
+            preclimate_chip_class, preclimate_chip_text = ("chip yellow pulse", "Käynnistetään")
+            preclimate_on = False
+        else:
+            preclimate_chip_class, preclimate_chip_text = _preclimate_chip(vm.preclimate_state)
+            preclimate_on = _preclimate_is_on(vm.preclimate_state)
+            if preclimate_on:
+                preclimate_chip_class = f"{preclimate_chip_class} pulse"
+    else:
+        preclimate_chip_class, preclimate_chip_text = ("chip yellow", "Ei käytössä")
+        preclimate_on = False
+
+    power_html = _fmt_value(vm.charging_power_kw, vm.charging_power_unit or "kW", digits=1)
+    updated_label = vm.last_changed.strftime("%H:%M") if vm.last_changed else "—"
+
+    return EqeCardVM(
+        soc_html=soc_html,
+        range_html=range_html,
+        charge_chip_class=charge_chip_class,
+        charge_chip_text=charge_chip_text,
+        lock_chip_class=lock_chip_class,
+        lock_chip_text=lock_chip_text,
+        lock_on=lock_on,
+        preclimate_chip_class=preclimate_chip_class,
+        preclimate_chip_text=preclimate_chip_text,
+        preclimate_on=preclimate_on,
+        power_html=power_html,
+        updated_label=updated_label,
+        charging_polling=charging_polling,
+    )
+
+
 def card_eqe() -> None:
     """Render Mercedes EQE -kortti Home Assistant -datalla."""
     logo = _get_mercedes_logo_svg_data()
@@ -539,18 +636,6 @@ def card_eqe() -> None:
                 else:
                     with _PRECLIMATE_JOB_LOCK:
                         _PRECLIMATE_JOB["poll_remaining"] = remaining
-        soc_html = _fmt_value(
-            vm.soc_pct,
-            vm.soc_unit or "%",
-            digits=0,
-            color=_soc_color(vm.soc_pct),
-        )
-        range_html = _fmt_value(
-            vm.range_km,
-            vm.range_unit or "km",
-            digits=0,
-            color=_range_color(vm.range_km),
-        )
         switch_on = vm.charging_switch_on
         if charge_override_on in (True, False):
             if (
@@ -624,18 +709,32 @@ def card_eqe() -> None:
                     vm.last_changed = power_updated
             except Exception:
                 pass
-        chip_class, chip_text = _charging_chip(
-            vm.charging_state,
-            vm.charging_state_raw,
-            vm.soc_pct,
-            vm.charging_power_kw,
-            switch_on,
-        )
         override_recent = (
             isinstance(charge_override_ts, int | float)
             and time.time() - float(charge_override_ts) <= 30
         )
-        charging_polling = chip_text == "Lataa" or override_recent
+        vm_card = build_eqe_viewmodel(
+            vm=vm,
+            effective_switch_on=switch_on,
+            lock_available=lock_available,
+            preclimate_available=preclimate_available,
+            lock_pending_action=lock_pending_action,
+            preclimate_pending_action=preclimate_pending_action,
+            charge_override_recent=override_recent,
+        )
+        chip_class = vm_card.charge_chip_class
+        chip_text = vm_card.charge_chip_text
+        lock_class = vm_card.lock_chip_class
+        lock_text = vm_card.lock_chip_text
+        lock_on = vm_card.lock_on
+        preclimate_class = vm_card.preclimate_chip_class
+        preclimate_text = vm_card.preclimate_chip_text
+        preclimate_on = vm_card.preclimate_on
+        soc_html = vm_card.soc_html
+        range_html = vm_card.range_html
+        power_html = vm_card.power_html
+        updated_label = vm_card.updated_label
+        charging_polling = vm_card.charging_polling
         st.session_state["eqe_charging_polling"] = charging_polling
         if charge_requested and charging_available:
             desired_on = None
@@ -681,34 +780,6 @@ def card_eqe() -> None:
                             "err",
                             f"Latauksen ohjaus epäonnistui: {e}",
                         )
-        if lock_available:
-            if lock_pending_action == "lock":
-                lock_class, lock_text = ("chip yellow pulse", "Lukitaan")
-                lock_on = True
-            elif lock_pending_action == "unlock":
-                lock_class, lock_text = ("chip yellow pulse", "Avataan")
-                lock_on = False
-            else:
-                lock_class, lock_text = _lock_chip(vm.lock_state)
-                lock_on = _lock_is_locked(vm.lock_state)
-        else:
-            lock_class, lock_text = ("chip yellow", "Ei käytössä")
-            lock_on = False
-        if preclimate_available:
-            if preclimate_pending_action == "on":
-                preclimate_class, preclimate_text = ("chip yellow pulse", "Käynnistetään")
-                preclimate_on = False
-            else:
-                preclimate_class, preclimate_text = _preclimate_chip(vm.preclimate_state)
-                preclimate_on = _preclimate_is_on(vm.preclimate_state)
-                if preclimate_on:
-                    preclimate_class = f"{preclimate_class} pulse"
-        else:
-            preclimate_class, preclimate_text = ("chip yellow", "Ei käytössä")
-            preclimate_on = False
-        power_html = _fmt_value(vm.charging_power_kw, vm.charging_power_unit or "kW", digits=1)
-        updated_label = vm.last_changed.strftime("%H:%M") if vm.last_changed else "—"
-
         bg = _get_eqe_background()
         overlay = "linear-gradient(90deg, rgba(11,15,20,0.70) 0%, rgba(11,15,20,0.10) 72%)"
         bg_layer = f"{overlay}, url('{bg}')" if bg else overlay

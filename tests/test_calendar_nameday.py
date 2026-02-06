@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import src.api.calendar_nameday as caln
-import src.api.nameday as nd
 
 # --- apu ------------------------------------------------------------
 
@@ -109,36 +108,6 @@ def test_pick_today_name_variants():
 
     data_invalid = {"foo": "bar"}
     assert caln._pick_today_name(data_invalid, today) == "—"
-
-
-def test_calendar_nameday_wrapper_uses_same_impl(monkeypatch, tmp_path):
-    """Varmistaa, että calendar_nameday toimii odotetusti (patchataan suoraan caln)."""
-    _set_fixed_today(monkeypatch)
-    _clear_calendar_caches()
-
-    data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
-    f = tmp_path / "nimipaivat.json"
-    f.write_text(json.dumps(data), encoding="utf-8")
-
-    # Patchataan calendar_nameday eikä calendar
-    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
-    result = caln.fetch_nameday_today(_cache_buster=10)
-    assert result == "Panu"
-
-
-def test_nameday_wrapper_calls_calendar_nameday(monkeypatch, tmp_path):
-    """Varmistaa, että nameday.fetch_nameday_today ohjaa calendar_nameday:lle."""
-    _set_fixed_today(monkeypatch)
-
-    data = {"nimipäivät": {"marraskuu": {"11": "Panu"}}}
-    f = tmp_path / "nimipaivat.json"
-    f.write_text(json.dumps(data), encoding="utf-8")
-
-    monkeypatch.setattr(caln, "_resolve_nameday_file", lambda: f)
-    _clear_calendar_caches()
-
-    out = nd.fetch_nameday_today()
-    assert out == "Panu"
 
 
 # --- pyhä- ja liputuspäivät ----------------------------------------

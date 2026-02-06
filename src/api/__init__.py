@@ -26,8 +26,8 @@ from .bitcoin import (
 from .bitcoin import (
     fetch_eth_eur_range as fetch_eth_eur_range,
 )
-from .calendar import fetch_holiday_today as fetch_holiday_today
-from .calendar import fetch_nameday_today as fetch_nameday_today
+from .calendar_nameday import fetch_holiday_today as fetch_holiday_today
+from .calendar_nameday import fetch_nameday_today as fetch_nameday_today
 from .electricity import try_fetch_prices as try_fetch_prices
 from .electricity import try_fetch_prices_15min as try_fetch_prices_15min
 from .quotes import fetch_daily_quote as fetch_daily_quote

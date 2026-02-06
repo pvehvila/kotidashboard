@@ -78,18 +78,16 @@ Jos mitään noista ei löydy, kortti käyttää vain tummaa gradienttia.
 
 ## 4. Auringonnousu ja -lasku
 
-- Kortti yrittää tuoda jommankumman:
+- Kortti käyttää:
   ```python
-  from src.utils_sun import fetch_sun_times, _sun_icon
-  # tai
-  from src.utils import fetch_sun_times
+  from src.utils import fetch_sun_times, _sun_icon
   ```
 - Kutsu on muotoa:
   ```python
   sunrise, sunset = fetch_sun_times(LAT, LON, TZ.key)
   ```
 - Jos jompikumpi puuttuu → näytetään `—`
-- Ikoni tulee `_sun_icon('rise')` ja `_sun_icon('set')` -funktioista; jos niitä ei ole, kortti käyttää fallback-emoji-versiota.
+- Ikoni tulee `_sun_icon('rise')` ja `_sun_icon('set')` -funktioista (inline-SVG).
 
 ---
 

@@ -25,7 +25,7 @@
 
 ## 📸 Screenshot
 
-![Screenshot](docs/images/Kotidashboard.png)
+![Screenshot](docs/images/Kotidashboard.jpg)
 
 ---
 

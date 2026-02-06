@@ -543,41 +543,26 @@ def _normalize_preclimate_state(state: str | None) -> str:
     return raw
 
 
-@st.cache_data(ttl=_ha_cache_ttl())
-def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
-    cfg = _require_config()
+def _state_timestamp(state: dict[str, Any]) -> datetime | None:
+    """Palauta state-dictin viimeisin aikaleima (last_changed/last_updated)."""
+    return _parse_ts(state.get("last_changed") or state.get("last_updated"))
 
-    try:
-        soc_state = _fetch_state(cfg["base_url"], cfg["token"], cfg["soc_entity"], session)
-        range_state = _fetch_state(cfg["base_url"], cfg["token"], cfg["range_entity"], session)
-        charging_state = _fetch_state(
-            cfg["base_url"], cfg["token"], cfg["charging_entity"], session
-        )
-        lock_state_entity = cfg.get("lock_status_entity") or cfg.get("lock_entity")
-        lock_state = (
-            _fetch_state(cfg["base_url"], cfg["token"], lock_state_entity, session)
-            if lock_state_entity
-            else {}
-        )
-        preclimate_state = (
-            _fetch_state(cfg["base_url"], cfg["token"], cfg["preclimate_entity"], session)
-            if cfg.get("preclimate_entity")
-            else {}
-        )
-        charging_power_state = (
-            _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_power_entity"], session)
-            if cfg.get("charging_power_entity")
-            else {}
-        )
-        charging_switch_state = (
-            _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_switch_entity"], session)
-            if cfg.get("charging_switch_entity")
-            else {}
-        )
-    except Exception as e:
-        report_error("home_assistant_eqe: fetch", e)
-        raise
 
+def _max_state_timestamp(states: list[dict[str, Any]]) -> datetime | None:
+    timestamps = [_state_timestamp(state) for state in states if state]
+    return max((ts for ts in timestamps if ts), default=None)
+
+
+def build_eqe_status_from_states(
+    soc_state: dict[str, Any],
+    range_state: dict[str, Any],
+    charging_state: dict[str, Any],
+    lock_state: dict[str, Any],
+    preclimate_state: dict[str, Any],
+    charging_power_state: dict[str, Any],
+    charging_switch_state: dict[str, Any],
+) -> EqeStatus:
+    """Rakentaa EqeStatus-olion annetuista state-dicteistä (pure)."""
     soc_val = _parse_float(soc_state.get("state"))
     range_val = _parse_float(range_state.get("state"))
     soc_unit = (soc_state.get("attributes") or {}).get("unit_of_measurement")
@@ -585,25 +570,22 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
     charging_state_raw = charging_state.get("state")
     charging_val = _normalize_charging_state(charging_state_raw)
     lock_val, lock_raw, lock_attr, lock_source = _extract_lock_state(lock_state)
-    lock_updated = _parse_ts(lock_state.get("last_changed") or lock_state.get("last_updated"))
+    lock_updated = _state_timestamp(lock_state)
     preclimate_val = _normalize_preclimate_state(preclimate_state.get("state"))
     charging_power_val, charging_power_unit = _extract_power_value(charging_power_state)
     charging_switch_on = _normalize_switch_state(charging_switch_state.get("state"))
 
-    timestamps = [
-        _parse_ts(soc_state.get("last_changed") or soc_state.get("last_updated")),
-        _parse_ts(range_state.get("last_changed") or range_state.get("last_updated")),
-        _parse_ts(charging_state.get("last_changed") or charging_state.get("last_updated")),
-        _parse_ts(lock_state.get("last_changed") or lock_state.get("last_updated")),
-        _parse_ts(preclimate_state.get("last_changed") or preclimate_state.get("last_updated")),
-        _parse_ts(
-            charging_power_state.get("last_changed") or charging_power_state.get("last_updated")
-        ),
-        _parse_ts(
-            charging_switch_state.get("last_changed") or charging_switch_state.get("last_updated")
-        ),
-    ]
-    last_changed = max((ts for ts in timestamps if ts), default=None)
+    last_changed = _max_state_timestamp(
+        [
+            soc_state,
+            range_state,
+            charging_state,
+            lock_state,
+            preclimate_state,
+            charging_power_state,
+            charging_switch_state,
+        ]
+    )
     return EqeStatus(
         soc_pct=soc_val,
         soc_unit=str(soc_unit) if soc_unit else None,
@@ -622,3 +604,61 @@ def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
         charging_switch_on=charging_switch_on,
         last_changed=last_changed,
     )
+
+
+def _fetch_eqe_states(
+    cfg: dict[str, str | None], session: requests.Session | None
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
+    soc_state = _fetch_state(cfg["base_url"], cfg["token"], cfg["soc_entity"], session)
+    range_state = _fetch_state(cfg["base_url"], cfg["token"], cfg["range_entity"], session)
+    charging_state = _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_entity"], session)
+    lock_state_entity = cfg.get("lock_status_entity") or cfg.get("lock_entity")
+    lock_state = (
+        _fetch_state(cfg["base_url"], cfg["token"], lock_state_entity, session)
+        if lock_state_entity
+        else {}
+    )
+    preclimate_state = (
+        _fetch_state(cfg["base_url"], cfg["token"], cfg["preclimate_entity"], session)
+        if cfg.get("preclimate_entity")
+        else {}
+    )
+    charging_power_state = (
+        _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_power_entity"], session)
+        if cfg.get("charging_power_entity")
+        else {}
+    )
+    charging_switch_state = (
+        _fetch_state(cfg["base_url"], cfg["token"], cfg["charging_switch_entity"], session)
+        if cfg.get("charging_switch_entity")
+        else {}
+    )
+    return (
+        soc_state,
+        range_state,
+        charging_state,
+        lock_state,
+        preclimate_state,
+        charging_power_state,
+        charging_switch_state,
+    )
+
+
+@st.cache_data(ttl=_ha_cache_ttl())
+def fetch_eqe_status(session: requests.Session | None = None) -> EqeStatus:
+    cfg = _require_config()
+
+    try:
+        states = _fetch_eqe_states(cfg, session)
+    except Exception as e:
+        report_error("home_assistant_eqe: fetch", e)
+        raise
+    return build_eqe_status_from_states(*states)

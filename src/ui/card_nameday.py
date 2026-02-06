@@ -8,21 +8,7 @@ import streamlit as st
 from src.api.calendar_nameday import fetch_holiday_today, fetch_nameday_today
 from src.config import LAT, LON, TZ
 from src.ui.card_nameday_helpers import get_background_image, get_flag_info
-
-# aurinko – sama fallback-logiikka kuin aiemmin
-try:
-    from src.utils_sun import _sun_icon, fetch_sun_times  # type: ignore
-except Exception:
-    try:
-        from src.utils import fetch_sun_times  # type: ignore
-
-        def _sun_icon(kind: str, size: int = 18) -> str:
-            return "🌅" if kind == "rise" else "🌇"
-    except Exception:
-        fetch_sun_times = None  # type: ignore
-
-        def _sun_icon(kind: str, size: int = 18) -> str:
-            return "🌅" if kind == "rise" else "🌇"
+from src.utils import _sun_icon, fetch_sun_times
 
 
 def _weekday_fi(dt_: datetime) -> str:
