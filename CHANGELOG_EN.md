@@ -11,6 +11,18 @@ _No unreleased changes yet._
 
 ---
 
+## [1.2.0] – 2026-02-07
+### ✨ EQE & crypto cards
+
+### Added
+- ₿ Compact Bitcoin ticker card.
+- Ξ Compact Ethereum ticker card.
+
+### Changed
+- 🚗 Updated the EQE card.
+
+---
+
 ## [1.1.1] – 2025-12-28
 ### 🛠️ HEOS card fix
 

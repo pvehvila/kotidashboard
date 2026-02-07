@@ -12,6 +12,18 @@ _Ei julkaisemattomia muutoksia tällä hetkellä._
 
 ---
 
+## [1.2.0] – 2026-02-07
+### ✨ EQE & kryptokortit
+
+### Lisätty
+- ₿ Bitcoin-tikkerikortti (kompakti).
+- Ξ Ethereum-tikkerikortti (kompakti).
+
+### Muutettu
+- 🚗 EQE-korttia päivitetty.
+
+---
+
 ## [1.1.1] – 2025-12-28
 ### 🛠️ HEOS-kortin korjaus
 
