@@ -23,13 +23,9 @@ def _from_zenquotes() -> dict[str, str] | None:
         if isinstance(data, list) and data:
             q = data[0]
             quote = {"text": q.get("q", ""), "author": q.get("a", ""), "source": "zenquotes"}
-            print("[ZEN] Haettu zenquotes:", quote)  # ← lokitus
             return quote
-        else:
-            print("[ZEN] Zenquotes palautti odottamattoman rakenteen:", data)
     except Exception as e:
         report_error("zen: zenquotes-today", e)
-        print("[ZEN] Zenquotes virhe:", e)
     return None
 
 
@@ -44,25 +40,19 @@ def _from_quotable() -> dict[str, str] | None:
             "author": data.get("author", ""),
             "source": "quotable",
         }
-        print("[ZEN] Haettu quotable:", quote)  # ← lokitus
         return quote
     except Exception as e:
         report_error("zen: quotable", e)
-        print("[ZEN] Quotable virhe:", e)
     return None
 
 
 @st.cache_data(ttl=CACHE_TTL_LONG)
 def fetch_daily_quote(day_iso: str) -> dict[str, str]:
-    print(f"[ZEN] Päivän sitaatti haetaan ({day_iso})")
     if quote := _from_zenquotes():
-        print("[ZEN] Käytetään zenquotes-lähdettä.")
         return quote
     if quote := _from_quotable():
-        print("[ZEN] Käytetään quotable-lähdettä.")
         return quote
     idx = sum(map(ord, day_iso)) % len(LOCAL_ZEN)
     out = dict(LOCAL_ZEN[idx])
     out["source"] = "local"
-    print("[ZEN] Käytetään paikallista sitaattia:", out)
     return out

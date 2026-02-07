@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Asentaa ja ottaa käyttöön Python-laadunvarmistustyökalut:
 - ruff
