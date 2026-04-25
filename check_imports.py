@@ -27,9 +27,9 @@ for py_file in BASE_DIR.rglob("*.py"):
                 violations.append((str(py_file.relative_to(BASE_DIR)), lineno, line.strip()))
 
 if not violations:
-    print("✅ Kaikki tuonnit näyttävät käyttävän src.-etuliitettä.")
+    print("[OK] Kaikki tuonnit nayttavat kayttavan src.-etuliitetta.")
 else:
-    print("⚠️  Seuraavat rivit näyttävät viittaavan vanhaan tuontiin:\n")
+    print("[WARN] Seuraavat rivit nayttavat viittaavan vanhaan tuontiin:\n")
     for file, lineno, line in violations:
         print(f"{file}:{lineno}: {line}")
-    print("\nKorjaa muodosta esim. 'from api' → 'from src.api'")
+    print("\nKorjaa muodosta esim. 'from api' -> 'from src.api'")
