@@ -163,3 +163,21 @@ def test_build_btc_figure_produces_plotly_figure():
     # Peruscheck: traceja ja anotaatioita on
     assert fig.data  # truthy → vähintään yksi trace
     assert "€" in fig.layout.yaxis.title.text
+
+
+def test_build_btc_figure_with_eth_reserves_right_axis_space():
+    series = _series_sample()
+    eth_series = [(t, v / 25.0) for t, v in series]
+
+    fig = cbp.build_btc_figure(
+        series=series,
+        window="7d",
+        ath_eur=70000.0,
+        ath_date="2021-11-10T15:00:00Z",
+        eth_series=eth_series,
+        eth_scale=25.0,
+    )
+
+    assert fig.layout.margin.r >= 76
+    assert fig.layout.yaxis2.automargin is True
+    assert fig.layout.yaxis2.title.text == "ETH €"

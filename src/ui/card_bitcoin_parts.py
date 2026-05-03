@@ -449,12 +449,12 @@ def build_btc_figure(
                 tickvals=y2_vals,
                 ticktext=y2_text,
                 fixedrange=True,
-                automargin=False,
+                automargin=True,
             )
         )
 
     fig.update_layout(
-        margin=dict(l=56, r=56, t=8, b=32),
+        margin=dict(l=56, r=76, t=8, b=32),
         height=210,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
