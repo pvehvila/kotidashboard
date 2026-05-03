@@ -50,7 +50,12 @@ def test_card_pollen_renders_view(monkeypatch):
     assert "Koivu" in html
     assert "runsaasti" in html
     assert "Ennuste" in html
-    assert "Turun yliopiston siitepölytiedotus" in html
+    assert "Allergeeni" in html
+    assert "Ilmassa: Koivu" not in html
+    assert "Turun yliopiston siitepölytiedotus" not in html
+    assert "Koivun määrä pysyy runsaana." not in html
+    assert html.count("Nyt") == 1
+    assert html.count("Ennuste") == 1
 
 
 def test_card_pollen_shows_error_card(monkeypatch):

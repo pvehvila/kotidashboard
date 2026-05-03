@@ -27,22 +27,22 @@ def card_pollen() -> None:
 
 def _render_pollen_html(vm: dict) -> str:
     rows = "".join(_render_plant_row(plant) for plant in vm.get("plants", []))
-    updated = vm.get("updated") or "ei päiväystä"
-    source = vm.get("source") or "siitepölytiedotus"
-    summary = html.escape(str(vm.get("summary") or ""))
 
     return f"""
-    <section class="card pollen-card" style="min-height:16dvh;">
+    <section class="card pollen-card" style="height:200px;">
       <style>
-        .pollen-card .card-body {{ display:grid; gap:10px; }}
-        .pollen-summary {{ font-size:.92rem; color:#d8dee9; opacity:.92; }}
-        .pollen-grid {{ display:grid; gap:8px; }}
+        .pollen-card .card-body {{ padding:8px 12px 10px 12px; }}
+        .pollen-grid {{ display:grid; gap:6px; }}
         .pollen-row {{
-          display:grid; grid-template-columns:76px 104px 104px 1fr; gap:8px;
-          align-items:center; padding:8px 10px; border-radius:8px;
+          display:grid; grid-template-columns:1fr 112px 112px; gap:8px;
+          align-items:center; min-height:36px; padding:6px 10px; border-radius:8px;
           background:rgba(255,255,255,.06);
         }}
-        .pollen-name {{ font-weight:700; }}
+        .pollen-header {{
+          min-height:auto; padding:0 10px 2px; background:transparent;
+          color:#aab3c2; font-size:.78rem; font-weight:700;
+        }}
+        .pollen-name {{ font-weight:700; font-size:.92rem; }}
         .pollen-level {{
           text-align:center; border-radius:999px; padding:4px 8px;
           font-size:.86rem; font-weight:700; border:1px solid rgba(255,255,255,.18);
@@ -51,17 +51,14 @@ def _render_pollen_html(vm: dict) -> str:
         .pollen-level.low {{ background:#14532d; color:#dcfce7; }}
         .pollen-level.medium {{ background:#854d0e; color:#fef3c7; }}
         .pollen-level.high {{ background:#7f1d1d; color:#fee2e2; }}
-        .pollen-forecast {{
-          min-width:0; font-size:.84rem; color:#d8dee9; opacity:.9;
-          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        }}
-        .pollen-label {{ display:block; font-size:.68rem; opacity:.74; font-weight:600; }}
-        .pollen-source {{ margin-top:4px; font-size:.76rem; color:#aab3c2; }}
       </style>
       <div class="card-body">
-        <div class="pollen-summary">{summary}</div>
-        <div class="pollen-grid">{rows}</div>
-        <div class="pollen-source">Lähde: {html.escape(str(source))} · {html.escape(str(updated))}</div>
+        <div class="pollen-grid">
+          <div class="pollen-row pollen-header">
+            <div>Allergeeni</div><div>Nyt</div><div>Ennuste</div>
+          </div>
+          {rows}
+        </div>
       </div>
     </section>
     """
@@ -72,15 +69,13 @@ def _render_plant_row(plant: dict) -> str:
     level = html.escape(str(plant.get("level") or "ei havaittu"))
     forecast_level_raw = str(plant.get("forecast_level") or "ei havaittu")
     forecast_level = html.escape(forecast_level_raw)
-    forecast = html.escape(str(plant.get("forecast") or "Ei ennustetta."))
     level_class = LEVEL_CLASS.get(str(plant.get("level")), "none")
     forecast_level_class = LEVEL_CLASS.get(forecast_level_raw, "none")
 
     return f"""
     <div class="pollen-row">
       <div class="pollen-name">{name}</div>
-      <div class="pollen-level {level_class}"><span class="pollen-label">Nyt</span>{level}</div>
-      <div class="pollen-level {forecast_level_class}"><span class="pollen-label">Ennuste</span>{forecast_level}</div>
-      <div class="pollen-forecast" title="{forecast}">{forecast}</div>
+      <div class="pollen-level {level_class}">{level}</div>
+      <div class="pollen-level {forecast_level_class}">{forecast_level}</div>
     </div>
     """
