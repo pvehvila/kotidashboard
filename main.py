@@ -15,9 +15,9 @@ from src.ui import (
     card_bitcoin_ticker,
     card_eqe,
     card_ethereum_ticker,
-    card_heos,
     card_hue_doors,
     card_nameday,
+    card_pollen,
     card_prices,
     card_system,
     card_weather,
@@ -92,12 +92,12 @@ def main() -> None:
         with col3:
             card_ethereum_ticker()
 
-        # Row 6: System status + Tidal player
+        # Row 6: System status + pollen
         col1, col2 = st.columns(2, gap="small")
         with col1:
             card_system()
         with col2:
-            card_heos()
+            card_pollen()
 
     except KeyboardInterrupt:
         logger.info("HomeDashboard shutdown requested")

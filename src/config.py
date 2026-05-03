@@ -91,6 +91,11 @@ CLOUD_T_PARTLY: int = 65
 CLOUD_T_MOSTLY: int = 85
 """Cloud cover thresholds (%) for weather icons (d000, d100, d200, d300, d400)."""
 
+# ------------------- POLLEN SETTINGS -------------------
+
+POLLEN_CACHE_FILE = data_path("pollen_cache.json")
+POLLEN_CACHE_TTL_S: int = 6 * 3600
+
 # ------------------- PLOTLY CONFIG -------------------
 
 PLOTLY_CONFIG: dict = {

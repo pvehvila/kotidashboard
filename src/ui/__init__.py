@@ -8,6 +8,7 @@ from .card_heos import card_heos
 from .card_hue_doors import card_hue_doors
 from .card_hue_motion import card_hue_motion
 from .card_nameday import card_nameday
+from .card_pollen import card_pollen
 from .card_prices import card_prices
 from .card_system import card_system
 from .card_weather import card_weather
@@ -20,6 +21,7 @@ __all__ = [
     "card_eqe",
     "card_heos",
     "card_nameday",
+    "card_pollen",
     "card_system",
     "card_weather",
     "card_zen",
