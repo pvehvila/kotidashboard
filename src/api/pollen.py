@@ -40,6 +40,7 @@ class PollenPlant:
     key: str
     name: str
     level: str
+    forecast_level: str
     forecast: str
 
 
@@ -66,12 +67,23 @@ def fetch_pollen_view() -> dict[str, Any]:
 
 def parse_pollen_text(text: str) -> PollenView:
     normalized = _normalize_text(text)
-    sentences = _split_sentences(normalized)
-    relevant = _relevant_sentences(sentences)
-    search_space = relevant or sentences
+    current_text, forecast_text = _extract_text_sections(normalized)
+    current_sentences = _section_sentences(current_text or normalized)
+    forecast_sentences = _section_sentences(forecast_text or normalized)
+    current_map = _station_levels(normalized, "TILANNE", "Helsinki")
+    forecast_map = _station_levels(normalized, "ENNUSTE", "Helsinki")
 
     plants = [
-        _build_plant(key, _display_name(key), aliases, search_space) for key, aliases in PLANTS
+        _build_plant(
+            key,
+            _display_name(key),
+            aliases,
+            current_sentences,
+            forecast_sentences,
+            current_map,
+            forecast_map,
+        )
+        for key, aliases in PLANTS
     ]
 
     return PollenView(
@@ -94,8 +106,7 @@ def _fetch_pollen_text() -> str:
     headers = {"User-Agent": "HomeDashboard/1.0"}
     resp = requests.get(POLLEN_SOURCE_URL, timeout=HTTP_TIMEOUT_S, headers=headers)
     resp.raise_for_status()
-    resp.encoding = resp.encoding or "utf-8"
-    text = resp.text
+    text = resp.content.decode("utf-8-sig", errors="replace")
     _write_cache(POLLEN_CACHE_FILE, {"fetched_at": now, "text": text})
     return text
 
@@ -116,7 +127,9 @@ def _write_cache(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text.replace("\ufeff", " ")).strip()
+    clean = text.replace("\ufeff", "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in clean.splitlines()]
+    return "\n".join(line for line in lines if line).strip()
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -125,6 +138,82 @@ def _split_sentences(text: str) -> list[str]:
 
 def _relevant_sentences(sentences: list[str]) -> list[str]:
     return [sentence for sentence in sentences if _REGION_RE.search(sentence)]
+
+
+def _extract_text_sections(text: str) -> tuple[str, str]:
+    _, _, body = text.partition("(TEKSTIT)")
+    source = body or text
+
+    current_match = re.search(
+        r"\bTILANNE\b(?P<section>.*?)(?=\bENNUSTE\b)",
+        source,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    forecast_match = re.search(
+        r"\bENNUSTE\b(?P<section>.*?)(?=\(END\)|©|\Z)",
+        source,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    current = current_match.group("section").strip() if current_match else ""
+    forecast = forecast_match.group("section").strip() if forecast_match else ""
+    return current, forecast
+
+
+def _section_sentences(section: str) -> list[str]:
+    sentences = _split_sentences(section)
+    relevant = _relevant_sentences(sentences)
+    return relevant or sentences
+
+
+def _station_levels(text: str, heading: str, station: str) -> dict[str, str]:
+    section = _map_section(text, heading)
+    if not section:
+        return {}
+
+    station_re = re.compile(rf"^{re.escape(station)}\s+(?P<codes>[A-ZÅÄÖ,\s]+)$", re.IGNORECASE)
+    for raw_line in section.splitlines():
+        line = raw_line.strip()
+        match = station_re.match(line)
+        if not match:
+            continue
+        return _levels_from_codes(match.group("codes"))
+    return {}
+
+
+def _map_section(text: str, heading: str) -> str:
+    pattern = rf"\b{re.escape(heading)}\b\s+\d{{1,2}}\.\d{{1,2}}\.\d{{4}}(?:\s+-\s+\d{{1,2}}\.\d{{1,2}}\.\d{{4}})?(?P<section>.*?)(?=\b(?:TILANNE|ENNUSTE)\b|\bTunnukset\b|\(TEKSTIT\)|\Z)"
+    match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        return match.group("section")
+    return ""
+
+
+def _levels_from_codes(codes: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for match in re.finditer(r"([LCKHPT])\1{0,2}", codes.upper()):
+        code = match.group(0)
+        key = _plant_key_for_code(code[0])
+        if key:
+            result[key] = _level_from_code(code)
+    return result
+
+
+def _plant_key_for_code(code: str) -> str | None:
+    return {
+        "K": "koivu",
+        "H": "heinät",
+        "P": "pujo",
+    }.get(code)
+
+
+def _level_from_code(code: str) -> str:
+    length = len(code)
+    if length >= 3:
+        return "runsaasti"
+    if length == 2:
+        return "kohtalaisesti"
+    return "vähän"
 
 
 def _display_name(key: str) -> str:
@@ -139,19 +228,29 @@ def _build_plant(
     key: str,
     name: str,
     aliases: tuple[str, ...],
-    sentences: list[str],
+    current_sentences: list[str],
+    forecast_sentences: list[str],
+    current_map: dict[str, str],
+    forecast_map: dict[str, str],
 ) -> PollenPlant:
-    plant_sentences = [sentence for sentence in sentences if _has_any(sentence, aliases)]
-    current_sentence = _first_current_sentence(plant_sentences)
-    forecast_sentence = _first_forecast_sentence(plant_sentences)
+    current_plant_sentences = [
+        sentence for sentence in current_sentences if _has_any(sentence, aliases)
+    ]
+    forecast_plant_sentences = [
+        sentence for sentence in forecast_sentences if _has_any(sentence, aliases)
+    ]
+    current_sentence = _first_current_sentence(current_plant_sentences)
+    forecast_sentence = _first_forecast_sentence(forecast_plant_sentences)
 
-    level = _level_from_sentence(current_sentence or forecast_sentence or "")
+    level = current_map.get(key) or _level_from_sentence(current_sentence)
+    forecast_level = forecast_map.get(key) or _level_from_sentence(forecast_sentence)
     forecast = forecast_sentence or "Ei erillistä ennustetta Riihimäen alueelle."
 
     return PollenPlant(
         key=key,
         name=name,
         level=level,
+        forecast_level=forecast_level,
         forecast=forecast,
     )
 
@@ -169,10 +268,7 @@ def _first_current_sentence(sentences: list[str]) -> str:
 
 
 def _first_forecast_sentence(sentences: list[str]) -> str:
-    for sentence in sentences:
-        if _FORECAST_RE.search(sentence):
-            return sentence
-    return ""
+    return sentences[0] if sentences else ""
 
 
 def _level_from_sentence(sentence: str) -> str:

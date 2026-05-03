@@ -38,7 +38,7 @@ def _render_pollen_html(vm: dict) -> str:
         .pollen-summary {{ font-size:.92rem; color:#d8dee9; opacity:.92; }}
         .pollen-grid {{ display:grid; gap:8px; }}
         .pollen-row {{
-          display:grid; grid-template-columns:82px 118px 1fr; gap:10px;
+          display:grid; grid-template-columns:76px 104px 104px 1fr; gap:8px;
           align-items:center; padding:8px 10px; border-radius:8px;
           background:rgba(255,255,255,.06);
         }}
@@ -55,6 +55,7 @@ def _render_pollen_html(vm: dict) -> str:
           min-width:0; font-size:.84rem; color:#d8dee9; opacity:.9;
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         }}
+        .pollen-label {{ display:block; font-size:.68rem; opacity:.74; font-weight:600; }}
         .pollen-source {{ margin-top:4px; font-size:.76rem; color:#aab3c2; }}
       </style>
       <div class="card-body">
@@ -69,13 +70,17 @@ def _render_pollen_html(vm: dict) -> str:
 def _render_plant_row(plant: dict) -> str:
     name = html.escape(str(plant.get("name") or ""))
     level = html.escape(str(plant.get("level") or "ei havaittu"))
+    forecast_level_raw = str(plant.get("forecast_level") or "ei havaittu")
+    forecast_level = html.escape(forecast_level_raw)
     forecast = html.escape(str(plant.get("forecast") or "Ei ennustetta."))
     level_class = LEVEL_CLASS.get(str(plant.get("level")), "none")
+    forecast_level_class = LEVEL_CLASS.get(forecast_level_raw, "none")
 
     return f"""
     <div class="pollen-row">
       <div class="pollen-name">{name}</div>
-      <div class="pollen-level {level_class}">{level}</div>
+      <div class="pollen-level {level_class}"><span class="pollen-label">Nyt</span>{level}</div>
+      <div class="pollen-level {forecast_level_class}"><span class="pollen-label">Ennuste</span>{forecast_level}</div>
       <div class="pollen-forecast" title="{forecast}">{forecast}</div>
     </div>
     """

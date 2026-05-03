@@ -30,12 +30,14 @@ def test_card_pollen_renders_view(monkeypatch):
                     "key": "koivu",
                     "name": "Koivu",
                     "level": "runsaasti",
+                    "forecast_level": "runsaasti",
                     "forecast": "Koivun määrä pysyy runsaana.",
                 },
                 {
                     "key": "heinät",
                     "name": "Heinät",
                     "level": "ei havaittu",
+                    "forecast_level": "ei havaittu",
                     "forecast": "Ei erillistä ennustetta.",
                 },
             ],
@@ -47,6 +49,7 @@ def test_card_pollen_renders_view(monkeypatch):
     html = dummy.markdowns[0]
     assert "Koivu" in html
     assert "runsaasti" in html
+    assert "Ennuste" in html
     assert "Turun yliopiston siitepölytiedotus" in html
 
 
