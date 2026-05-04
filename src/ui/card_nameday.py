@@ -96,7 +96,7 @@ def render_nameday_card(vm: dict) -> None:
     html.append(
         '<div class="card-body" '
         'style="display:flex; flex-direction:column; gap:6px; text-align:left; '
-        'padding:12px 16px; color:#fff;">'
+        'padding:12px 16px 48px 16px; color:#fff;">'
     )
 
     # liputusbalooni, jos on
@@ -116,23 +116,31 @@ def render_nameday_card(vm: dict) -> None:
     # nimet
     html.append(
         "<div style=\"font-size:1.3rem; font-weight:700; "
+        "line-height:1.2; max-height:3.1em; overflow:hidden; "
         "text-shadow:0 1px 2px rgba(0,0,0,.35);\">"
         f"{vm['names']}</div>"
     )
 
     # auringot
-    html.append('<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">')
     html.append(
-        "<div style=\"display:inline-flex;align-items:center;gap:6px;"
-        "background:rgba(0,0,0,.35);padding:4px 10px;"
-        "border-radius:999px;font-size:.75rem;\">"
-        f"{_sun_icon('rise', 16)} <strong>{vm['sunrise']}</strong></div>"
+        '<div style="position:absolute; left:16px; right:16px; bottom:12px; '
+        'display:flex; gap:6px; flex-wrap:wrap;">'
     )
     html.append(
         "<div style=\"display:inline-flex;align-items:center;gap:6px;"
         "background:rgba(0,0,0,.35);padding:4px 10px;"
-        "border-radius:999px;font-size:.75rem;\">"
-        f"{_sun_icon('set', 16)} <strong>{vm['sunset']}</strong></div>"
+        "border-radius:999px;font-size:.75rem;color:#fff;line-height:1;\">"
+        f"{_sun_icon('rise', 16)} "
+        f"<span style=\"display:inline-block;min-width:34px;color:#fff !important;"
+        f"font-weight:700;font-variant-numeric:tabular-nums;\">{vm['sunrise']}</span></div>"
+    )
+    html.append(
+        "<div style=\"display:inline-flex;align-items:center;gap:6px;"
+        "background:rgba(0,0,0,.35);padding:4px 10px;"
+        "border-radius:999px;font-size:.75rem;color:#fff;line-height:1;\">"
+        f"{_sun_icon('set', 16)} "
+        f"<span style=\"display:inline-block;min-width:34px;color:#fff !important;"
+        f"font-weight:700;font-variant-numeric:tabular-nums;\">{vm['sunset']}</span></div>"
     )
     html.append("</div>")  # aurinko-div
 
