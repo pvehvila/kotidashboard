@@ -66,6 +66,10 @@ def _get_secret(name: str) -> str | None:
                 "HA_EQE_PRECLIMATE_STOP_ENTITY": "eqe_preclimate_stop_entity",
                 "HA_EQE_CHARGING_POWER_ENTITY": "eqe_charging_power_entity",
                 "HA_EQE_CHARGING_SWITCH_ENTITY": "eqe_charging_switch_entity",
+                "HA_EQE_REFRESH_SERVICE": "eqe_refresh_service",
+                "HA_EQE_REFRESH_ENTITY": "eqe_refresh_entity",
+                "HA_EQE_REFRESH_DATA": "eqe_refresh_data",
+                "HA_EQE_REFRESH_INTERVAL": "eqe_refresh_interval",
                 "HA_CACHE_TTL": "cache_ttl",
             }
             mapped = key_map.get(name)
@@ -102,6 +106,16 @@ def _ha_lock_timeout_s() -> float:
         except ValueError:
             pass
     return max(HTTP_TIMEOUT_S, 20.0)
+
+
+def ha_eqe_refresh_interval_s() -> float:
+    raw = _get_secret("HA_EQE_REFRESH_INTERVAL")
+    if raw:
+        try:
+            return max(30.0, float(raw))
+        except ValueError:
+            pass
+    return 300.0
 
 
 def _require_config() -> dict[str, str]:
@@ -398,6 +412,67 @@ def refresh_eqe_charging_state(session: requests.Session | None = None) -> Any:
         "homeassistant",
         "update_entity",
         {"entity_id": entity_id},
+        session,
+    )
+
+
+def refresh_eqe_status_entities(session: requests.Session | None = None) -> Any:
+    cfg = _require_config()
+    refresh_service = _get_secret("HA_EQE_REFRESH_SERVICE")
+    refresh_entity = _get_secret("HA_EQE_REFRESH_ENTITY")
+    refresh_data_raw = _get_secret("HA_EQE_REFRESH_DATA")
+    data: dict[str, Any] = {}
+    extra: dict[str, Any] = {}
+
+    if refresh_data_raw:
+        try:
+            parsed = json.loads(refresh_data_raw)
+            if isinstance(parsed, dict):
+                extra = parsed
+        except json.JSONDecodeError:
+            extra = {}
+
+    if refresh_service:
+        if "." in refresh_service:
+            domain, service = refresh_service.split(".", 1)
+        else:
+            domain, service = "homeassistant", refresh_service
+        if refresh_entity:
+            data["entity_id"] = refresh_entity
+        data.update(extra)
+        return _call_service(
+            cfg["base_url"],
+            cfg["token"],
+            domain,
+            service,
+            data,
+            session,
+            timeout_s=_ha_lock_timeout_s(),
+        )
+
+    entity_ids = [
+        entity_id
+        for entity_id in (
+            cfg.get("soc_entity"),
+            cfg.get("range_entity"),
+            cfg.get("charging_entity"),
+            cfg.get("lock_status_entity") or cfg.get("lock_entity"),
+            cfg.get("preclimate_entity"),
+            cfg.get("charging_power_entity"),
+            cfg.get("charging_switch_entity"),
+        )
+        if entity_id
+    ]
+    if not entity_ids:
+        raise HAConfigError("EQE-entiteettejä ei ole määritetty")
+    data["entity_id"] = entity_ids
+    data.update(extra)
+    return _call_service(
+        cfg["base_url"],
+        cfg["token"],
+        "homeassistant",
+        "update_entity",
+        data,
         session,
     )
 

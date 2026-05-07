@@ -224,6 +224,91 @@ def test_refresh_eqe_lock_status_with_service(monkeypatch):
     assert called["data"]["entity_id"] == "lock.refresh"
 
 
+def test_refresh_eqe_status_entities_default_update(monkeypatch):
+    cfg = {
+        "base_url": "http://ha",
+        "token": "token",
+        "soc_entity": "sensor.soc",
+        "range_entity": "sensor.range",
+        "charging_entity": "sensor.charge",
+        "lock_entity": "lock.eqe",
+        "lock_status_entity": None,
+        "preclimate_entity": "switch.preclimate",
+        "preclimate_start_entity": None,
+        "preclimate_stop_entity": None,
+        "charging_power_entity": "sensor.power",
+        "charging_switch_entity": "switch.charge",
+    }
+    monkeypatch.setattr(ha, "_require_config", lambda: cfg)
+    monkeypatch.setattr(ha, "_get_secret", lambda name: None)
+    called = {}
+
+    def fake_call_service(base_url, token, domain, service, data, session=None, timeout_s=None):
+        called["domain"] = domain
+        called["service"] = service
+        called["data"] = data
+        return {"ok": True}
+
+    monkeypatch.setattr(ha, "_call_service", fake_call_service)
+
+    ha.refresh_eqe_status_entities()
+
+    assert called["domain"] == "homeassistant"
+    assert called["service"] == "update_entity"
+    assert called["data"]["entity_id"] == [
+        "sensor.soc",
+        "sensor.range",
+        "sensor.charge",
+        "lock.eqe",
+        "switch.preclimate",
+        "sensor.power",
+        "switch.charge",
+    ]
+
+
+def test_refresh_eqe_status_entities_custom_service(monkeypatch):
+    cfg = {
+        "base_url": "http://ha",
+        "token": "token",
+        "soc_entity": "sensor.soc",
+        "range_entity": "sensor.range",
+        "charging_entity": "sensor.charge",
+        "lock_entity": None,
+        "lock_status_entity": None,
+        "preclimate_entity": None,
+        "preclimate_start_entity": None,
+        "preclimate_stop_entity": None,
+        "charging_power_entity": None,
+        "charging_switch_entity": None,
+    }
+    monkeypatch.setattr(ha, "_require_config", lambda: cfg)
+
+    def fake_get_secret(name):
+        data = {
+            "HA_EQE_REFRESH_SERVICE": "button.press",
+            "HA_EQE_REFRESH_ENTITY": "button.eqe_refresh",
+            "HA_EQE_REFRESH_DATA": '{"mode":"force"}',
+        }
+        return data.get(name)
+
+    monkeypatch.setattr(ha, "_get_secret", fake_get_secret)
+    called = {}
+
+    def fake_call_service(base_url, token, domain, service, data, session=None, timeout_s=None):
+        called["domain"] = domain
+        called["service"] = service
+        called["data"] = data
+        return {"ok": True}
+
+    monkeypatch.setattr(ha, "_call_service", fake_call_service)
+
+    ha.refresh_eqe_status_entities()
+
+    assert called["domain"] == "button"
+    assert called["service"] == "press"
+    assert called["data"] == {"entity_id": "button.eqe_refresh", "mode": "force"}
+
+
 def test_fetch_eqe_charging_power(monkeypatch):
     cfg = {
         "base_url": "http://ha",

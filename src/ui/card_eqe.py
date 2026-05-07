@@ -19,9 +19,11 @@ from src.api.home_assistant import (
     fetch_eqe_charging_power,
     fetch_eqe_lock_state,
     fetch_eqe_status,
+    ha_eqe_refresh_interval_s,
     refresh_eqe_charging_power,
     refresh_eqe_charging_state,
     refresh_eqe_lock_status,
+    refresh_eqe_status_entities,
     set_eqe_charging_enabled,
     set_eqe_lock,
     set_eqe_preclimate,
@@ -330,6 +332,20 @@ def _maybe_force_charging_refresh(interval_s: float = 15.0) -> None:
     fetch_eqe_status.clear()
 
 
+def _maybe_force_status_refresh() -> None:
+    now = time.time()
+    interval_s = ha_eqe_refresh_interval_s()
+    last_ts = st.session_state.get("eqe_status_refresh_ts")
+    if isinstance(last_ts, int | float) and now - float(last_ts) < interval_s:
+        return
+    try:
+        refresh_eqe_status_entities()
+    except Exception:
+        pass
+    st.session_state["eqe_status_refresh_ts"] = now
+    fetch_eqe_status.clear()
+
+
 def _lock_chip(state: str | None) -> tuple[str, str]:
     if not state:
         return ("chip yellow", "Tuntematon")
@@ -556,6 +572,8 @@ def card_eqe() -> None:
         prev_polling = st.session_state.get("eqe_charging_polling", False)
         if prev_polling:
             _maybe_force_charging_refresh(interval_s=30.0)
+        else:
+            _maybe_force_status_refresh()
 
         lock_job = _lock_job_snapshot()
         lock_pending_action = (
