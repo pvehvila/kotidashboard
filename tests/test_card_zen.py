@@ -93,6 +93,7 @@ def test_card_zen_renders_html(monkeypatch):
     zen_mod.card_zen()
 
     assert "Päivän zen" in called_html["html"]
+    assert "zen-clock" in called_html["html"]
     assert "Zen test" in called_html["html"]
     assert "Tester" in called_html["html"]
 
