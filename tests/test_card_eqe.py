@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib
 from datetime import datetime, timezone
 
+import pytest
+
 from src.api.home_assistant import EqeStatus, HAConfigError
 
 
@@ -65,6 +67,16 @@ class FakeFetch:
 
     def clear(self):
         pass
+
+
+@pytest.fixture(autouse=True)
+def reset_eqe_jobs():
+    card_mod = _get_card_module()
+    card_mod._reset_lock_job()
+    card_mod._reset_preclimate_job()
+    yield
+    card_mod._reset_lock_job()
+    card_mod._reset_preclimate_job()
 
 
 def test_card_eqe_renders_basic(monkeypatch):

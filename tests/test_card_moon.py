@@ -62,6 +62,8 @@ def test_card_moon_renders(monkeypatch):
     assert "3.10.2026" in markdowns[0]
     assert "Viimeinen neljännes" in markdowns[0]
     assert "50 %" in markdowns[0]
+    assert "Valaistu osuus" not in markdowns[0]
+    assert markdowns[0].index("50 %") < markdowns[0].rindex("Viimeinen neljännes")
     assert "<svg" in markdowns[0]
     assert "data:image/jpeg;base64," in markdowns[0]
 

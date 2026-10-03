@@ -59,8 +59,8 @@ def _render_moon_html(vm: dict) -> str:
              style="width:180px;max-width:45%;flex-shrink:0;">{moon}</div>
         <div style="min-width:0;">
           <div class="hint">{day.day}.{day.month}.{day.year}</div>
-          <div style="font-size:1.25rem;font-weight:700;margin:6px 0;">{vm['name']}</div>
-          <div>Valaistu osuus noin {vm['illumination']} %</div>
+          <div style="font-size:1.25rem;font-weight:700;margin:6px 0;">{vm['illumination']} %</div>
+          <div>{vm['name']}</div>
         </div>
       </div>
     </section>
@@ -92,7 +92,14 @@ def _render_moon_svg(phase: float) -> str:
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"
          style="display:block;width:100%;height:auto;" aria-hidden="true">
       <defs>
-        <g id="moon-surface">
+        <filter id="moon-warm" color-interpolation-filters="sRGB">
+          <feComponentTransfer>
+            <feFuncR type="linear" slope="1"/>
+            <feFuncG type="linear" slope="0.90"/>
+            <feFuncB type="linear" slope="0.65"/>
+          </feComponentTransfer>
+        </filter>
+        <g id="moon-surface" filter="url(#moon-warm)">
           <svg x="10" y="10" width="180" height="180" viewBox="373 37 790 790">
             <image href="{image_uri}" width="1536" height="864"/>
           </svg>
