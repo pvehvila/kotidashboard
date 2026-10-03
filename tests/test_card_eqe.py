@@ -63,6 +63,8 @@ class FakeFetch:
         self.value = value
 
     def __call__(self):
+        if isinstance(self.value, Exception):
+            raise self.value
         return self.value
 
     def clear(self):
@@ -119,10 +121,11 @@ def test_card_eqe_handles_config_error(monkeypatch):
     monkeypatch.setattr(card_mod, "st", dummy)
     monkeypatch.setattr(card_mod, "section_title", lambda *a, **k: None)
 
-    def fake_fetch_status():
-        raise HAConfigError("missing config")
-
-    monkeypatch.setattr(card_mod, "fetch_eqe_status", fake_fetch_status)
+    monkeypatch.setattr(card_mod, "eqe_lock_configured", lambda: False)
+    monkeypatch.setattr(card_mod, "eqe_preclimate_configured", lambda: False)
+    monkeypatch.setattr(card_mod, "eqe_charging_switch_configured", lambda: False)
+    monkeypatch.setattr(card_mod, "refresh_eqe_status_entities", lambda: None)
+    monkeypatch.setattr(card_mod, "fetch_eqe_status", FakeFetch(HAConfigError("missing config")))
 
     card_mod.card_eqe()
 
