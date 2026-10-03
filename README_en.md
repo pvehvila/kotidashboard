@@ -18,6 +18,8 @@
 - 🎧 **HEOS / Tidal integration** (now playing, controls, error handling)
 - 🚪 **Hue Secure door & motion sensors** (Philips Hue v2 API)
 - 🖥️ **System status** (CPU, RAM, disk, IP)
+- 🌿 **Pollen conditions for Riihimäki** (birch, grasses and mugwort, current levels and forecast)
+- 🌙 **Daily Moon phase** in place of the pollen card when no pollen is detected
 - 💾 **Logging** to `logs/homedashboard.log`
 - 🔄 **Automatic refresh & caching**
 
@@ -67,6 +69,26 @@ The dashboard uses the following local data sources:
 - `data/pyhat_fi.json` — Finnish holidays & flag days
 
 If these files are missing, the nameday card will display only the date.
+
+---
+
+## 🌿 Pollen and Moon Phase
+
+The pollen card displays current levels and forecasts for birch, grasses and
+mugwort in the Riihimäki area based on the University of Turku pollen bulletin.
+When all three current levels are **not detected**, the Moon card appears in the
+same position. Forecast pollen alone does not prevent the switch. An empty plant list
+or a fetch error does not trigger the switch.
+
+The Moon card shows the phase name, a large surface image and the approximate
+illuminated percentage for the current date in Finland. The image uses NASA's
+Clementine data and is stored locally as `assets/moon-full.jpg`. The light–shadow
+boundary follows the projection of a sphere: waxing phases are lit on the right
+and waning phases on the left in a north-up view.
+
+Phase timing uses the mean synodic month and is approximate. The illustration
+does not model individual crater shadows or the Moon's orientation relative to
+the local horizon. Image source and limitations: [moon-full.md](assets/moon-full.md).
 
 ---
 

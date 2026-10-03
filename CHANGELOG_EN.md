@@ -7,7 +7,13 @@ All notable changes are recorded here.
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Added
+- 🌿 Pollen card for Riihimäki with current levels and forecasts for birch, grasses and mugwort.
+- 🌙 Moon card replaces the pollen card when all monitored plants have a current level of "not detected".
+- 🌕 Large NASA Clementine surface image with a curved phase shadow; daily phase timing and illuminated percentage are approximate calculations.
+
+### Documentation
+- 📚 Finnish and English READMEs updated with pollen and Moon card behavior, image attribution and limitations.
 
 ---
 

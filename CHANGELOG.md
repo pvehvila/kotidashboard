@@ -8,7 +8,13 @@ Kaikki merkittävät muutokset dokumentoidaan tähän.
 
 ## [Unreleased]
 
-_Ei julkaisemattomia muutoksia tällä hetkellä._
+### Lisätty
+- 🌿 Riihimäen siitepölykortti: koivun, heinien ja pujon nykytila sekä ennuste.
+- 🌙 Kuukortti korvaa siitepölykortin, kun kaikkien seurattujen kasvien nykytila on "ei havaittu".
+- 🌕 Suuri NASAn Clementine-pintakuva ja kuun vaihetta seuraava kaareva varjoraja; päivittäinen vaihe ja valaistu osuus ovat laskennallisia arvioita.
+
+### Dokumentaatio
+- 📚 Suomen- ja englanninkieliset README-tiedostot päivitetty siitepöly- ja kuukorttien toiminnalla sekä kuukuvan lähteellä ja rajauksilla.
 
 ---
 

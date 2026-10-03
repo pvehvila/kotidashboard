@@ -18,6 +18,8 @@
 - 🎧 **HEOS / Tidal** – nykyinen kappale, ohjauspainikkeet, virheenkäsittely
 - 🚪 **Hue Secure -ovi- ja liiketunnistimet** (v2 API)
 - 🖥️ **Järjestelmän tila** (CPU, RAM, levytila, IP)
+- 🌿 **Riihimäen siitepölytilanne** (koivu, heinät ja pujo, nykytila ja ennuste)
+- 🌙 **Päivittäinen kuun vaihe** siitepölykortin paikalla, kun siitepölyä ei havaittu
 - 💾 **Lokitus** `logs/homedashboard.log` -tiedostoon
 - 🔄 **Automaattinen päivitys ja välimuisti** (Streamlit cache)
 
@@ -68,6 +70,25 @@ Dashboard käyttää seuraavia tiedostoja:
 - `data/pyhat_fi.json` — suomalaiset pyhä- ja liputuspäivät
 
 Jos nämä puuttuvat, nimipäiväkortti näyttää vain päivämäärän.
+
+---
+
+## 🌿 Siitepöly ja kuun vaihe
+
+Siitepölykortti näyttää Turun yliopiston siitepölytiedotuksen pohjalta koivun,
+heinien ja pujon nykytilan sekä ennusteen Riihimäen alueelle. Kun kaikkien kolmen
+nykytila on **ei havaittu**, samalla paikalla näytetään kuukortti. Pelkkä ennuste
+siitepölystä ei estä vaihtoa. Tyhjä kasvilista tai hakuvirhe ei käynnistä vaihtoa.
+
+Kuukortti näyttää Suomen päivän mukaan kuun vaiheen nimen, suuren pintakuvan ja
+arvion valaistusta osuudesta. Kuva perustuu NASAn Clementine-aineistoon ja on
+tallennettu paikallisesti tiedostoon `assets/moon-full.jpg`. Valon ja varjon raja
+piirretään pallon projektion mukaan: kasvava kuu valaistaan oikealta ja vähenevä
+vasemmalta pohjoissuunnan ollessa ylhäällä.
+
+Vaihe lasketaan keskimääräisen synodisen kuukauden avulla, joten se on arvio.
+Kuva ei mallinna yksittäisten kraatterien varjoja tai kuun asentoa paikalliseen
+horisonttiin nähden. Kuvan lähde ja rajaukset: [moon-full.md](assets/moon-full.md).
 
 ---
 
