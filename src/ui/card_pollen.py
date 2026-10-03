@@ -5,6 +5,7 @@ import html
 import streamlit as st
 
 from src.api.pollen import fetch_pollen_view
+from src.ui.card_moon import card_moon
 from src.ui.common import card, section_title
 
 LEVEL_CLASS = {
@@ -16,9 +17,13 @@ LEVEL_CLASS = {
 
 
 def card_pollen() -> None:
-    """Renderöi Riihimäen siitepölytilanteen."""
+    """Renderöi siitepölytilanteen tai kuun vaiheen, jos siitepölyä ei havaittu."""
     try:
         vm = fetch_pollen_view()
+        plants = vm.get("plants", [])
+        if plants and all(plant.get("level") == "ei havaittu" for plant in plants):
+            card_moon()
+            return
         section_title("🌿 Siitepöly — Riihimäki", mt=10, mb=4)
         st.markdown(_render_pollen_html(vm), unsafe_allow_html=True)
     except Exception as e:

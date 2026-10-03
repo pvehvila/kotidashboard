@@ -73,3 +73,36 @@ def test_card_pollen_shows_error_card(monkeypatch):
     assert called
     assert "Siitepöly" in called[0][0]
     assert "pollen unavailable" in called[0][1]
+
+
+def test_card_pollen_shows_moon_when_no_current_pollen(monkeypatch):
+    called = []
+    monkeypatch.setattr(
+        card_pollen_module,
+        "fetch_pollen_view",
+        lambda: {
+            "plants": [
+                {"level": "ei havaittu", "forecast_level": "runsaasti"},
+                {"level": "ei havaittu", "forecast_level": "ei havaittu"},
+            ]
+        },
+    )
+    monkeypatch.setattr(card_pollen_module, "card_moon", lambda: called.append("moon"))
+
+    card_pollen_module.card_pollen()
+
+    assert called == ["moon"]
+
+
+def test_card_pollen_does_not_treat_missing_data_as_no_pollen(monkeypatch):
+    dummy = DummySt()
+    monkeypatch.setattr(card_pollen_module, "st", dummy)
+    monkeypatch.setattr(card_pollen_module, "section_title", lambda *a, **k: None)
+    monkeypatch.setattr(card_pollen_module, "fetch_pollen_view", lambda: {"plants": []})
+    called = []
+    monkeypatch.setattr(card_pollen_module, "card_moon", lambda: called.append("moon"))
+
+    card_pollen_module.card_pollen()
+
+    assert called == []
+    assert "pollen-card" in dummy.markdowns[0]
