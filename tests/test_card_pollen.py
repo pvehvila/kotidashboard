@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import importlib
 
+import pytest
+import requests
+
 card_pollen_module = importlib.import_module("src.ui.card_pollen")
 
 
@@ -58,21 +61,29 @@ def test_card_pollen_renders_view(monkeypatch):
     assert html.count("Ennuste") == 1
 
 
-def test_card_pollen_shows_error_card(monkeypatch):
+@pytest.mark.parametrize(
+    "error",
+    [
+        requests.Timeout("pollen timeout"),
+        requests.ConnectionError("pollen unavailable"),
+        requests.HTTPError("503 Service Unavailable"),
+        RuntimeError("invalid pollen data"),
+    ],
+)
+def test_card_pollen_shows_moon_on_fetch_error(monkeypatch, error):
     def boom():
-        raise RuntimeError("pollen unavailable")
+        raise error
 
-    called: list[tuple[str, str]] = []
+    dummy = DummySt()
+    monkeypatch.setattr(card_pollen_module, "st", dummy)
+    called = []
     monkeypatch.setattr(card_pollen_module, "fetch_pollen_view", boom)
-    monkeypatch.setattr(
-        card_pollen_module, "card", lambda title, body: called.append((title, body))
-    )
+    monkeypatch.setattr(card_pollen_module, "card_moon", lambda: called.append("moon"))
 
     card_pollen_module.card_pollen()
 
-    assert called
-    assert "Siitepöly" in called[0][0]
-    assert "pollen unavailable" in called[0][1]
+    assert called == ["moon"]
+    assert dummy.markdowns == []
 
 
 def test_card_pollen_shows_moon_when_no_current_pollen(monkeypatch):

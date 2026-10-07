@@ -78,7 +78,9 @@ Jos nämä puuttuvat, nimipäiväkortti näyttää vain päivämäärän.
 Siitepölykortti näyttää Turun yliopiston siitepölytiedotuksen pohjalta koivun,
 heinien ja pujon nykytilan sekä ennusteen Riihimäen alueelle. Kun kaikkien kolmen
 nykytila on **ei havaittu**, samalla paikalla näytetään kuukortti. Pelkkä ennuste
-siitepölystä ei estä vaihtoa. Tyhjä kasvilista tai hakuvirhe ei käynnistä vaihtoa.
+siitepölystä ei estä vaihtoa. Myös siitepölyhaun epäonnistuessa (esimerkiksi
+yhteysvirhe, aikakatkaisu tai palvelimen virhe) näytetään kuukortti virhekortin
+sijaan. Tyhjä kasvilista ei käynnistä vaihtoa.
 
 Kuukortti näyttää Suomen päivän mukaan kuun vaiheen nimen, suuren pintakuvan ja
 arvion valaistusta osuudesta. Kuva perustuu NASAn Clementine-aineistoon ja on

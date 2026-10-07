@@ -77,8 +77,9 @@ If these files are missing, the nameday card will display only the date.
 The pollen card displays current levels and forecasts for birch, grasses and
 mugwort in the Riihimäki area based on the University of Turku pollen bulletin.
 When all three current levels are **not detected**, the Moon card appears in the
-same position. Forecast pollen alone does not prevent the switch. An empty plant list
-or a fetch error does not trigger the switch.
+same position. Forecast pollen alone does not prevent the switch. If the pollen
+fetch fails (for example, a connection error, timeout or server error), the Moon
+card is shown instead of an error card. An empty plant list does not trigger the switch.
 
 The Moon card shows the phase name, a large surface image and the approximate
 illuminated percentage for the current date in Finland. The image uses NASA's

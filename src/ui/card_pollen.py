@@ -6,7 +6,7 @@ import streamlit as st
 
 from src.api.pollen import fetch_pollen_view
 from src.ui.card_moon import card_moon
-from src.ui.common import card, section_title
+from src.ui.common import section_title
 
 LEVEL_CLASS = {
     "ei havaittu": "none",
@@ -17,17 +17,19 @@ LEVEL_CLASS = {
 
 
 def card_pollen() -> None:
-    """Renderöi siitepölytilanteen tai kuun vaiheen, jos siitepölyä ei havaittu."""
+    """Näytä kuu, jos siitepölyä ei havaittu tai siitepölyhaku epäonnistuu."""
     try:
         vm = fetch_pollen_view()
-        plants = vm.get("plants", [])
-        if plants and all(plant.get("level") == "ei havaittu" for plant in plants):
-            card_moon()
-            return
-        section_title("🌿 Siitepöly — Riihimäki", mt=10, mb=4)
-        st.markdown(_render_pollen_html(vm), unsafe_allow_html=True)
-    except Exception as e:
-        card("Siitepöly — Riihimäki", f"<span class='hint'>Virhe: {html.escape(str(e))}</span>")
+    except Exception:
+        card_moon()
+        return
+
+    plants = vm.get("plants", [])
+    if plants and all(plant.get("level") == "ei havaittu" for plant in plants):
+        card_moon()
+        return
+    section_title("🌿 Siitepöly — Riihimäki", mt=10, mb=4)
+    st.markdown(_render_pollen_html(vm), unsafe_allow_html=True)
 
 
 def _render_pollen_html(vm: dict) -> str:
