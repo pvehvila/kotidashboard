@@ -40,3 +40,30 @@ Tila: **Osittainen**. Tämä kartoitus pohjautuu käytettävissä olleisiin aiem
 - [ ] Tarkista, mitkä keskustelut koskevat vain koneiden ja palveluiden ylläpitoa ja kuuluvat Computers & Linux -projektiin.
 - [ ] Tarkista, että tärkeät päätökset löytyvät koodista, testeistä, dokumentaatiosta tai issueista.
 - [ ] Älä arkistoi tai poista keskusteluja tämän osittaisen kartoituksen perusteella automaattisesti.
+
+
+## Kohdennettu jatkotarkistus 2026-11-08: sähkö ja EQE
+
+Tässä osiossa tarkistettiin `main`-haaran lähdekoodia ja testien sisältöä. Testejä **ei ajettu**, eikä sovelluksen tai Home Assistantin ajonaikaista toimintaa tarkistettu.
+
+### Sähkönhintakortti
+
+- `src/api/electricity_service.py` hakee ensisijaisesti suoraa 15 minuutin pörssisähködataa. Jos sitä ei ole, `fetch_prices_for` hakee tuntihinnat ensisijaisesta lähteestä ja varalähteestä. Tuntidataa normalisoidaan tai laajennetaan neljäksi 15 minuutin jaksoksi. **Varalähdelogiikka on siis koodissa**, vaikka sitä ei aiemmin voitu vahvistaa pelkästä UI-kortista.
+- `src/api/prices_15min_vm.py` hakee kuluvan ja seuraavan päivän hinnat ja pyrkii muodostamaan 48 varttijaksoa eli seuraavat 12 tuntia. Jos jaksolle ei ole dataa, se ohitetaan, joten näytössä voi olla vähemmän kuin 48 palkkia.
+- `tests/test_prices_15min_vm.py` tarkistaa muun muassa täyden 48 jakson tapauksia, vuorokauden vaihtumisen ja alle minuutin aikaleimapoikkeaman. `tests/test_card_prices_ui.py` tarkistaa onnistuneen korttirenderöinnin ja poikkeustilanteen. Nämä ovat **olemassa olevia testejä**, eivät tässä tarkistuksessa suoritettuja testituloksia.
+- `docs/mermaid/sequence_electricity.md` kuvaa aiempaa `fetch_electricity`-polkua ja tuntihintoihin liittyvää rajapintaa. Päivitä kaavio vastaamaan ketjua `card_prices -> prices_15min_vm -> electricity_service -> 15min adapteri / tuntidatan varalähde` sekä aikaleimojen ja puuttuvan datan käsittelyä.
+- Avoin testauskohde: todellisen varttidatan ja tuntidatasta laajennetun varttiesityksen erottaminen. Tuntihinnasta johdettu neljä samanarvoista jaksoa ei ole itsenäistä toteutunutta varttihinnoittelua.
+
+### EQE / Home Assistant
+
+- `src/api/home_assistant.py` käyttää HA:n palvelukutsuihin Bearer-tokenia ja HTTP POST -pyyntöä. `set_eqe_lock`, `set_eqe_preclimate` ja `set_eqe_charging_enabled` muodostavat palvelun nykyisen konfiguraation perusteella; puuttuvista entiteettimäärityksistä nostetaan virhe.
+- `src/ui/card_eqe.py` lukee komennot Streamlitin `st.query_params`-arvoista (`eqe_lock`, `eqe_preclimate`, `eqe_charge`). Tämä tarkoittaa, että ohjaustoiminto voidaan pyytää URL-parametrilla, mikä edellyttää erillistä käyttöoikeus-, vahvistus- ja toistokutsutarkastelua. HA-tokenin käyttö sisäisessä POST-kutsussa **ei yksin ole näyttöä siitä**, että sovelluksen käyttäjät ja URL-ohjaukset olisi valtuutettu turvallisesti.
+- Lukitus- ja ilmastointitoimissa UI käynnistää taustasäikeen, näyttää välitilan ja yrittää varmistaa palautuneen tilan Home Assistantista. Latauksen kytkentä tekee myös kirjoittavan palvelukutsun ja käyttää tila-/päivityslogiikkaa. Kutsu on eri asia kuin auton todellinen toiminnon suorittaminen.
+- `tests/test_home_assistant.py` sisältää lukituksen palvelukutsun ja lock/switch-domainin testit. `tests/test_card_eqe.py` sisältää query-parametripolkujen, konfiguraation puuttumisen, latauksen kytkennän ja lukitusvirheen testit. Nämä testit eivät sellaisenaan osoita erillisen URL-kutsujen valtuutus- tai CSRF-suojauksen toimivuutta.
+- Tarkistettava: tuntemattomat `eqe_lock`-parametriarvot tulkitaan koodissa `unlock`-pyynnöksi, ja tuntemattomat `eqe_preclimate`-arvot `off`-pyynnöksi. Suositus on rajata sallitut arvot eksplisiittisesti ja torjua muut.
+- Tarkistettava: `set_eqe_lock` voi sisällyttää HA:n HTTP-virhevastauksen raakatekstin poikkeusviestiin. Arvioi ennen tuotantokäyttöä, voiko viesti päätyä UI:hin tai lokeihin ja sisältää arkaluonteista tietoa.
+- **Ei tehty:** autentikointi-/käyttöoikeuskoetta, autentikoimatonta selainkoetta, automaattisia testiajoja tai oikeita HA:n/ajoneuvon ohjauspyyntöjä.
+
+### Siirtopäätös
+
+Näiden aiheiden **nykyinen koodillinen toteutus** on Gitissä ja voidaan dokumentoida ilman vanhojen raakakeskustelujen säilyttämistä ensisijaisena lähteenä. ChatGPT-projektin täydellinen poistovalmius on silti avoin, kunnes kaikkien keskustelujen ja liitteiden inventointi on tehty.
