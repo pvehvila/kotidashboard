@@ -2,7 +2,9 @@
 
 Päivitetty: **9.11.2026**. PR #4, haara `docs/chatgpt-project-migration-2026-11`.
 
-**Tulos:** kaikki aiemman projektihakemiston 111 keskustelua löytyivät käyttäjän toimittamasta tietoviennistä. Viestihistorian aiempi viiden vuoron rajoitus on poistunut tämän viennin osalta. Liitteiden alkuperäiset tiedostosisällöt ovat edelleen osittain saatavilla, joten **projektin poistovalmius ei ole valmis**. Mitään ei poisteta, siirretä tai yhdistetä tällä auditoinnilla.
+**Käyttäjän lopullinen päätös 9.11.2026:** inventointi on tarkoitukseensa riittävä. Dashboard toimii ja GitHubissa on versiohistoria. Vanhojen liitteiden/canvasien jäljittämistä ei jatketa. Käyttäjä hyväksyi PR:n yhdistämisen ja ChatGPT-projektin poistamisen; alla kuvatut saatavuusrajoitukset säilytetään historiallisina havaintoina, eivät poistamisen esteenä. Raakavienti säilytetään paikallisesti.
+
+**Auditointikierroksen tulos ennen käyttäjän hyväksyntää:** kaikki aiemman projektihakemiston 111 keskustelua löytyivät käyttäjän toimittamasta tietoviennistä. Viestihistorian aiempi viiden vuoron rajoitus on poistunut tämän viennin osalta. Liitteiden alkuperäiset tiedostosisällöt ovat edelleen osittain saatavilla, joten **projektin poistovalmius ei ole valmis**. Mitään ei poisteta, siirretä tai yhdistetä tällä auditoinnilla.
 
 Tämä versio korvaa 8.11.2026 inventaarion saatavuusluvut ja yleisen P0-luokituksen. Aiemman tarkistuksen tekniset havainnot säilyvät lopun päivätyssä osassa siltä osin kuin uudet korjaukset eivät korvaa niitä.
 
@@ -1091,4 +1093,9 @@ Tässä osiossa tarkistettiin `main`-haaran lähdekoodia ja testien sisältöä.
 
 **Tehty muutos:** vain tämä Markdown-auditointi PR #4:n nykyiseen haaraan. Ei keskustelu-/projekti-/liitepoistoja, arkistointia, keskustelusiirtoja, PR:n yhdistämistä, lähdekoodimuutoksia, testiajoja, palvelinmuutoksia tai laiteohjausta.
 
-**Poistovalmius: EI KOKO PROJEKTILLE.** Viestihistorian aiempi saatavuuseste on poistunut tämän viennin osalta. Jäljellä ovat nimenomaisesti liitteiden/canvasien säilytysratkaisu, dokumentaation avoimet valinnat sekä käyttäjän erillinen hyväksyntä. Säilytä alkuperäinen yksityinen ZIP ja poimittu aineisto siihen asti.
+**Auditoinnin tekninen saatavuusarvio ennen käyttäjän lopullista hyväksyntää:** Viestihistorian aiempi saatavuuseste on poistunut tämän viennin osalta. Jäljellä ovat nimenomaisesti liitteiden/canvasien säilytysratkaisu, dokumentaation avoimet valinnat sekä käyttäjän erillinen hyväksyntä. Säilytä alkuperäinen yksityinen ZIP ja poimittu aineisto siihen asti.
+
+
+## 8. Työn päättäminen käyttäjän päätöksellä 9.11.2026
+
+Käyttäjä totesi toimivan Dashboardin ja GitHubin useiden versioiden olevan riittävä säilytysperusta ja pyysi yhdistämään PR:t sekä poistamaan ChatGPT-projektin. Lisäinventointi lopetetaan. Avoimet tekniset havainnot ovat tiedoksi, eivät tässä tilattuja korjauksia tai este hyväksytylle projektin poistolle. Tämä päätös korvaa aiemmat lisäselvitys-/poistovalmiusehdot. Projektin poistamisen toteutuminen vahvistetaan erikseen käyttöliittymästä; tämä dokumentti kirjaa luvan, ei vielä toteutunutta poistoa.
