@@ -327,6 +327,17 @@ def set_eqe_charging_enabled(enabled: bool, session: requests.Session | None = N
     if not entity_id:
         raise HAConfigError("HA_EQE_CHARGING_SWITCH_ENTITY puuttuu")
     domain = entity_id.split(".", 1)[0] if "." in entity_id else "switch"
+    if domain == "select":
+        if not entity_id.endswith("_frc"):
+            raise HAConfigError("Latauksen select-kohteen on oltava go-e force state (_frc)")
+        return _call_service(
+            cfg["base_url"],
+            cfg["token"],
+            "select",
+            "select_option",
+            {"entity_id": entity_id, "option": "2" if enabled else "1"},
+            session,
+        )
     service = "turn_on" if enabled else "turn_off"
     return _call_service(
         cfg["base_url"],
@@ -530,6 +541,14 @@ def _normalize_switch_state(state: str | None) -> bool | None:
     return None
 
 
+def _charging_control_state(state: dict[str, Any]) -> bool | None:
+    """go-e force state: 0 = automaattinen, 1 = pois, 2 = päällä."""
+    entity_id = str(state.get("entity_id", ""))
+    if entity_id.startswith("select.") and entity_id.endswith("_frc"):
+        return {"1": False, "2": True}.get(str(state.get("state")))
+    return _normalize_switch_state(state.get("state"))
+
+
 def _extract_power_value(state: dict[str, Any]) -> tuple[float | None, str | None]:
     attrs = state.get("attributes") or {}
     val = _parse_float(state.get("state"))
@@ -648,7 +667,7 @@ def build_eqe_status_from_states(
     lock_updated = _state_timestamp(lock_state)
     preclimate_val = _normalize_preclimate_state(preclimate_state.get("state"))
     charging_power_val, charging_power_unit = _extract_power_value(charging_power_state)
-    charging_switch_on = _normalize_switch_state(charging_switch_state.get("state"))
+    charging_switch_on = _charging_control_state(charging_switch_state)
 
     last_changed = _max_state_timestamp(
         [
